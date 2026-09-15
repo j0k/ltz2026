@@ -22,6 +22,7 @@ from markdown_it import MarkdownIt
 
 from dxaqc import __version__
 from dxaqc.web import accounts as A
+from dxaqc.web import contacts as C
 
 COOKIE = "dxaqc_sid"
 COOKIE_SECURE = os.environ.get("DXAQC_COOKIE_SECURE", "1") != "0"
@@ -210,7 +211,7 @@ def _admin_page(request: Request, status_code: int = 200, error: str = "", new_i
                  journal=A.journal(100), broker=bool(ASK_URL), broker_ok=broker_alive(), error=error,
                  requests=A.pending_requests(), recent_requests=A.recent_requests(20),
                  request_kinds=A.REQUEST_KINDS, request_status=A.REQUEST_STATUS,
-                 invites=A.list_invites(), invite_roles=A.INVITE_ROLES, new_invite=new_invite)
+                 invites=A.list_invites(), invite_roles=A.INVITE_ROLES, new_invite=new_invite, contacts=C.ALL)
 
 
 @router.get("/admin", response_class=HTMLResponse)

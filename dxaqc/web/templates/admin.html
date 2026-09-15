@@ -25,6 +25,12 @@
 .q-item:first-child{border-top:0}
 .q-text{white-space:pre-wrap;margin:4px 0 10px}
 .st-done{color:#0c7a53}.st-error, .st-rejected{color:#b3302f}.st-queued, .st-running, .st-awaiting_approval{color:#8a5b00}
+.cnt-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px;margin-bottom:16px}
+.cnt{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--card)}
+.cnt h3, .adm-card h3{margin:0 0 6px;font-size:15px}
+.cnt p{margin:0 0 4px}
+.cnt-experts{margin:0;padding-left:18px}
+.cnt-experts li{margin-bottom:8px}
 @media (max-width:760px){.inv-form{grid-template-columns:minmax(0,1fr)}}
 </style>
 {% endblock %}
@@ -40,6 +46,7 @@
   <a href="#approvals">Ждут одобрения <span class="n">{{ approvals|length }}</span></a>
   <a href="#users">Пользователи <span class="n">{{ users|length }}</span></a>
   <a href="#journal">Журнал вопросов</a>
+  <a href="#contacts">Контакты задачи</a>
   <a href="/control">Пульт анализа →</a>
   <a href="/admin/mcp">MCP-сервер и токены →</a>
 </nav>
@@ -210,6 +217,31 @@
     </tbody>
   </table>
   </div>
+</section>
+
+<section class="card adm-card" id="contacts">
+  <h2>Контакты задачи</h2>
+  <p class="sub">Со страницы задачи 04 на leaders.mos.ru. Раздел виден только админам: это персональные данные организаторов,
+    в публичной части стенда и в трекере их нет.</p>
+  <div class="cnt-grid">
+    <div class="cnt">
+      <h3>{{ contacts.support.title }}</h3>
+      <p><a href="{{ contacts.support.tg_url }}" target="_blank" rel="noopener">{{ contacts.support.tg }}</a>
+        · <a href="mailto:{{ contacts.support.email }}">{{ contacts.support.email }}</a></p>
+      <p class="muted">{{ contacts.support.note }}</p>
+    </div>
+    <div class="cnt">
+      <h3>{{ contacts.moderator.title }}</h3>
+      <p><b>{{ contacts.moderator.name }}</b></p>
+      <p><a href="{{ contacts.moderator.tg_url }}" target="_blank" rel="noopener">{{ contacts.moderator.tg }}</a></p>
+    </div>
+  </div>
+  <h3>Эксперты задачи</h3>
+  <ul class="cnt-experts">
+    {% for e in contacts.experts %}
+    <li><b>{{ e.name }}</b> — {{ e.role }}, {{ e.org }}</li>
+    {% endfor %}
+  </ul>
 </section>
 </div>
 

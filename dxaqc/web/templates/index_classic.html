@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Прогоны{% endblock %}
+{% block head %}
+<style>
+.home-top{grid-template-columns:1.2fr 1fr;margin-top:18px}
+.ds-grid{grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+.scroll-x{overflow-x:auto}
+/* форма загрузки слева, сменяющиеся примеры подходящих снимков справа */
+.upload-wrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,250px);gap:18px 22px;align-items:start}
+@media (max-width:980px){.upload-wrap{grid-template-columns:minmax(0,1fr)}.upload-wrap .shots{max-width:340px}}
+.ds-grid select[name=study]{max-width:220px}
+@media (max-width:760px){
+  /* на телефоне блоки в одну колонку, широкие таблицы прокручиваются внутри себя, страница не уезжает вбок */
+  .bar{flex-wrap:wrap;gap:6px 16px}
+  .bar nav{margin-left:0;flex-wrap:wrap;gap:6px 16px}
+  h1{font-size:24px}
+  .home-top, .ds-grid{grid-template-columns:minmax(0,1fr)}
+  .ds-grid label{white-space:normal}
+  .ds-grid select[name=study]{display:block;width:100%;max-width:100%;margin-top:4px}
+}
+</style>
+{% endblock %}
+{% block content %}
+<h1>Контроль качества денситометрии</h1>
+<p class="muted" style="max-width:760px">Сервис проверяет исследования DXA в формате DICOM: определяет область, выносит вердикт
+«качественное или есть нарушение», строит анатомическую разметку снимка и объясняет найденное нарушение текстом и голосом.
+Результат отдаётся таблицей в формате ТЗ и интерактивными карточками снимков. Всё работает локально, снимки и голос никуда не передаются.</p>
+
+<div class="grid home-top">
+  <div class="card" id="upload">
+    <h2 style="margin-top:0">Загрузить исследования</h2>
+    <div class="upload-wrap">
+      <form class="upload" action="/runs" method="post" enctype="multipart/form-data">
+        <label for="files" class="faint" style="display:block">Zip-архив с папками исследований или отдельные файлы DICOM. До 64 МБ за раз.</label>
+        <input id="files" type="file" name="files" multiple required style="margin:6px 0 14px;max-width:100%">
+        <div><button class="btn" type="submit">Проверить</button></div>
+      </form>
+      {% include "_showcase.html" %}
+    </div>
+  </div>
+  <div class="card" id="about">
+    <h2 style="margin-top:0">Что умеет версия {{ version }}</h2>
+    <ul style="margin:0;padding-left:18px" class="muted">
+      <li>читает DICOM с нестандартными UID, битые файлы отмечает как Failure;</li>
+      <li>убирает дубли снимков внутри исследования;</li>
+      <li>определяет область: поясничный отдел, правое или левое бедро;</li>
+      <li>позвоночник: угол оси, охват, посторонние предметы;</li>
+      <li>разметка как в атласе: позвонки Th12–L5, подвздошные кости, бедренная и тазовая кость, ориентиры бедра;</li>
+      <li>интерактивная карточка: наведите или коснитесь зоны, сервис подсветит её и объяснит, может озвучить;</li>
+      <li>вопросы голосом: распознавание речи и озвучка работают внутри сервиса;</li>
+      <li>таблица csv и xlsx по разделу 2.5 ТЗ, архив картинок разметки, <a href="/docs">API пакетной обработки</a>.</li>
+    </ul>
+  </div>
+</div>
+
+{% if datasets %}
+<div class="card" id="check" style="margin-top:16px">
+  <h2 style="margin-top:0">Проверить на наборах организатора</h2>
+  <p class="faint">Без загрузки файлов. Для обучающего набора вердикты сравниваются с экспертной разметкой, на странице прогона появится инфографика совпадения.</p>
+  <div class="grid ds-grid">
+  {% for d in datasets %}
+    <form class="card" style="background:#faf9f7" action="/runs/dataset" method="post">
+      <input type="hidden" name="dataset" value="{{ d.id }}">
+      <div style="font-weight:800">{{ d.title }}</div>
+      <p class="muted" style="margin:4px 0 12px;font-size:14px">{{ d.desc }}</p>
+      {% if d.per_study %}
+      <label style="display:block;margin:4px 0"><input type="radio" name="mode" value="sample" checked> случайные
+        <select name="n" aria-label="сколько исследований">{% for k in [5, 10, 25, 50] %}<option value="{{ k }}" {% if k == 10 %}selected{% endif %}>{{ k }}</option>{% endfor %}</select> исследований</label>
+      <label style="display:block;margin:4px 0"><input type="radio" name="mode" value="all"> весь набор, {{ d.n_studies }} исследований <span class="faint">около минуты</span></label>
+      <label style="display:block;margin:4px 0"><input type="radio" name="mode" value="study"> одно исследование
+        <select name="study" aria-label="исследование">{% for s in d.studies %}<option value="{{ s }}">{{ loop.index }}. {{ s[:18] }}…</option>{% endfor %}</select></label>
+      {% else %}
+      <input type="hidden" name="mode" value="all">
+      {% endif %}
+      <div style="margin-top:12px"><button class="btn" type="submit">Проверить</button>
+        {% if d.has_labels %}<span class="pill na" style="margin-left:8px">есть разметка экспертов</span>{% endif %}</div>
+    </form>
+  {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<div class="note" id="accuracy" style="margin-top:16px">Черновая версия на правилах, без обученной модели. Качество бёдер пока не оценивается.
+Вердикты нужны для отладки стенда, а не для клинических выводов.
+<div class="scroll-x">
+<table style="margin-top:10px;background:transparent;border:none;width:auto">
+  <thead><tr><th style="background:transparent">позвоночник, 99 исследований обучающего набора</th><th style="background:transparent">чувствительность</th><th style="background:transparent">специфичность</th><th style="background:transparent">F1</th></tr></thead>
+  <tbody>
+    <tr><td>итоговый вердикт «есть нарушение»</td><td>0.44</td><td>0.76</td><td>0.45</td></tr>
+    <tr><td>охват по подвздошным костям</td><td>0.83</td><td>0.98</td><td>0.77</td></tr>
+    <tr><td>наклон оси больше 5°</td><td>0.40</td><td>0.89</td><td>0.33</td></tr>
+    <tr><td>посторонние предметы</td><td>0.12</td><td>0.87</td><td>0.13</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="faint" style="margin-top:6px">Метки экспертов даны на уровне исследования, пороги подбирались на тех же данных, отдельной проверочной выборки пока нет.{% if train_run %}
+  Доверительные интервалы и графики — <a href="/runs/{{ train_run }}">в прогоне обучающего набора</a>.{% endif %}</div>
+</div>
+
+<h2>Прогоны</h2>
+{% if runs %}
+<div class="scroll-x" id="runs">
+<table>
+  <thead><tr><th>Прогон</th><th>Статус</th><th>Снимков</th><th>С нарушением</th><th>Отказов</th><th></th></tr></thead>
+  <tbody>
+  {% for r in runs %}
+  <tr>
+    <td><a href="/runs/{{ r.id }}">{{ r.title or r.id }}</a><div class="faint">{% if r.created_str %}{{ r.created_str }} · {% endif %}{{ r.id }}</div></td>
+    <td>{% if r.state == 'done' %}<span class="pill ok">готово</span>{% elif r.state == 'error' %}<span class="pill bad">ошибка</span>{% elif r.state == 'cancelled' %}<span class="pill na">отменён</span>{% else %}<span class="pill warn">{{ 'в очереди' if r.state == 'queued' else 'обработка' }}</span>{% endif %}</td>
+    <td>{{ r.summary.get('images', '—') }}</td>
+    <td>{{ r.summary.get('bad', '—') }}</td>
+    <td>{{ r.summary.get('failures', '—') }}</td>
+    <td>{% if r.state == 'done' %}<a href="/runs/{{ r.id }}/files/results.csv">csv</a>{% endif %}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="muted" id="runs">Прогонов пока нет.</p>
+{% endif %}
+{% include "_upload_progress.html" %}
+{% endblock %}

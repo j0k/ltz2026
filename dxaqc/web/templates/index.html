@@ -1,0 +1,418 @@
+{% extends "base.html" %}
+{% from "macros/atlas_callouts.html" import atlas_callouts_assets, atlas_figure with context %}
+{% block title %}Контроль качества денситометрии{% endblock %}
+{% block head %}
+{{ atlas_callouts_assets() }}
+<link rel="preload" href="/static/fonts/inter-cyrillic-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/static/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+/* Главная в стиле biotech-стартапа. Свой шрифт Inter (OFL) — одинаковые метрики текста в Chrome, Firefox и Safari на любой ОС. */
+@font-face{font-family:"InterDXA";font-style:normal;font-weight:100 900;font-display:swap;
+  src:url(/static/fonts/inter-cyrillic-wght-normal.woff2) format("woff2");unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:"InterDXA";font-style:normal;font-weight:100 900;font-display:swap;
+  src:url(/static/fonts/inter-latin-wght-normal.woff2) format("woff2");
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+:root{--bio-ink:#0b1b2b;--bio-ink2:#48607a;--bio-ink3:#7a8ea3;--bio-line:#dfe8f1;--bio-teal:#0d9488;--bio-teal2:#14b8a6;
+  --bio-blue:#2563eb;--bio-mint:#e7f7f4;--bio-bg:#f5f8fc;--bio-card:#fff;--bio-shadow:0 1px 2px rgba(15,40,70,.05),0 12px 32px -14px rgba(15,40,70,.16)}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{background:var(--bio-bg);color:var(--bio-ink);font-family:"InterDXA",-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  font-feature-settings:"cv11","ss01";-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+header{position:sticky;top:0;z-index:30;background:rgba(255,255,255,.78);-webkit-backdrop-filter:saturate(1.4) blur(12px);
+  backdrop-filter:saturate(1.4) blur(12px);border-bottom:1px solid rgba(15,40,70,.07)}
+header .bar, main, footer{max-width:1240px}
+header .logo{color:var(--bio-ink)}
+main{padding-top:0}
+a{color:var(--bio-blue)}
+.visually-hidden{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
+
+/* ---------- первый экран */
+/* hero выводится до <main> на всю ширину окна, без 100vw: ширина полосы прокрутки в Windows дала бы горизонтальную прокрутку */
+.hero{position:relative;isolation:isolate;padding:64px 0 72px;overflow:hidden}
+.hero-bg{position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background:radial-gradient(38% 52% at 88% 18%,rgba(20,184,166,.20),rgba(20,184,166,0) 72%),
+             radial-gradient(34% 46% at 8% 92%,rgba(37,99,235,.14),rgba(37,99,235,0) 72%),
+             radial-gradient(30% 40% at 62% 104%,rgba(124,58,237,.10),rgba(124,58,237,0) 72%)}
+.hero-bg::after{content:"";position:absolute;inset:0;background-image:radial-gradient(rgba(11,27,43,.10) 1px,transparent 1.2px);
+  background-size:22px 22px;-webkit-mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,0) 88%);mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,0) 88%)}
+.hero-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:56px;align-items:center;max-width:1240px;margin:0 auto;padding:0 20px}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;padding:6px 12px 6px 10px;border-radius:999px;background:rgba(255,255,255,.85);
+  border:1px solid var(--bio-line);font-size:13px;line-height:18px;font-weight:600;color:var(--bio-ink2);box-shadow:0 1px 2px rgba(15,40,70,.04)}
+.eyebrow .dot{width:8px;height:8px;border-radius:50%;background:var(--bio-teal2);box-shadow:0 0 0 4px rgba(20,184,166,.18);flex:none}
+.hero h1{font-size:56px;line-height:60px;letter-spacing:-.035em;font-weight:760;margin:22px 0 18px;color:var(--bio-ink)}
+.grad{background:linear-gradient(92deg,#2563eb 0%,#0d9488 60%,#10b981 100%);-webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;color:transparent}
+.lede{font-size:18px;line-height:29px;color:var(--bio-ink2);max-width:560px;margin:0 0 30px}
+.upload-card{max-width:560px;background:rgba(255,255,255,.9);border:1px solid var(--bio-line);border-radius:20px;padding:10px;box-shadow:var(--bio-shadow)}
+.upload{margin:0}
+.drop{display:grid;grid-template-columns:48px minmax(0,1fr);column-gap:14px;align-items:center;padding:18px;border:1.5px dashed #c5d5e6;
+  border-radius:14px;cursor:pointer;transition:border-color .15s ease,background-color .15s ease}
+.drop .ic{grid-row:span 2;width:48px;height:48px;border-radius:12px;display:grid;place-items:center;background:var(--bio-mint);color:var(--bio-teal)}
+.drop .ic svg{width:24px;height:24px}
+.drop-title{font-weight:650;font-size:16px;line-height:22px;color:var(--bio-ink)}
+.drop-sub{font-size:14px;line-height:20px;color:var(--bio-ink3)}
+.drop-sub u{color:var(--bio-blue);text-decoration:none;font-weight:600}
+.drop-files{grid-column:2;font-size:13px;line-height:18px;color:var(--bio-teal);font-weight:650;overflow-wrap:anywhere}
+.drop-files:empty{display:none}
+.drop:hover, .drop.over{border-color:var(--bio-teal2);background:rgba(20,184,166,.05)}
+.drop.error{border-color:#e11d48;background:rgba(225,29,72,.04)}
+.upload:focus-within .drop{border-color:var(--bio-blue);box-shadow:0 0 0 3px rgba(37,99,235,.18)}
+.upload-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;padding:12px 8px 6px}
+.bio-btn{display:inline-flex;align-items:center;gap:8px;font:inherit;font-weight:650;font-size:15px;line-height:20px;color:#fff;
+  background:linear-gradient(135deg,#2563eb,#1d4ed8);border:0;border-radius:12px;padding:12px 18px;cursor:pointer;
+  box-shadow:0 8px 18px -8px rgba(37,99,235,.65);transition:transform .12s ease,box-shadow .12s ease;-webkit-appearance:none;appearance:none}
+.bio-btn svg{width:16px;height:16px}
+.bio-btn:hover{transform:translateY(-1px);box-shadow:0 12px 22px -10px rgba(37,99,235,.7)}
+.bio-btn:focus-visible{outline:3px solid rgba(37,99,235,.35);outline-offset:2px}
+.bio-btn.soft{background:#fff;color:var(--bio-ink);border:1px solid var(--bio-line);box-shadow:0 1px 2px rgba(15,40,70,.05)}
+.bio-link{font-size:15px;font-weight:600;color:var(--bio-ink2);text-decoration:none}
+.bio-link:hover{color:var(--bio-blue);text-decoration:none}
+.facts{list-style:none;display:flex;flex-wrap:wrap;gap:8px 22px;padding:0;margin:22px 0 0;font-size:14px;line-height:20px;color:var(--bio-ink3)}
+.facts li{position:relative;padding-left:14px;margin:0}
+.facts li::before{content:"";position:absolute;left:0;top:7px;width:6px;height:6px;border-radius:50%;background:var(--bio-teal2)}
+.facts b{color:var(--bio-ink);font-weight:700}
+
+.hero-viz{position:relative}
+.viz-card{display:block;background:#0b1220;border-radius:24px;padding:14px;color:#e6edf5;text-decoration:none;
+  box-shadow:0 32px 64px -28px rgba(11,27,43,.55),inset 0 0 0 1px rgba(255,255,255,.06)}
+.viz-card:hover{text-decoration:none}
+.viz-card:focus-visible{outline:3px solid rgba(37,99,235,.45);outline-offset:4px}
+.viz-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:2px 4px 12px;font-size:13px;line-height:18px}
+.viz-live{display:inline-flex;align-items:center;gap:8px;color:#9fb3c8;font-weight:600}
+.pulse{width:8px;height:8px;border-radius:50%;background:#34d399;animation:pulse 2s ease-out infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(52,211,153,.55)}70%{box-shadow:0 0 0 10px rgba(52,211,153,0)}100%{box-shadow:0 0 0 0 rgba(52,211,153,0)}}
+.viz-verdict{padding:4px 10px;border-radius:999px;font-weight:700;font-size:12.5px;line-height:16px;white-space:nowrap}
+.viz-verdict.ok{background:rgba(52,211,153,.14);color:#6ee7b7}
+.viz-verdict.bad{background:rgba(248,113,113,.16);color:#fca5a5}
+.viz-verdict.na{background:rgba(148,163,184,.16);color:#cbd5e1}
+.viz-img{position:relative;border-radius:14px;overflow:hidden;background:#121418;aspect-ratio:1020/776}
+.viz-img img{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:cover}
+.viz-img--callouts .acall{position:absolute;inset:0;background:#121418}
+.viz-img--callouts .scan{z-index:4;opacity:.55}
+.scan{position:absolute;left:0;right:0;top:0;height:30%;pointer-events:none;border-bottom:2px solid rgba(94,234,212,.9);
+  background:linear-gradient(180deg,rgba(45,212,191,0) 0%,rgba(45,212,191,.12) 70%,rgba(45,212,191,.45) 100%);
+  animation:scan 3.6s cubic-bezier(.45,0,.55,1) infinite}
+@keyframes scan{0%{transform:translateY(-100%)}100%{transform:translateY(340%)}}
+.viz-foot{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:12px 0 0}
+.metric{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px 12px;min-width:0}
+.metric span{display:block;font-size:12px;line-height:16px;color:#8aa0b6}
+.metric b{display:block;font-size:20px;line-height:26px;font-weight:700;color:#f1f5f9;letter-spacing:-.01em;white-space:nowrap}
+.metric i{display:block;font-style:normal;font-size:12px;line-height:16px;color:#8aa0b6}
+.metric i.ok{color:#6ee7b7}
+.metric i.bad{color:#fca5a5}
+.chip{position:absolute;display:inline-flex;align-items:center;gap:8px;background:#fff;color:var(--bio-ink);border:1px solid var(--bio-line);
+  border-radius:12px;padding:8px 12px;font-size:13px;line-height:18px;font-weight:650;white-space:nowrap;
+  box-shadow:0 14px 28px -12px rgba(15,40,70,.35);animation:float 6s ease-in-out infinite}
+.chip .ic{width:20px;height:20px;border-radius:6px;display:grid;place-items:center;color:#fff;background:var(--bio-teal2)}
+.chip .ic svg{width:12px;height:12px}
+.chip-a{left:-24px;top:26%}
+.chip-b{right:-16px;top:58%;animation-delay:-3s}
+.chip-b .ic{background:#6366f1}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.viz-empty{display:grid;place-items:center;text-align:center;gap:10px;padding:48px 24px;color:#9fb3c8}
+.viz-empty svg{width:96px;height:96px}
+
+/* ---------- разделы */
+.bio-section{padding:64px 0 0}
+.sec-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px 32px;margin-bottom:24px}
+.sec-head h2{font-size:36px;line-height:42px;letter-spacing:-.025em;font-weight:730;margin:12px 0 0;color:var(--bio-ink)}
+.sec-head p{max-width:520px;margin:0;color:var(--bio-ink2);font-size:16px;line-height:25px}
+.eyebrow.small{font-size:12px;line-height:16px;padding:4px 10px}
+.bio-card{background:var(--bio-card);border:1px solid var(--bio-line);border-radius:18px;box-shadow:0 1px 2px rgba(15,40,70,.04)}
+.features{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.feature{padding:24px}
+.feature .ic{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:var(--bio-mint);color:var(--bio-teal);margin-bottom:16px}
+.feature .ic svg{width:22px;height:22px}
+.feature h3{margin:0 0 6px;font-size:17px;line-height:24px;font-weight:680;letter-spacing:-.01em;color:var(--bio-ink)}
+.feature p{margin:0;color:var(--bio-ink2);font-size:14.5px;line-height:22px}
+.datasets{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.ds{padding:24px;display:flex;flex-direction:column;gap:6px;margin:0}
+.ds h3{margin:0;font-size:18px;line-height:26px;font-weight:680;color:var(--bio-ink)}
+.ds .desc{margin:0 0 8px;color:var(--bio-ink2);font-size:14.5px;line-height:22px}
+.ds label{display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-height:32px;font-size:14.5px;line-height:22px;margin:3px 0;color:var(--bio-ink)}
+/* свои список и радиокнопка: у системных разная высота в Chrome, Firefox и Safari, из-за этого карточки расходились на 4–16 px */
+.ds select{font:inherit;font-size:14px;line-height:20px;height:32px;padding:0 30px 0 10px;border:1px solid var(--bio-line);border-radius:8px;
+  color:var(--bio-ink);max-width:100%;-webkit-appearance:none;-moz-appearance:none;appearance:none;cursor:pointer;
+  background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237a8ea3' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center}
+.ds select:focus-visible{outline:3px solid rgba(37,99,235,.3);outline-offset:1px;border-color:var(--bio-blue)}
+.ds input[type=radio]{-webkit-appearance:none;-moz-appearance:none;appearance:none;width:16px;height:16px;margin:0 2px 0 0;flex:none;
+  border:1.5px solid #b6c6d8;border-radius:50%;background:#fff;display:inline-grid;place-content:center;cursor:pointer}
+.ds input[type=radio]::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--bio-blue);transform:scale(0);transition:transform .12s ease}
+.ds input[type=radio]:checked{border-color:var(--bio-blue)}
+.ds input[type=radio]:checked::before{transform:scale(1)}
+.ds input[type=radio]:focus-visible{outline:3px solid rgba(37,99,235,.3);outline-offset:1px}
+.ds select[name=study]{max-width:240px}
+.ds .muted{color:var(--bio-ink3)}
+.ds-foot{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin-top:auto;padding-top:14px}
+.tag{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:var(--bio-mint);color:var(--bio-teal);font-size:12.5px;line-height:16px;font-weight:650}
+.accuracy{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.35fr);gap:16px;align-items:stretch}
+.acc-note{padding:24px}
+.acc-note h3{margin:0 0 8px;font-size:18px;line-height:26px;color:var(--bio-ink)}
+.acc-note p{margin:0 0 10px;color:var(--bio-ink2);font-size:14.5px;line-height:22px}
+.acc-table{padding:8px 24px 16px}
+.acc-row{display:grid;grid-template-columns:minmax(0,1.5fr) repeat(2,minmax(0,.6fr)) minmax(0,1.1fr);gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--bio-line);font-size:14.5px;line-height:20px}
+.acc-row:last-child{border-bottom:0}
+.acc-row.head{font-size:12px;line-height:16px;color:var(--bio-ink3);font-weight:600;text-transform:none;letter-spacing:0}
+.acc-row .n{text-align:right;font-variant-numeric:tabular-nums}
+.f1{display:grid;grid-template-columns:minmax(0,1fr) 36px;gap:8px;align-items:center}
+.f1 .track{height:8px;border-radius:999px;background:#edf2f7;overflow:hidden}
+.f1 .fill{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#2563eb,#14b8a6)}
+.f1 b{font-variant-numeric:tabular-nums;text-align:right}
+.runs-card{padding:6px}
+.runs-card table{border:0;border-radius:12px;background:transparent}
+.runs-card th{background:transparent}
+/* без переносов в ячейках: движки по-разному ужимают узкие таблицы, на телефоне таблица листается внутри карточки */
+.runs-card th, .runs-card td{white-space:nowrap}
+@media (prefers-reduced-motion:reduce){.scan{display:none}.pulse,.chip{animation:none}.bio-btn{transition:none}}
+
+@media (max-width:1100px){
+  .hero h1{font-size:48px;line-height:52px}
+  .hero-grid{gap:40px}
+}
+@media (max-width:900px){
+  .hero{padding:40px 0 56px}
+  .hero-grid{grid-template-columns:minmax(0,1fr)}
+  .hero-viz{max-width:640px}
+  .chip-a{left:10px;top:18%}
+  .chip-b{right:10px;top:52%}
+  .features{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .datasets, .accuracy{grid-template-columns:minmax(0,1fr)}
+  .bar{flex-wrap:wrap;gap:6px 16px}
+  .bar nav{margin-left:0;flex-wrap:wrap;gap:6px 16px}
+}
+@media (max-width:600px){
+  .hero{padding:32px 0 48px}
+  .hero h1{font-size:36px;line-height:40px;letter-spacing:-.03em}
+  .lede{font-size:16px;line-height:25px}
+  .features{grid-template-columns:minmax(0,1fr)}
+  .sec-head h2{font-size:28px;line-height:34px}
+  /* на узком экране подпись всегда под заголовком: иначе перенос зависел от округления ширины и расходился в Firefox */
+  .sec-head{flex-direction:column;align-items:flex-start}
+  .bio-section{padding-top:48px}
+  .chip{display:none}
+  .drop{grid-template-columns:40px minmax(0,1fr);padding:14px}
+  .drop .ic{width:40px;height:40px}
+  .ds select[name=study]{max-width:100%;width:100%}
+  .acc-row{grid-template-columns:minmax(0,1fr) repeat(2,minmax(0,.55fr)) minmax(0,.9fr);gap:8px;font-size:13.5px}
+  .f1{grid-template-columns:minmax(0,1fr)}
+  .f1 .track{display:none}
+}
+@media (max-width:420px){
+  .viz-foot{grid-template-columns:minmax(0,1fr)}
+}
+</style>
+{% endblock %}
+{% block fullbleed %}
+<section class="hero" aria-labelledby="hero-title">
+  <div class="hero-bg" aria-hidden="true"></div>
+  <div class="hero-grid">
+    <div class="hero-copy">
+      <span class="eyebrow"><span class="dot"></span>ЛЦТ 2026 · Департамент здравоохранения · задача 04</span>
+      <h1 id="hero-title">Контроль качества <span class="grad">денситометрии DXA</span> за секунды</h1>
+      <p class="lede">Сервис проверяет снимки поясничного отдела и бедра в формате DICOM, размечает анатомию как в атласе
+        и объясняет нарушения укладки текстом и голосом. Работает локально — снимки не покидают контур медорганизации.</p>
+      <div class="upload-card" id="upload">
+        <form class="upload" action="/runs" method="post" enctype="multipart/form-data">
+          <label for="files" class="drop" data-drop>
+            <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M20 16v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2"/></svg></span>
+            <span class="drop-title">Перетащите zip-архив или файлы DICOM</span>
+            <span class="drop-sub">или <u>выберите на компьютере</u> · до 64 МБ за раз</span>
+            <span class="drop-files" data-files aria-live="polite"></span>
+          </label>
+          <input id="files" type="file" name="files" multiple required class="visually-hidden">
+          <div class="upload-actions">
+            <button class="bio-btn" type="submit">Проверить исследования
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></button>
+            <a class="bio-link" href="#check">или на данных организатора →</a>
+          </div>
+        </form>
+        {% with compact=True %}{% include "_showcase.html" %}{% endwith %}
+      </div>
+      {% if facts %}
+      <ul class="facts">
+        <li><b>{{ facts.images }} снимков</b> за {{ facts.seconds }} с</li>
+        <li><b>F1&nbsp;=&nbsp;{{ facts.f1 }}</b> на {{ facts.studies }} исследованиях</li>
+        <li><b>0 байт</b> наружу</li>
+      </ul>
+      {% endif %}
+    </div>
+
+    <div class="hero-viz">
+      {% if hero %}
+      <a class="viz-card" href="/runs/{{ hero.run_id }}/images/{{ hero.key }}" aria-label="Открыть интерактивную карточку снимка из примера">
+        <div class="viz-head">
+          <span class="viz-live"><span class="pulse" aria-hidden="true"></span>Анализ снимка · поясничный отдел</span>
+          {% if hero.quality_class == 0 %}<span class="viz-verdict ok">качественное</span>
+          {% elif hero.quality_class == 1 %}<span class="viz-verdict bad">есть нарушение</span>
+          {% else %}<span class="viz-verdict na">не оценено</span>{% endif %}
+        </div>
+        {% if hero.callouts %}
+        {# подписи рисует компонент atlas-callouts поверх атласа без впечатанного текста #}
+        <div class="viz-img viz-img--callouts" style="aspect-ratio:{{ hero.callouts.size[0] }}/{{ hero.callouts.size[1] }}">
+          {{ atlas_figure(hero.run_id, hero.key, hero.callouts, 'Разметка поясничного отдела: позвонки, подвздошные кости и ось позвоночного столба',
+                          title=False, legend=False, eager=True) }}
+          <span class="scan" aria-hidden="true"></span>
+        </div>
+        {% else %}
+        <div class="viz-img">
+          <img src="/runs/{{ hero.run_id }}/files/{{ hero.image }}" width="1020" height="776" fetchpriority="high" decoding="async"
+               alt="Разметка поясничного отдела: позвонки, подвздошные кости и ось позвоночного столба">
+          <span class="scan" aria-hidden="true"></span>
+        </div>
+        {% endif %}
+        <div class="viz-foot">
+          <div class="metric"><span>Ось столба</span><b>{{ '%.1f'|format(hero.angle) }}°</b>
+            <i class="{{ 'ok' if hero.axis_ok else 'bad' }}">{{ 'в допуске' if hero.axis_ok else 'больше допуска' }} {{ '%g'|format(hero.axis_limit) }}°</i></div>
+          <div class="metric"><span>Позвонки</span><b>{% if hero.levels %}{{ hero.levels[0] }}–{{ hero.levels[-1] }}{% else %}—{% endif %}</b>
+            <i>{{ hero.levels|length }} уровней найдено</i></div>
+          <div class="metric"><span>Подвздошные кости</span><b>{{ 'видны' if hero.iliac_ok else 'не видны' }}</b>
+            <i class="{{ 'ok' if hero.iliac_ok else 'bad' }}">граница охвата</i></div>
+        </div>
+      </a>
+      <div class="chip chip-a" aria-hidden="true"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg></span>Разметка как в атласе</div>
+      <div class="chip chip-b" aria-hidden="true"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></span>{{ '%.2f'|format(hero.seconds) }} с на снимок</div>
+      {% else %}
+      <div class="viz-card">
+        <div class="viz-empty">
+          <svg viewBox="0 0 64 64" aria-hidden="true"><rect x="16" y="8" width="32" height="12" rx="3" fill="#ff8a4c"/><rect x="16" y="24" width="32" height="12" rx="3" fill="#34d399"/><rect x="16" y="40" width="32" height="12" rx="3" fill="#fbbf24"/><rect x="28" y="4" width="8" height="56" rx="2" fill="#fff"/></svg>
+          <b style="color:#f1f5f9;font-size:18px">Здесь появится разметка снимка</b>
+          <span>Загрузите исследование или проверьте набор организатора.</span>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block content %}
+<section class="bio-section" id="about">
+  <div class="sec-head">
+    <div><span class="eyebrow small">Что умеет версия {{ version }}</span><h2>От DICOM до объяснения за один проход</h2></div>
+    <p>Правила версии 0.1 без обученной модели. Результат отдаётся таблицей в формате ТЗ и интерактивными карточками снимков.</p>
+  </div>
+  <div class="features">
+    <div class="bio-card feature"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg></span>
+      <h3>Читает любые DICOM</h3><p>Нестандартные UID и пустые теги не мешают; битые файлы отмечаются как Failure, дубли снимков схлопываются.</p></div>
+    <div class="bio-card feature"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></span>
+      <h3>Определяет область</h3><p>Поясничный отдел, правое или левое бедро — по геометрии кадра и анатомии, без подписей в файлах.</p></div>
+    <div class="bio-card feature"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18"/><path d="M8 7h8"/><path d="M7 12h10"/><path d="M8 17h8"/></svg></span>
+      <h3>Проверяет укладку</h3><p>Наклон оси позвоночника, охват по подвздошным костям и посторонние предметы с понятным объяснением.</p></div>
+    <div class="bio-card feature"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 9h3"/><path d="M8 13h8"/><path d="M8 17h5"/></svg></span>
+      <h3>Размечает как в атласе</h3><p>Позвонки Th12–L5, подвздошные кости, бедренная и тазовая кость, ориентиры бедра — цветом и подписями.</p></div>
+    <div class="bio-card feature"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z"/><path d="M19 11a7 7 0 0 1-14 0"/><path d="M12 18v3"/></svg></span>
+      <h3>Объясняет голосом</h3><p>Наведите или коснитесь зоны — сервис подсветит её и расскажет; можно спросить голосом, всё внутри сервиса.</p></div>
+    <div class="bio-card feature"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v16H4z"/><path d="M4 10h16"/><path d="M10 4v16"/></svg></span>
+      <h3>Отдаёт результат по ТЗ</h3><p>Таблица csv и xlsx по разделу 2.5, архив картинок разметки и <a href="/docs">API пакетной обработки</a>.</p></div>
+  </div>
+</section>
+
+{% if datasets %}
+<section class="bio-section" id="check">
+  <div class="sec-head">
+    <div><span class="eyebrow small">Без загрузки файлов</span><h2>Проверьте на данных организатора</h2></div>
+    <p>Для обучающего набора вердикты сравниваются с разметкой экспертов — на странице прогона появится инфографика совпадения.</p>
+  </div>
+  <div class="datasets">
+  {% for d in datasets %}
+    <form class="bio-card ds" action="/runs/dataset" method="post">
+      <input type="hidden" name="dataset" value="{{ d.id }}">
+      <h3>{{ d.title }}</h3>
+      <p class="desc">{{ d.desc }}</p>
+      {% if d.per_study %}
+      <label><input type="radio" name="mode" value="sample" checked> случайные
+        <select name="n" aria-label="сколько исследований">{% for k in [5, 10, 25, 50] %}<option value="{{ k }}" {% if k == 10 %}selected{% endif %}>{{ k }}</option>{% endfor %}</select> исследований</label>
+      <label><input type="radio" name="mode" value="all"> весь набор, {{ d.n_studies }} исследований <span class="muted">· около минуты</span></label>
+      <label><input type="radio" name="mode" value="study"> одно исследование
+        <select name="study" aria-label="исследование">{% for s in d.studies %}<option value="{{ s }}">{{ loop.index }}. {{ s[:18] }}…</option>{% endfor %}</select></label>
+      {% else %}
+      <input type="hidden" name="mode" value="all">
+      {% endif %}
+      <div class="ds-foot"><button class="bio-btn" type="submit">Проверить</button>
+        {% if d.has_labels %}<span class="tag">есть разметка экспертов</span>{% endif %}</div>
+    </form>
+  {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section class="bio-section" id="accuracy">
+  <div class="sec-head">
+    <div><span class="eyebrow small">Честно о точности</span><h2>Качество на обучающем наборе</h2></div>
+    <p>Позвоночник, 99 исследований обучающего набора. Метки экспертов даны на уровне исследования.</p>
+  </div>
+  <div class="accuracy">
+    <div class="bio-card acc-note">
+      <h3>Черновая версия</h3>
+      <p>Правила без обученной модели, пороги подбирались на тех же данных, отдельной проверочной выборки пока нет.
+        Качество бёдер пока не оценивается. Вердикты нужны для отладки стенда, а не для клинических выводов.</p>
+      {% if train_run %}<p>Доверительные интервалы и графики — <a href="/runs/{{ train_run }}">в прогоне обучающего набора</a>.</p>{% endif %}
+    </div>
+    <div class="bio-card acc-table" role="table" aria-label="Точность по проверкам">
+      <div class="acc-row head" role="row"><span role="columnheader">проверка</span><span class="n" role="columnheader">чувствит.</span><span class="n" role="columnheader">специфич.</span><span role="columnheader">F1</span></div>
+      {% for name, se, sp, f1 in [('итоговый вердикт «есть нарушение»', '0.44', '0.76', 0.45), ('охват по подвздошным костям', '0.83', '0.98', 0.77), ('наклон оси больше 5°', '0.40', '0.89', 0.33), ('посторонние предметы', '0.12', '0.87', 0.13)] %}
+      <div class="acc-row" role="row"><span role="cell">{{ name }}</span><span class="n" role="cell">{{ se }}</span><span class="n" role="cell">{{ sp }}</span>
+        <span class="f1" role="cell"><span class="track" aria-hidden="true"><span class="fill" style="width:{{ (f1 * 100)|round|int }}%"></span></span><b>{{ '%.2f'|format(f1) }}</b></span></div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="bio-section" style="padding-bottom:24px">
+  <div class="sec-head">
+    <div><span class="eyebrow small">История</span><h2>Прогоны</h2></div>
+    <p><a class="bio-link" href="/control">Пульт анализа →</a></p>
+  </div>
+  {% if runs %}
+  <div class="bio-card runs-card scroll-x" id="runs" style="overflow-x:auto">
+  <table>
+    <thead><tr><th>Прогон</th><th>Статус</th><th>Снимков</th><th>С нарушением</th><th>Отказов</th><th></th></tr></thead>
+    <tbody>
+    {% for r in runs %}
+    <tr>
+      <td><a href="/runs/{{ r.id }}">{{ r.title or r.id }}</a><div class="faint">{% if r.created_str %}{{ r.created_str }} · {% endif %}{{ r.id }}</div></td>
+      <td>{% if r.state == 'done' %}<span class="pill ok">готово</span>{% elif r.state == 'error' %}<span class="pill bad">ошибка</span>{% elif r.state == 'cancelled' %}<span class="pill na">отменён</span>{% else %}<span class="pill warn">{{ 'в очереди' if r.state == 'queued' else 'обработка' }}</span>{% endif %}</td>
+      <td>{{ r.summary.get('images', '—') }}</td>
+      <td>{{ r.summary.get('bad', '—') }}</td>
+      <td>{{ r.summary.get('failures', '—') }}</td>
+      <td>{% if r.state == 'done' %}<a href="/runs/{{ r.id }}/files/results.csv">csv</a>{% endif %}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="muted" id="runs">Прогонов пока нет.</p>
+  {% endif %}
+</section>
+
+<script>
+(function () {
+  // перетаскивание файлов на зону загрузки; без JS работает обычный выбор файлов
+  const drop = document.querySelector('[data-drop]'), input = document.getElementById('files'), out = document.querySelector('[data-files]');
+  if (!drop || !input || !out) return;
+  const show = () => {
+    const n = input.files ? input.files.length : 0;
+    out.textContent = n === 0 ? '' : n === 1 ? 'выбран файл: ' + input.files[0].name : 'выбрано файлов: ' + n;
+    drop.classList.remove('error');
+  };
+  input.addEventListener('change', show);
+  ['dragenter', 'dragover'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'dragend', 'drop'].forEach(t => drop.addEventListener(t, () => drop.classList.remove('over')));
+  drop.addEventListener('drop', e => {
+    e.preventDefault();
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
+      try { input.files = e.dataTransfer.files; } catch (err) { /* старый браузер: остаётся выбор кнопкой */ }
+      show();
+    }
+  });
+  input.form.addEventListener('submit', e => {
+    if (!input.files || !input.files.length) {
+      e.preventDefault();
+      out.textContent = 'сначала выберите или перетащите файлы';
+      drop.classList.add('error');
+    }
+  });
+})();
+</script>
+{% include "_upload_progress.html" %}
+{% endblock %}

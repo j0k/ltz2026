@@ -1,0 +1,100 @@
+{# Сменяющиеся кадры снимков, которые можно загружать. compact — небольшой вариант для карточки загрузки biotech-главной. #}
+{% if showcase %}
+<style>
+.shots{margin:0;display:grid;gap:10px;min-width:0}
+.shots-stage{position:relative;aspect-ratio:1/1;border-radius:14px;overflow:hidden;background:#060c18;isolation:isolate;touch-action:pan-y;
+  box-shadow:0 1px 2px rgba(6,12,24,.2),0 14px 30px -18px rgba(6,12,24,.55)}
+.shot{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transform:scale(1.08);
+  transition:opacity .9s ease,transform 6.5s ease-out;user-select:none;-webkit-user-drag:none}
+.shot.on{opacity:1;transform:scale(1)}
+/* рамка видоискателя */
+.shots-stage::before{content:"";position:absolute;inset:12px;z-index:2;pointer-events:none;opacity:.85;
+  --c:#7dd3fc;
+  background:
+    linear-gradient(var(--c),var(--c)) left top/18px 2px no-repeat, linear-gradient(var(--c),var(--c)) left top/2px 18px no-repeat,
+    linear-gradient(var(--c),var(--c)) right top/18px 2px no-repeat, linear-gradient(var(--c),var(--c)) right top/2px 18px no-repeat,
+    linear-gradient(var(--c),var(--c)) left bottom/18px 2px no-repeat, linear-gradient(var(--c),var(--c)) left bottom/2px 18px no-repeat,
+    linear-gradient(var(--c),var(--c)) right bottom/18px 2px no-repeat, linear-gradient(var(--c),var(--c)) right bottom/2px 18px no-repeat}
+/* луч развёртки: тонкая мягкая полоса, гаснет с обеих сторон, без резкой границы на снимке */
+.shots-stage::after{content:"";position:absolute;left:0;right:0;top:-16%;height:16%;z-index:1;pointer-events:none;
+  background:linear-gradient(180deg,rgba(125,211,252,0),rgba(125,211,252,.10) 42%,rgba(186,230,253,.32) 50%,rgba(125,211,252,.10) 58%,rgba(125,211,252,0));
+  mix-blend-mode:screen;animation:shotscan 4.2s linear infinite}
+@keyframes shotscan{to{top:100%}}
+.shots-cap{position:absolute;left:12px;right:12px;bottom:12px;z-index:3;display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px;padding:8px 11px;
+  border-radius:10px;background:rgba(6,12,24,.74);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);color:#e0f2fe;font-size:12.5px;line-height:1.35}
+.shots-kicker{flex-basis:100%;font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#7dd3fc}
+.shots-cap b{font-size:15px;color:#fff}
+.shots-cap .fmt{color:#9fb3c8}
+.shots-dots{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.shots-dots button{width:8px;height:8px;padding:0;border:0;border-radius:999px;background:#c9d4df;cursor:pointer;transition:width .3s ease,background .3s ease}
+.shots-dots button[aria-selected=true]{width:22px;background:#2a78d6}
+.shots-dots button:focus-visible{outline:2px solid #2a78d6;outline-offset:2px}
+.shots figcaption{font-size:13px;line-height:1.45;color:var(--ink3,#7a8ea3)}
+.shots--compact{grid-template-columns:104px minmax(0,1fr);align-items:center;gap:6px 14px;padding:12px 8px 4px;border-top:1px solid var(--bio-line,#e6e4df);margin-top:6px}
+.shots--compact .shots-stage{grid-row:span 2;border-radius:12px}
+.shots--compact .shots-stage::before{inset:7px;background-size:12px 2px,2px 12px,12px 2px,2px 12px,12px 2px,2px 12px,12px 2px,2px 12px}
+.shots--compact .shots-cap{display:none}
+.shots--compact .shots-dots{justify-content:flex-start;align-self:end}
+.shots--compact figcaption{align-self:start;color:var(--bio-ink2,#48607a)}
+@media (prefers-reduced-motion:reduce){
+  .shot{transition:none;transform:none}
+  .shots-stage::after{animation:none;display:none}
+}
+</style>
+<figure class="shots{% if compact %} shots--compact{% endif %}" id="shots" aria-roledescription="карусель" aria-label="Примеры снимков, которые можно загружать">
+  <div class="shots-stage" id="shots-stage">
+    {% for s in showcase %}<img class="shot{% if loop.first %} on{% endif %}" src="/showcase/{{ s.run_id }}/{{ s.key }}.jpg" width="560" height="560" decoding="async"
+      alt="Пример снимка для загрузки: {{ s.region_ru }}, DICOM DXA"{% if not loop.first %} loading="lazy" aria-hidden="true"{% endif %}
+      data-region="{{ s.region_ru }}" data-note="{{ s.note }}" draggable="false">
+    {% endfor %}
+    <div class="shots-cap" aria-live="polite"><span class="shots-kicker">можно загружать</span><b id="shots-region">{{ showcase[0].region_ru|capitalize }}</b><span class="fmt" id="shots-note">{{ showcase[0].note }}</span></div>
+  </div>
+  <div class="shots-dots" role="tablist" aria-label="кадры примеров">
+    {% for s in showcase %}<button type="button" role="tab" aria-selected="{{ 'true' if loop.first else 'false' }}" aria-label="кадр {{ loop.index }}: {{ s.region_ru }}"></button>{% endfor %}
+  </div>
+  <figcaption>{% if compact %}<b>Подходят</b> DICOM денситометрии DXA: поясничный отдел и бедро. Рентген, КТ, JPG и PNG — нет.
+  {% else %}Подходят DICOM-файлы денситометрии DXA (GE Lunar): поясничный отдел в прямой проекции, правое и левое бедро. Обычный рентген, КТ, JPG и PNG сервис не проверяет.{% endif %}</figcaption>
+</figure>
+<script>
+(function () {
+  const box = document.getElementById('shots'), stage = document.getElementById('shots-stage');
+  if (!box || !stage) return;
+  const shots = [...stage.querySelectorAll('.shot')], dots = [...box.querySelectorAll('.shots-dots button')];
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const cap = s => s ? s[0].toUpperCase() + s.slice(1) : '';
+  let i = 0, timer = 0, paused = false, x0 = null;
+  function go(n) {
+    i = (n + shots.length) % shots.length;
+    shots.forEach((s, k) => {
+      s.classList.toggle('on', k === i);
+      if (k === i) { s.loading = 'eager'; s.removeAttribute('aria-hidden'); } else s.setAttribute('aria-hidden', 'true');
+    });
+    const next = shots[(i + 1) % shots.length];
+    if (next) next.loading = 'eager';   // следующий кадр грузится заранее, смена без пустого кадра
+    dots.forEach((d, k) => d.setAttribute('aria-selected', String(k === i)));
+    document.getElementById('shots-region').textContent = cap(shots[i].dataset.region);
+    document.getElementById('shots-note').textContent = shots[i].dataset.note;
+  }
+  function schedule() {
+    clearInterval(timer);
+    if (!reduce && shots.length > 1) timer = setInterval(() => { if (!paused && !document.hidden) go(i + 1); }, 3800);
+  }
+  dots.forEach((d, k) => d.addEventListener('click', () => { go(k); schedule(); }));
+  box.addEventListener('mouseenter', () => { paused = true; });
+  box.addEventListener('mouseleave', () => { paused = false; });
+  box.addEventListener('focusin', () => { paused = true; });
+  box.addEventListener('focusout', () => { paused = false; });
+  box.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { go(i + (e.key === 'ArrowRight' ? 1 : -1)); schedule(); dots[i].focus(); e.preventDefault(); }
+  });
+  stage.addEventListener('pointerdown', e => { x0 = e.clientX; });
+  stage.addEventListener('pointerup', e => {   // свайп на телефоне
+    if (x0 !== null && Math.abs(e.clientX - x0) > 40) { go(i + (e.clientX < x0 ? 1 : -1)); schedule(); }
+    x0 = null;
+  });
+  window.__shots = { index: () => i, count: shots.length, go, paused: () => paused };
+  go(0);
+  schedule();
+})();
+</script>
+{% endif %}

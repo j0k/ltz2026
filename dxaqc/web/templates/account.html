@@ -1,0 +1,50 @@
+{% extends "doc.html" %}
+{% block title %}{{ user.login }}{% endblock %}
+{% block doc %}
+<h1>{{ user.login }}</h1>
+<ul>
+  <li>роль: {{ 'админ' if user.is_admin else 'пользователь' }}</li>
+  <li>вопросы Claude: {% if user.can_ask %}доступ есть, сегодня {{ asked_today }} из {{ user.daily_limit }} — <a href="/ask">спросить</a>{% else %}доступа пока нет, его выдаёт админ{% endif %}</li>
+  {% if user.is_admin %}<li><a href="/admin">админка</a>: пользователи, одобрение исполнения, журнал</li>{% endif %}
+</ul>
+
+<h2>Telegram</h2>
+{% set tg = tg_link_for(user.id) %}
+{% if tg %}
+<p>Подключён{% if tg.username %}: @{{ tg.username }}{% endif %} · <a href="https://t.me/{{ tg_bot_username }}" target="_blank" rel="noopener">открыть @{{ tg_bot_username }}</a></p>
+<p class="muted small">В боте: /check test, /check train 10, файлы DICOM или zip, /runs, /me{% if user.is_admin %}; запросы на анализ приходят с кнопками одобрения{% endif %}.</p>
+<form method="post" action="/account/telegram/unlink">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <button class="go" type="submit">отключить Telegram →</button>
+</form>
+{% elif tg_enabled() %}
+<p class="muted">Бот @{{ tg_bot_username }} проверяет наборы организатора и ваши DICOM, присылает живой прогресс и итоги со ссылками на карточки{% if user.is_admin %}, а админам — запросы на анализ с кнопками одобрения{% endif %}.
+  Ссылка ниже одноразовая и действует 10 минут.</p>
+<form method="post" action="/account/telegram">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <button class="go" type="submit">подключить Telegram →</button>
+</form>
+{% else %}
+<p class="muted">Telegram-бот на этом стенде не подключён.</p>
+{% endif %}
+
+<h2>Сменить пароль</h2>
+{% if message %}<p class="ok" role="status">{{ message }}</p>{% endif %}
+{% if error %}<p class="err" role="alert">{{ error }}</p>{% endif %}
+<form class="stack" method="post" action="/account/password">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <label for="old">Текущий пароль</label>
+  <input id="old" type="password" name="old" autocomplete="current-password" required>
+  <label for="new">Новый пароль <span class="muted">· не короче 10 символов</span></label>
+  <input id="new" type="password" name="new" autocomplete="new-password" minlength="10" required>
+  <label for="new2">Новый пароль ещё раз</label>
+  <input id="new2" type="password" name="new2" autocomplete="new-password" minlength="10" required>
+  <p style="margin-top:16px"><button class="go" type="submit">сменить пароль →</button></p>
+</form>
+
+<h2>Выход</h2>
+<form method="post" action="/logout">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <button class="go" type="submit">выйти →</button>
+</form>
+{% endblock %}

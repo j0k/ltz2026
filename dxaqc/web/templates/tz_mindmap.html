@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Mind map ТЗ задачи 04{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="/static/tz-mindmap.css?v={{ version }}">
+<script src="/static/tz-mindmap.js?v={{ version }}" defer></script>
+{% endblock %}
+{% block content %}
+<div class="mm-page no-js">
+<p class="faint"><a href="/tz/">← документы задачи</a>{% if pdf_url %} · <a href="{{ pdf_url }}" target="_blank" rel="noopener">ТЗ в PDF</a>{% endif %}</p>
+<h1>Mind map ТЗ задачи 04</h1>
+<p class="muted mm-lead">Все разделы технического задания ДепЗдрава деревом: у каждого пункта — страница ТЗ и что из этого уже работает на стенде.
+  Нажмите на пункт, чтобы прочитать подробности; ветки раскрываются кнопкой справа от названия.</p>
+
+<div class="mm-tiles" role="group" aria-label="статус требований на стенде">
+  <button type="button" class="mm-tile" data-filter="done" aria-pressed="false"><span class="mm-ic s-done" aria-hidden="true">✓</span><span><b>{{ counts.done }}</b> сделано</span></button>
+  <button type="button" class="mm-tile" data-filter="partial" aria-pressed="false"><span class="mm-ic s-partial" aria-hidden="true">◐</span><span><b>{{ counts.partial }}</b> частично</span></button>
+  <button type="button" class="mm-tile" data-filter="todo" aria-pressed="false"><span class="mm-ic s-todo" aria-hidden="true">✕</span><span><b>{{ counts.todo }}</b> не сделано</span></button>
+  <span class="mm-total faint">из {{ counts.total }} требований · версия стенда {{ version }}</span>
+</div>
+
+<div class="mm-toolbar" role="toolbar" aria-label="управление картой">
+  <label class="mm-search"><span class="visually-hidden">Поиск по ТЗ</span>
+    <input id="mmSearch" type="search" placeholder="Поиск: Th12, DICOM SR, F1…" autocomplete="off"></label>
+  <span class="mm-found faint" id="mmFound" aria-live="polite"></span>
+  <span class="mm-sep"></span>
+  <button type="button" class="mm-btn" id="mmExpand">Раскрыть всё</button>
+  <button type="button" class="mm-btn" id="mmCollapse">Свернуть</button>
+  <button type="button" class="mm-btn mm-icon" id="mmZoomOut" aria-label="уменьшить">−</button>
+  <button type="button" class="mm-btn mm-icon" id="mmZoomIn" aria-label="увеличить">+</button>
+  <button type="button" class="mm-btn" id="mmFit">Вписать</button>
+  <button type="button" class="mm-btn" id="mmList" aria-pressed="false">Списком</button>
+</div>
+
+<div class="mm-body" id="mmBody">
+  <div class="mm-viewport" id="mm" data-pdf="{{ pdf_url }}" tabindex="0"
+       aria-label="карта ТЗ: перетаскивайте мышью или пальцем, колесо или щипок — масштаб">
+    <div class="mm-world" id="mmWorld"><svg class="mm-links" id="mmLinks" aria-hidden="true"></svg></div>
+    <p class="mm-hint faint" id="mmHint">перетаскивайте · колесо или щипок — масштаб</p>
+  </div>
+  <aside class="mm-panel card" id="mmPanel" aria-live="polite">
+    <div class="mm-crumbs faint" id="mmCrumbs">ТЗ задачи 04</div>
+    <h2 id="mmTitle">{{ tree.title }}</h2>
+    <div id="mmStatus"></div>
+    <p id="mmText">{{ tree.text }}</p>
+    <div class="mm-stand" id="mmStand">{% if tree.stand %}<b>На стенде:</b> {{ tree.stand }}{% endif %}</div>
+    <div class="mm-links-list" id="mmLinksList"></div>
+  </aside>
+</div>
+
+{# Список: режим «Списком», печать и работа без JS #}
+<section class="mm-outline card" id="mmOutline">
+  <h2>Всё ТЗ списком</h2>
+  <ul class="mm-tree">
+  {% for n in [tree] recursive %}
+    <li>
+      <span class="mm-o-title">{% if n.status %}<span class="mm-ic s-{{ n.status }}" title="{{ status_ru[n.status] }}">{{ {'done': '✓', 'partial': '◐', 'todo': '✕', 'info': 'i'}[n.status] }}</span>{% endif %}
+        <b>{{ n.title }}</b>{% if n.page %} <a class="faint" href="{{ pdf_url ~ '#page=' ~ n.page if pdf_url else '#' }}"{% if pdf_url %} target="_blank" rel="noopener"{% endif %}>стр. {{ n.page }}</a>{% endif %}
+        {% if n.status and n.status != 'info' %}<span class="mm-o-st">{{ status_ru[n.status] }}</span>{% endif %}</span>
+      {% if n.text %}<div class="mm-o-text">{{ n.text }}</div>{% endif %}
+      {% if n.stand %}<div class="mm-o-stand"><b>На стенде:</b> {{ n.stand }}</div>{% endif %}
+      {% if n.children %}<ul>{{ loop(n.children) }}</ul>{% endif %}
+    </li>
+  {% endfor %}
+  </ul>
+</section>
+</div>
+<script type="application/json" id="mm-data">{{ tree|tojson }}</script>
+{% endblock %}

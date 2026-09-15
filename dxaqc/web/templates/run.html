@@ -1,0 +1,698 @@
+{% extends "base.html" %}
+{% block title %}{{ st.title or run_id }}{% endblock %}
+{% block head %}
+{% if st.state in ['queued', 'running'] %}<noscript><meta http-equiv="refresh" content="3"></noscript>{% endif %}
+<style>
+.viz-root{
+  --surface-1:#fcfcfb; --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#8a8983; --grid:#e6e4df;
+  --good:#0ca30c; --critical:#d03b3b; --neutral:#b9b7b0;
+  --series-1:#2a78d6; --series-2:#eb6834;
+  --seq-light:#86b6ef; --seq-dark:#1c5cab;
+}
+.viz-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(460px,1fr));gap:16px;margin:16px 0}
+.viz-card{background:var(--surface-1);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.viz-card h3{margin:0 0 2px;font-size:15px}
+.viz-card .sub{color:var(--text-muted);font-size:12.5px;margin-bottom:10px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--text-secondary);margin:4px 0 8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+svg .mark{cursor:pointer;outline:none}
+svg .mark:hover, svg .mark:focus{filter:brightness(1.12)}
+svg .mark.dim{opacity:.35}
+svg text{font-family:inherit}
+.tip{position:fixed;pointer-events:none;background:#fff;border:1px solid var(--line);border-radius:8px;
+  box-shadow:0 6px 18px rgba(0,0,0,.12);padding:7px 10px;font-size:12.5px;z-index:50;display:none;max-width:260px}
+.tip b{display:block;font-size:15px;color:var(--text-primary)}
+.tip span{color:var(--text-secondary)}
+.filters{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:6px 0 10px;font-size:14px}
+.chip{background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:3px 10px;font-weight:700;font-size:12.5px}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.kpi{background:#f4f3f0;border-radius:8px;padding:8px 10px}
+.kpi .v{font-size:22px;font-weight:800}
+.kpi .l{font-size:12px;color:var(--text-muted)}
+input[type=range]{width:100%}
+tr[hidden]{display:none}
+.tv{font-size:26px;font-weight:800}
+.tile{font:inherit;color:inherit;text-align:left;cursor:pointer;transition:border-color .12s,box-shadow .12s}
+.tile .th{font-size:12px;color:var(--accent);margin-top:2px}
+.tile:hover{border-color:var(--accent)}
+.tile:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tile[aria-pressed=true]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset;background:var(--accent-soft)}
+.viz-note{color:var(--text-muted);font-size:13px;margin:-4px 0 4px;max-width:900px}
+details.twin{margin-top:6px;font-size:13px}
+details.twin summary{cursor:pointer;color:var(--accent);width:max-content}
+details.twin table{margin-top:6px}
+details.twin th, details.twin td{padding:5px 8px;font-size:12.5px;font-variant-numeric:tabular-nums}
+/* отказы: причина, принудительный анализ и анализ в Claude с одобрения админа */
+.reject-reason{margin-top:4px;font-size:13px;color:#8a3b2f;max-width:620px}
+.req-acts{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-top:8px}
+.req-form{margin:0}
+.btn.small{padding:5px 11px;font-size:13px}
+.req-link{font-weight:600;font-size:13.5px}
+.req-note{font-size:12px}
+.noimg{margin:16px 0;border-color:#f1dfb5;background:#fffaf0}
+.noimg h2{margin:0 0 6px}
+.noimg-list{list-style:none;padding:0;margin:12px 0}
+.noimg-list li{padding:10px 0;border-top:1px solid #f1e6cc}
+.forced-note{margin:10px 0}
+</style>
+{% endblock %}
+{% block content %}
+<p class="faint"><a href="/">← все прогоны</a></p>
+<h1>{{ st.title or run_id }}</h1>
+{% if st.force %}<p class="note forced-note">Принудительный анализ файла, который не прошёл проверку в прогоне <a href="/runs/{{ st.parent }}">{{ st.parent }}</a>:
+  сервис рассчитан на DICOM денситометрии DXA, поэтому результат не гарантирован и в метрики не входит.</p>{% endif %}
+
+{% if st.state in ['queued', 'running'] and live %}
+  {% include "_live_progress.html" %}
+{% elif st.state == 'error' %}
+  <p><span class="pill bad">ошибка</span> <span class="muted">{{ st.error }}</span></p>
+{% elif st.state == 'cancelled' %}
+  <p><span class="pill na">отменён</span> <span class="muted">прогон отменён из пульта</span></p>
+{% endif %}
+{% if man %}
+  <p class="faint">Параметры анализа: {{ params_desc }}{% if st.parent and not st.force %} · перезапуск прогона <a href="/runs/{{ st.parent }}">{{ st.parent }}</a>{% endif %}
+    {% if man.summary.excluded or man.summary.overridden %} · правки: исключено {{ man.summary.excluded or 0 }}, изменён вердикт {{ man.summary.overridden or 0 }}{% endif %}
+    · <a href="/control?source={{ run_id }}#params">перезапустить с другими</a></p>
+{% endif %}
+
+{% if man and man.summary.images == 0 %}{% include "_no_images.html" %}{% endif %}
+{% if man %}
+<div class="grid" style="grid-template-columns:repeat(5,1fr);margin:16px 0">
+  <button type="button" class="card tile" data-tile="all" aria-pressed="false"><div class="faint">снимков · исследований</div><div class="tv">{{ man.summary.images }} · {{ man.summary.studies }}</div><div class="th">показать все</div></button>
+  <button type="button" class="card tile" data-tile="good" aria-pressed="false"><div class="faint">качественных</div><div class="tv" style="color:#0a7d0a">{{ man.summary.good }}</div><div class="th">показать в таблице</div></button>
+  <button type="button" class="card tile" data-tile="bad" aria-pressed="false"><div class="faint">с нарушением</div><div class="tv" style="color:#b3302f">{{ man.summary.bad }}</div><div class="th">показать в таблице</div></button>
+  <button type="button" class="card tile" data-tile="fail" aria-pressed="false"><div class="faint">отказов · дублей</div><div class="tv">{{ man.summary.failures }} · {{ man.summary.duplicates }}</div><div class="th">показать отказы</div></button>
+  <div class="card"><div class="faint">время на снимок</div><div class="tv">{{ '%.2f'|format(man.summary.mean_time) }} с</div></div>
+</div>
+<p>
+  <a class="btn" href="/runs/{{ run_id }}/files/results.csv">Таблица csv</a>
+  <a class="btn ghost" href="/runs/{{ run_id }}/files/results.xlsx">xlsx</a>
+  <a class="btn ghost" href="/runs/{{ run_id }}/files/overlays.zip">Архив разметки</a>
+  <a class="btn ghost" href="/api/runs/{{ run_id }}?pretty=true">JSON</a>
+</p>
+
+<div class="viz-root">
+  <h2>Инфографика прогона</h2>
+  <div class="filters" id="filters"><span class="muted">Клик по столбцу или клетке фильтрует таблицу ниже.</span></div>
+
+  <div class="viz-grid">
+    <div class="viz-card">
+      <h3>Вердикты по областям</h3>
+      <div class="sub">число снимков</div>
+      <div class="legend"><span><i style="background:var(--good)"></i>качественное</span><span><i style="background:var(--critical)"></i>нарушение</span><span><i style="background:var(--neutral)"></i>не оценено</span></div>
+      <svg id="chart-regions" role="img" aria-label="Вердикты по областям"></svg>
+    </div>
+
+    <div class="viz-card">
+      <h3>Типы нарушений позвоночника</h3>
+      <div class="sub">число исследований{% if man.has_labels %}: сервис против экспертов{% endif %}</div>
+      {% if man.has_labels %}<div class="legend"><span><i style="background:var(--series-1)"></i>сервис</span><span><i style="background:var(--series-2)"></i>эксперты</span></div>{% endif %}
+      <svg id="chart-violations" role="img" aria-label="Типы нарушений позвоночника"></svg>
+    </div>
+
+    <div class="viz-card">
+      <h3>Наклон оси позвоночника</h3>
+      <div class="sub">распределение модуля угла по снимкам, шаг 0,5°; порог можно двигать</div>
+      <div class="legend"><span><i style="background:var(--seq-light)"></i>в пределах порога</span><span><i style="background:var(--seq-dark)"></i>больше порога</span></div>
+      <svg id="chart-angle" role="img" aria-label="Распределение угла оси"></svg>
+      <label class="faint" for="thr">порог: <b id="thr-val"></b>° <span id="thr-note"></span></label>
+      <input id="thr" type="range" min="1" max="12" step="0.5">
+      <div class="kpis" id="thr-kpis"></div>
+    </div>
+
+    {% if man.has_labels %}
+    <div class="viz-card">
+      <h3>Итоговый вердикт против экспертов</h3>
+      <div class="sub">позвоночник, число исследований; клик по клетке показывает эти исследования</div>
+      <svg id="chart-confusion" role="img" aria-label="Матрица совпадений с экспертами"></svg>
+      <div class="kpis" id="cm-kpis"></div>
+    </div>
+    {% endif %}
+  </div>
+
+  <h2>Распределения измерений</h2>
+  <p class="viz-note">Ящик — от первого до третьего квартиля, линия в ящике — медиана, точка — среднее, усы — до крайних значений
+    в пределах полутора высот ящика, кружки — выбросы. Клик по ящику фильтрует таблицу, клик по выбросу открывает снимок.</p>
+  <div class="viz-grid" id="box-grid"></div>
+
+  {% if man.has_labels %}
+  <h2>Результаты с 95% доверительными интервалами</h2>
+  <p class="viz-note">Бутстреп по исследованиям позвоночника, 1000 повторов. Ящик — средние 50% повторов, усы — 95% доверительный
+    интервал, точка — значение на всех данных. Клик по ящику показывает в таблице исследования, по которым считалась метрика.</p>
+  <div class="viz-grid" id="ci-grid"></div>
+  {% endif %}
+
+  {% if man.has_labels and man.evaluation %}
+  <table style="margin-bottom:18px">
+    <thead><tr><th>позвоночник, {{ man.evaluation.spine_studies }} исследований</th><th>TP</th><th>FP</th><th>FN</th><th>TN</th><th>чувствительность</th><th>специфичность</th><th>F1</th></tr></thead>
+    <tbody>
+    {% for key, name in [('spine_overall', 'итоговый вердикт'), ('spine_coverage', 'охват'), ('spine_axis_tilt', 'наклон оси'), ('spine_artifact', 'посторонние предметы')] %}
+      {% set c = man.evaluation[key] %}
+      <tr><td>{{ name }}</td><td>{{ c.tp }}</td><td>{{ c.fp }}</td><td>{{ c.fn }}</td><td>{{ c.tn }}</td>
+        <td>{{ '%.2f'|format(c.sensitivity) if c.sensitivity is not none else '—' }}</td>
+        <td>{{ '%.2f'|format(c.specificity) if c.specificity is not none else '—' }}</td>
+        <td>{{ '%.2f'|format(c.f1) }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="faint">Метки экспертов даны на исследование и область, поэтому сравнение идёт на уровне исследования. Для бёдер эксперты отметили брак в {{ man.evaluation.hip_expert_bad }} из {{ man.evaluation.hip_expert_total }} снимков, сервис их пока не оценивает.</p>
+  {% endif %}
+</div>
+
+<div class="filters"><b id="shown"></b></div>
+<table id="results">
+  <thead><tr><th></th><th>Исследование · снимок</th><th>Область</th><th>Вердикт</th><th>Нарушения</th>{% if man.has_labels %}<th>Эксперты</th>{% endif %}<th>Статус</th><th>Время</th></tr></thead>
+  <tbody>
+  {% for r in man.rows %}
+  <tr data-region="{{ r.anatomical_region }}" data-q="{{ 'na' if r.quality_class is none else r.quality_class }}" data-v="{{ (r.violation_list or [])|join(' ') }}" data-study="{{ r.study_key or r.study_uid }}" data-status="{{ r.processing_status }}">
+    <td>{% if r.overlay_png %}<a href="/runs/{{ run_id }}/images/{{ r.key }}"><img class="thumb" loading="lazy" src="/runs/{{ run_id }}/files/{{ r.thumb_png or r.overlay_png }}" alt="разметка снимка"></a>{% endif %}</td>
+    <td>{% if r.key %}<a href="/runs/{{ run_id }}/images/{{ r.key }}">{{ r.path_to_study }}</a>{% else %}{{ r.path_to_study }}{% endif %}
+        <div class="faint">{{ r.study_uid[:28] }}{% if r.study_uid|length > 28 %}…{% endif %}</div>
+        {% if r.processing_status != 'Success' %}<div class="reject-reason">{{ (r.explanations or [''])|first }}</div>
+          {% if man.summary.images > 0 %}{% include "_request_actions.html" %}{% endif %}{% endif %}</td>
+    <td>{{ region_ru.get(r.anatomical_region, r.anatomical_region) }}</td>
+    <td>{% if r.quality_class == 0 %}<span class="pill ok">✓ качественное</span>{% elif r.quality_class == 1 %}<span class="pill bad">✕ нарушение</span>{% else %}<span class="pill na">— не оценено</span>{% endif %}</td>
+    <td class="muted">{% for v in r.violation_list %}{{ violation_ru.get(v, v) }}{% if not loop.last %}<br>{% endif %}{% endfor %}</td>
+    {% if man.has_labels %}<td>{% if r.expert %}{% if r.expert.bad == 1 %}<span class="pill bad">✕ брак</span>{% else %}<span class="pill ok">✓ норма</span>{% endif %}
+      <div class="faint">{{ r.expert.types|join(', ') }}{% if r.expert.comment %} · {{ r.expert.comment }}{% endif %}</div>{% else %}<span class="faint">—</span>{% endif %}</td>{% endif %}
+    <td>{{ r.processing_status }}{% if r.forced %} <span class="pill warn">принудительно</span>{% endif %}{% if r.excluded %} <span class="pill na">исключён</span>{% elif r.override %} <span class="pill warn">правка</span>{% endif %}</td>
+    <td>{{ '%.2f'|format(r.time_of_processing) }} с</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<div class="tip" id="tip"></div>
+<script type="application/json" id="man-data">{{ man|tojson }}</script>
+<script>
+(function () {
+  const man = JSON.parse(document.getElementById('man-data').textContent);
+  const NS = 'http://www.w3.org/2000/svg';
+  const css = getComputedStyle(document.querySelector('.viz-root'));
+  const C = k => css.getPropertyValue(k).trim();
+  const REGION = {lumbar_spine: 'поясничный отдел', hip_right: 'правое бедро', hip_left: 'левое бедро', unknown: 'не определена'};
+  const VIOL = {coverage: 'охват', axis_tilt: 'наклон оси', artifact: 'посторонние предметы'};
+  const rows = man.rows.filter(r => r.processing_status === 'Success');
+  const tip = document.getElementById('tip');
+  const trs = Array.from(document.querySelectorAll('#results tbody tr'));
+  let filter = null;
+
+  function el(name, attrs, parent) {
+    const e = document.createElementNS(NS, name);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  function text(parent, x, y, s, opts) {
+    const t = el('text', Object.assign({x: x, y: y, 'font-size': 12, fill: C('--text-secondary')}, opts || {}), parent);
+    t.textContent = s;
+    return t;
+  }
+  function showTip(evt, value, label) {
+    tip.replaceChildren();
+    const b = document.createElement('b'); b.textContent = value;
+    const s = document.createElement('span'); s.textContent = label;
+    tip.append(b, s);
+    tip.style.display = 'block';
+    const r = evt.target.getBoundingClientRect ? evt.target.getBoundingClientRect() : null;
+    const x = evt.clientX || (r ? r.right : 0), y = evt.clientY || (r ? r.top : 0);
+    tip.style.left = Math.min(x + 14, window.innerWidth - 270) + 'px';
+    tip.style.top = (y + 14) + 'px';
+  }
+  function hideTip() { tip.style.display = 'none'; }
+  function interactive(node, value, label, onClick) {
+    node.classList.add('mark');
+    node.setAttribute('tabindex', '0');
+    node.setAttribute('aria-label', label + ': ' + value);
+    node.addEventListener('pointermove', e => showTip(e, value, label));
+    node.addEventListener('focus', e => showTip(e, value, label));
+    node.addEventListener('pointerleave', hideTip);
+    node.addEventListener('blur', hideTip);
+    if (onClick) {
+      node.addEventListener('click', onClick);
+      node.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } });
+    }
+  }
+  function roundedBar(parent, x, y, w, h, fill, roundLeft, roundRight) {
+    // скругление 4px только на внешних концах данных, внутренние стыки прямые
+    const r = Math.min(4, h / 2, w / 2);
+    const rl = roundLeft ? r : 0, rr = roundRight ? r : 0;
+    const d = `M${x + rl},${y} H${x + w - rr} Q${x + w},${y} ${x + w},${y + rr} V${y + h - rr} Q${x + w},${y + h} ${x + w - rr},${y + h}` +
+              ` H${x + rl} Q${x},${y + h} ${x},${y + h - rl} V${y + rl} Q${x},${y} ${x + rl},${y} Z`;
+    return el('path', {d: d, fill: fill}, parent);
+  }
+
+  // ---------------------------------------------------------------- фильтр таблицы
+  function applyFilter() {
+    let shown = 0;
+    trs.forEach(tr => {
+      const ok = !filter || filter.test(tr);
+      tr.hidden = !ok;
+      if (ok) shown++;
+    });
+    document.getElementById('shown').textContent = `Показано ${shown} из ${trs.length} строк`;
+    const box = document.getElementById('filters');
+    box.replaceChildren();
+    if (filter) {
+      const chip = document.createElement('span'); chip.className = 'chip'; chip.textContent = filter.label;
+      const reset = document.createElement('a'); reset.href = '#'; reset.textContent = 'сбросить фильтр';
+      reset.addEventListener('click', e => { e.preventDefault(); filter = null; applyFilter(); });
+      box.append('Фильтр: ', chip, reset);
+    } else {
+      const s = document.createElement('span'); s.className = 'muted';
+      s.textContent = 'Клик по столбцу или клетке фильтрует таблицу ниже.';
+      box.append(s);
+    }
+    document.querySelectorAll('.tile').forEach(t =>
+      t.setAttribute('aria-pressed', String(filter ? filter.key === t.dataset.tile : t.dataset.tile === 'all')));
+  }
+  function setFilter(label, test, key) {
+    filter = {label: label, test: test, key: key || null};
+    applyFilter();
+    document.getElementById('shown').scrollIntoView({behavior: 'smooth', block: 'start'});
+  }
+
+  // ---------------------------------------------------------------- плитки итогов: быстрый фильтр
+  const TILES = {
+    good: ['качественные снимки', tr => tr.dataset.q === '0'],
+    bad: ['снимки с нарушением', tr => tr.dataset.q === '1'],
+    fail: ['отказы обработки', tr => tr.dataset.status !== 'Success'],
+  };
+  document.querySelectorAll('.tile').forEach(t => t.addEventListener('click', () => {
+    const k = t.dataset.tile;
+    if (k === 'all' || (filter && filter.key === k)) {   // повторный клик по нажатой плитке снимает фильтр
+      filter = null;
+      applyFilter();
+      if (k === 'all') document.getElementById('shown').scrollIntoView({behavior: 'smooth', block: 'start'});
+      return;
+    }
+    setFilter(TILES[k][0], TILES[k][1], k);
+  }));
+
+  // ---------------------------------------------------------------- 1. вердикты по областям
+  (function () {
+    const svg = document.getElementById('chart-regions');
+    const order = ['lumbar_spine', 'hip_right', 'hip_left', 'unknown'];
+    const groups = order.map(k => {
+      const rs = rows.filter(r => r.anatomical_region === k);
+      return {k: k, good: rs.filter(r => r.quality_class === 0).length, bad: rs.filter(r => r.quality_class === 1).length,
+              na: rs.filter(r => r.quality_class === null || r.quality_class === undefined).length, n: rs.length};
+    }).filter(g => g.n > 0);
+    const W = 460, left = 130, right = 40, barH = 22, gap = 16, top = 6;
+    const H = top + groups.length * (barH + gap);
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('width', '100%');
+    const max = Math.max(1, ...groups.map(g => g.n));
+    const scale = (W - left - right) / max;
+    groups.forEach((g, i) => {
+      const y = top + i * (barH + gap);
+      text(svg, left - 10, y + barH / 2 + 4, REGION[g.k], {'text-anchor': 'end', fill: C('--text-primary')});
+      const segs = [['good', 'качественное', C('--good'), 0], ['bad', 'нарушение', C('--critical'), 1], ['na', 'не оценено', C('--neutral'), 'na']]
+        .filter(s => g[s[0]] > 0);
+      let x = left;
+      segs.forEach((s, j) => {
+        const w = Math.max(2, g[s[0]] * scale - (j < segs.length - 1 ? 2 : 0));
+        const bar = roundedBar(svg, x, y, w, barH, s[2], j === 0, j === segs.length - 1);
+        const label = `${REGION[g.k]} · ${s[1]}`;
+        interactive(bar, `${g[s[0]]} снимков`, label,
+          () => setFilter(label, tr => tr.dataset.region === g.k && tr.dataset.q === String(s[3])));
+        if (w > 26) text(svg, x + w / 2, y + barH / 2 + 4, String(g[s[0]]), {'text-anchor': 'middle', fill: '#fff', 'font-weight': 700, 'pointer-events': 'none'});
+        x += w + 2;
+      });
+      text(svg, x + 4, y + barH / 2 + 4, String(g.n), {fill: C('--text-muted')});
+    });
+  })();
+
+  // ---------------------------------------------------------------- 2. типы нарушений
+  (function () {
+    const svg = document.getElementById('chart-violations');
+    const byStudy = {};
+    rows.filter(r => r.anatomical_region === 'lumbar_spine').forEach(r => {
+      const s = byStudy[r.study_key] = byStudy[r.study_key] || {pred: new Set(), exp: r.expert};
+      (r.violation_list || []).forEach(v => s.pred.add(v));
+    });
+    const studies = Object.values(byStudy);
+    const codes = ['coverage', 'axis_tilt', 'artifact'];
+    const data = codes.map(c => ({c: c, svc: studies.filter(s => s.pred.has(c)).length,
+                                  exp: studies.filter(s => s.exp && s.exp.types.includes(c)).length}));
+    const series = man.has_labels ? [['svc', 'сервис', C('--series-1')], ['exp', 'эксперты', C('--series-2')]] : [['svc', 'сервис', C('--series-1')]];
+    const W = 460, left = 150, right = 40, barH = 14, inner = 2, gap = 18, top = 6;
+    const groupH = series.length * barH + (series.length - 1) * inner;
+    const H = top + data.length * (groupH + gap);
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('width', '100%');
+    const max = Math.max(1, ...data.map(d => Math.max(d.svc, d.exp)));
+    const scale = (W - left - right) / max;
+    data.forEach((d, i) => {
+      const y0 = top + i * (groupH + gap);
+      text(svg, left - 10, y0 + groupH / 2 + 4, VIOL[d.c], {'text-anchor': 'end', fill: C('--text-primary')});
+      series.forEach((s, j) => {
+        const y = y0 + j * (barH + inner);
+        const v = d[s[0]];
+        const w = Math.max(v > 0 ? 3 : 0, v * scale);
+        el('line', {x1: left, x2: left, y1: y, y2: y + barH, stroke: C('--grid')}, svg);
+        if (v > 0) {
+          const bar = roundedBar(svg, left, y, w, barH, s[2], false, true);
+          const label = `${VIOL[d.c]} · ${s[1]}`;
+          interactive(bar, `${v} исследований`, label,
+            s[0] === 'svc' ? () => setFilter(`сервис: ${VIOL[d.c]}`, tr => tr.dataset.v.split(' ').includes(d.c)) : null);
+        }
+        text(svg, left + w + 6, y + barH - 3, String(v), {fill: C('--text-secondary')});
+      });
+    });
+  })();
+
+  // ---------------------------------------------------------------- 3. гистограмма угла с порогом
+  (function () {
+    const svg = document.getElementById('chart-angle');
+    const spine = rows.filter(r => r.anatomical_region === 'lumbar_spine' && r.metrics && r.metrics.abs_angle !== undefined);
+    const slider = document.getElementById('thr');
+    slider.value = man.axis_limit || 5;
+    const step = 0.5;
+    const maxA = Math.max(12, Math.ceil(Math.max(0, ...spine.map(r => r.metrics.abs_angle)) / step) * step);
+    const nb = Math.round(maxA / step);
+    const bins = Array.from({length: nb}, () => 0);
+    spine.forEach(r => bins[Math.min(nb - 1, Math.floor(r.metrics.abs_angle / step))]++);
+    const W = 460, H = 170, left = 34, right = 10, top = 10, bottom = 26;
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('width', '100%');
+    const maxC = Math.max(1, ...bins);
+    const bw = (W - left - right) / nb;
+    const ys = c => top + (H - top - bottom) * (1 - c / maxC);
+    [0, Math.ceil(maxC / 2), maxC].forEach(t => {
+      el('line', {x1: left, x2: W - right, y1: ys(t), y2: ys(t), stroke: C('--grid')}, svg);
+      text(svg, left - 6, ys(t) + 4, String(t), {'text-anchor': 'end', 'font-size': 11, fill: C('--text-muted')});
+    });
+    for (let a = 0; a <= maxA; a += 2) text(svg, left + (a / step) * bw, H - 8, a + '°', {'text-anchor': 'middle', 'font-size': 11, fill: C('--text-muted')});
+    const rects = bins.map((c, i) => {
+      const x = left + i * bw + 1, h = (H - top - bottom) * c / maxC;
+      const r = el('rect', {x: x, y: top + (H - top - bottom) - h, width: Math.max(1, bw - 2), height: Math.max(0, h), rx: Math.min(3, (bw - 2) / 2)}, svg);
+      if (c > 0) {
+        const lo = (i * step).toFixed(1), hi = ((i + 1) * step).toFixed(1);
+        interactive(r, `${c} снимков`, `угол ${lo}–${hi}°`,
+          () => setFilter(`угол ${lo}–${hi}°`, tr => {
+            const row = byKey[tr.querySelector('a') ? tr.querySelector('a').getAttribute('href').split('/').pop() : ''];
+            return row && row.metrics && row.metrics.abs_angle >= i * step && row.metrics.abs_angle < (i + 1) * step;
+          }));
+      }
+      return r;
+    });
+    const byKey = {};
+    rows.forEach(r => { if (r.key) byKey[r.key] = r; });
+    const line = el('line', {y1: top - 4, y2: H - bottom, stroke: C('--text-primary'), 'stroke-width': 2, 'stroke-dasharray': '4 3'}, svg);
+
+    const studyMax = {};
+    spine.forEach(r => {
+      const s = studyMax[r.study_key] = studyMax[r.study_key] || {a: 0, exp: r.expert};
+      s.a = Math.max(s.a, r.metrics.abs_angle);
+    });
+    const studies = Object.values(studyMax);
+
+    function kpi(box, items) {
+      box.replaceChildren();
+      items.forEach(([v, l]) => {
+        const d = document.createElement('div'); d.className = 'kpi';
+        const vv = document.createElement('div'); vv.className = 'v'; vv.textContent = v;
+        const ll = document.createElement('div'); ll.className = 'l'; ll.textContent = l;
+        d.append(vv, ll); box.append(d);
+      });
+    }
+    function update() {
+      const t = parseFloat(slider.value);
+      document.getElementById('thr-val').textContent = t.toFixed(1);
+      document.getElementById('thr-note').textContent = t === (man.axis_limit || 5) ? '(как в ТЗ)' : `(в ТЗ ${man.axis_limit || 5}°)`;
+      const x = left + (t / step) * bw;
+      line.setAttribute('x1', x); line.setAttribute('x2', x);
+      rects.forEach((r, i) => r.setAttribute('fill', (i + 1) * step > t ? C('--seq-dark') : C('--seq-light')));
+      const flagged = studies.filter(s => s.a > t).length;
+      const lab = studies.filter(s => s.exp);
+      if (lab.length) {
+        let tp = 0, fp = 0, fn = 0, tn = 0;
+        lab.forEach(s => {
+          const p = s.a > t, y = s.exp.types.includes('axis_tilt');
+          if (p && y) tp++; else if (p) fp++; else if (y) fn++; else tn++;
+        });
+        const se = tp + fn ? tp / (tp + fn) : null, sp = tn + fp ? tn / (tn + fp) : null, pr = tp + fp ? tp / (tp + fp) : null;
+        const f1 = se && pr ? 2 * se * pr / (se + pr) : 0;
+        kpi(document.getElementById('thr-kpis'), [
+          [se === null ? '—' : se.toFixed(2), `чувствительность · найдено ${tp} из ${tp + fn}`],
+          [sp === null ? '—' : sp.toFixed(2), `специфичность · ложных ${fp}`],
+          [f1.toFixed(2), `F1 · отмечено ${flagged} из ${studies.length} исследований`]]);
+      } else {
+        kpi(document.getElementById('thr-kpis'), [[String(flagged), 'исследований больше порога'], [String(studies.length), 'исследований позвоночника'], ['—', 'разметки экспертов нет']]);
+      }
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+
+  // ---------------------------------------------------------------- 4. матрица совпадений
+  (function () {
+    const svg = document.getElementById('chart-confusion');
+    if (!svg) return;
+    const st = {};
+    rows.filter(r => r.anatomical_region === 'lumbar_spine' && r.expert).forEach(r => {
+      const s = st[r.study_key] = st[r.study_key] || {bad: false, exp: r.expert.bad === 1};
+      s.bad = s.bad || r.quality_class === 1;
+    });
+    const cell = {tp: [], fp: [], fn: [], tn: []};
+    Object.entries(st).forEach(([k, s]) => cell[s.bad ? (s.exp ? 'tp' : 'fp') : (s.exp ? 'fn' : 'tn')].push(k));
+    const W = 460, H = 210, left = 120, top = 34, cw = 150, ch = 72;
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('width', '100%');
+    text(svg, left + cw, 14, 'вердикт сервиса', {'text-anchor': 'middle', fill: C('--text-muted')});
+    text(svg, left + cw / 2, top - 6, 'нарушение', {'text-anchor': 'middle', fill: C('--text-primary')});
+    text(svg, left + cw * 1.5 + 2, top - 6, 'качественное', {'text-anchor': 'middle', fill: C('--text-primary')});
+    text(svg, left - 10, top + ch / 2 + 4, 'эксперт: брак', {'text-anchor': 'end', fill: C('--text-primary')});
+    text(svg, left - 10, top + ch * 1.5 + 6, 'эксперт: норма', {'text-anchor': 'end', fill: C('--text-primary')});
+    const max = Math.max(1, ...Object.values(cell).map(v => v.length));
+    const layout = [['tp', 0, 0, 'совпало: брак'], ['fn', 1, 0, 'пропущен брак'], ['fp', 0, 1, 'ложная тревога'], ['tn', 1, 1, 'совпало: норма']];
+    // последовательная шкала одного оттенка: светлее меньше, темнее больше
+    const mix = t => {
+      const a = [0xcd, 0xe2, 0xfb], b = [0x10, 0x42, 0x81];
+      return 'rgb(' + a.map((v, i) => Math.round(v + (b[i] - v) * t)).join(',') + ')';
+    };
+    layout.forEach(([k, col, rowi, name]) => {
+      const n = cell[k].length, t = n / max;
+      const x = left + col * (cw + 2), y = top + rowi * (ch + 2);
+      const r = el('rect', {x: x, y: y, width: cw, height: ch, rx: 4, fill: mix(0.08 + 0.92 * t)}, svg);
+      interactive(r, `${n} исследований`, name,
+        () => setFilter(name, tr => tr.dataset.region === 'lumbar_spine' && cell[k].includes(tr.dataset.study)));
+      text(svg, x + cw / 2, y + ch / 2 + 2, String(n), {'text-anchor': 'middle', 'font-size': 22, 'font-weight': 800, fill: t > 0.45 ? '#fff' : C('--text-primary'), 'pointer-events': 'none'});
+      text(svg, x + cw / 2, y + ch / 2 + 20, name, {'text-anchor': 'middle', 'font-size': 11, fill: t > 0.45 ? '#e8f0fb' : C('--text-secondary'), 'pointer-events': 'none'});
+    });
+    const e = man.evaluation && man.evaluation.spine_overall;
+    if (e) {
+      const box = document.getElementById('cm-kpis');
+      [[e.sensitivity === null ? '—' : e.sensitivity.toFixed(2), 'чувствительность'], [e.specificity === null ? '—' : e.specificity.toFixed(2), 'специфичность'], [e.f1.toFixed(2), 'F1']]
+        .forEach(([v, l]) => {
+          const d = document.createElement('div'); d.className = 'kpi';
+          const vv = document.createElement('div'); vv.className = 'v'; vv.textContent = v;
+          const ll = document.createElement('div'); ll.className = 'l'; ll.textContent = l;
+          d.append(vv, ll); box.append(d);
+        });
+    }
+  })();
+
+  // ---------------------------------------------------------------- 5. боксплоты измерений и доверительные интервалы
+  (function () {
+    const RUN = location.pathname.split('/')[2];
+    const byKeyRow = {};
+    rows.forEach(r => { if (r.key) byKeyRow[r.key] = r; });
+    const keyOf = tr => { const a = tr.querySelector('a'); return a ? a.getAttribute('href').split('/').pop() : ''; };
+    const fmt = (v, d) => (v === null || v === undefined || Number.isNaN(v)) ? '—' : Number(v).toFixed(d);
+    const quant = (s, p) => {
+      const i = (s.length - 1) * p, lo = Math.floor(i), hi = Math.ceil(i);
+      return s[lo] + (s[hi] - s[lo]) * (i - lo);
+    };
+    function stats(vals) {
+      const s = vals.slice().sort((a, b) => a - b);
+      const q1 = quant(s, 0.25), med = quant(s, 0.5), q3 = quant(s, 0.75), iqr = q3 - q1;
+      const inside = s.filter(v => v >= q1 - 1.5 * iqr && v <= q3 + 1.5 * iqr);
+      return {n: s.length, min: s[0], max: s[s.length - 1], q1, med, q3, mean: s.reduce((a, b) => a + b, 0) / s.length,
+              wlo: inside.length ? inside[0] : q1, whi: inside.length ? inside[inside.length - 1] : q3};
+    }
+    function card(grid, title, sub, legend) {
+      const c = document.createElement('div'); c.className = 'viz-card';
+      const h = document.createElement('h3'); h.textContent = title;
+      const s = document.createElement('div'); s.className = 'sub'; s.textContent = sub;
+      c.append(h, s);
+      if (legend) {
+        const lg = document.createElement('div'); lg.className = 'legend';
+        legend.forEach(([name, col]) => {
+          const sp = document.createElement('span'); const i = document.createElement('i'); i.style.background = col;
+          sp.append(i, document.createTextNode(name)); lg.append(sp);
+        });
+        c.append(lg);
+      }
+      const svg = el('svg', {role: 'img', 'aria-label': title});
+      c.append(svg); grid.append(c);
+      return {c, svg};
+    }
+    function twin(c, head, body) {   // таблица-двойник графика
+      const d = document.createElement('details'); d.className = 'twin';
+      const sm = document.createElement('summary'); sm.textContent = 'таблица';
+      const t = document.createElement('table'), thead = document.createElement('thead'), tb = document.createElement('tbody');
+      const hr = document.createElement('tr');
+      head.forEach(x => { const th = document.createElement('th'); th.textContent = x; hr.append(th); });
+      thead.append(hr);
+      body.forEach(r => { const tr = document.createElement('tr'); r.forEach(x => { const td = document.createElement('td'); td.textContent = x; tr.append(td); }); tb.append(tr); });
+      t.append(thead, tb); d.append(sm, t); c.append(d);
+    }
+    // один горизонтальный боксплот на строку группы; ось общая для всех строк карточки
+    function drawBox(svg, g, yc, x, color, value, label, onClick) {
+      el('rect', {x: x(g.wlo) - 8, y: yc - 15, width: Math.max(24, x(g.whi) - x(g.wlo) + 16), height: 30, fill: 'transparent'}, g.node);
+      el('line', {x1: x(g.wlo), x2: x(g.q1), y1: yc, y2: yc, stroke: color, 'stroke-width': 2}, g.node);
+      el('line', {x1: x(g.q3), x2: x(g.whi), y1: yc, y2: yc, stroke: color, 'stroke-width': 2}, g.node);
+      [g.wlo, g.whi].forEach(v => el('line', {x1: x(v), x2: x(v), y1: yc - 6, y2: yc + 6, stroke: color, 'stroke-width': 2}, g.node));
+      el('rect', {x: x(g.q1), y: yc - 11, width: Math.max(2, x(g.q3) - x(g.q1)), height: 22, rx: 3, fill: color, 'fill-opacity': 0.16, stroke: color, 'stroke-width': 1.5}, g.node);
+      el('line', {x1: x(g.med), x2: x(g.med), y1: yc - 11, y2: yc + 11, stroke: color, 'stroke-width': 2.5}, g.node);
+      el('circle', {cx: x(g.dot), cy: yc, r: 4.5, fill: color, stroke: C('--surface-1'), 'stroke-width': 2}, g.node);
+      interactive(g.node, value, label, onClick);
+    }
+    function axis(svg, ticks, x, top, bottom, unit) {
+      ticks.forEach(t => {
+        el('line', {x1: x(t), x2: x(t), y1: top - 4, y2: bottom, stroke: C('--grid')}, svg);
+        text(svg, x(t), bottom + 16, String(+t.toFixed(2)) + unit, {'text-anchor': 'middle', 'font-size': 11, fill: C('--text-muted')});
+      });
+    }
+
+    function boxChart(grid, o) {
+      const groups = o.groups.filter(g => g.items.length);
+      if (!groups.length) return;
+      const {c, svg} = card(grid, o.title, o.sub, groups.length > 1 && o.legend ? o.legend : null);
+      const W = 460, left = 150, right = 18, top = o.threshold ? 22 : 10, rowH = 46, axisH = 26;
+      const bottom = top + groups.length * rowH, H = bottom + axisH;
+      svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('width', '100%');
+      const vmax = Math.max(...groups.flatMap(g => g.items.map(it => it.v)), o.threshold ? o.threshold.v : 0, 1e-9);
+      let ticks;
+      if (o.log) {
+        let hiT = 10; while (hiT < vmax) hiT *= 10;
+        ticks = [0]; for (let t = 1; t <= hiT; t *= 10) ticks.push(t);
+      } else {
+        const st = [0.05, 0.1, 0.2, 0.25, 0.5, 1, 2, 5, 10, 20, 25, 50, 100, 200, 500, 1000].find(s => vmax / s <= 5) || 1000;
+        ticks = []; for (let t = 0; t < vmax + st; t += st) ticks.push(t);
+      }
+      const tf = o.log ? v => Math.log10(1 + Math.max(0, v)) : v => v;
+      const x = v => left + (W - left - right) * tf(v) / tf(ticks[ticks.length - 1]);
+      axis(svg, ticks, x, top, bottom, o.unit === '°' ? '°' : '');
+      if (o.threshold) {
+        const tx = x(o.threshold.v);
+        el('line', {x1: tx, x2: tx, y1: top - 6, y2: bottom, stroke: C('--text-primary'), 'stroke-width': 1.5, 'stroke-dasharray': '4 3'}, svg);
+        text(svg, tx, top - 10, o.threshold.label, {'text-anchor': tx > W - 60 ? 'end' : 'middle', 'font-size': 11, fill: C('--text-secondary')});
+      }
+      const d = o.digits, u = o.unit || '', table = [];
+      groups.forEach((g, i) => {
+        const yc = top + i * rowH + rowH / 2, s = stats(g.items.map(it => it.v));
+        text(svg, left - 12, yc - 2, g.label, {'text-anchor': 'end', fill: C('--text-primary')});
+        text(svg, left - 12, yc + 13, `n = ${s.n}`, {'text-anchor': 'end', 'font-size': 11, fill: C('--text-muted')});
+        const keys = new Set(g.items.map(it => it.key));
+        drawBox(svg, Object.assign({node: el('g', {}, svg), dot: s.mean}, s), yc, x, g.color,
+          `медиана ${fmt(s.med, d)}${u}`,
+          `${g.label} · n ${s.n} · Q1 ${fmt(s.q1, d)} · Q3 ${fmt(s.q3, d)} · среднее ${fmt(s.mean, d)} · мин ${fmt(s.min, d)} · макс ${fmt(s.max, d)}`,
+          () => setFilter(`${o.short}: ${g.label}`, tr => keys.has(keyOf(tr))));
+        g.items.filter(it => it.v < s.wlo || it.v > s.whi).forEach(it => {
+          const og = el('g', {}, svg);
+          el('circle', {cx: x(it.v), cy: yc, r: 12, fill: 'transparent'}, og);
+          el('circle', {cx: x(it.v), cy: yc, r: 4, fill: C('--surface-1'), stroke: g.color, 'stroke-width': 2}, og);
+          const row = byKeyRow[it.key];
+          interactive(og, `${fmt(it.v, d)}${u}`, `выброс · ${g.label} · ${row ? row.path_to_study.split('/').pop() : ''} · клик откроет снимок`,
+            () => { location.href = `/runs/${RUN}/images/${it.key}`; });
+        });
+        table.push([g.label, s.n, fmt(s.min, d), fmt(s.q1, d), fmt(s.med, d), fmt(s.mean, d), fmt(s.q3, d), fmt(s.max, d)]);
+      });
+      twin(c, ['группа', 'n', 'мин', 'Q1', 'медиана', 'среднее', 'Q3', 'макс'], table);
+    }
+
+    const boxGrid = document.getElementById('box-grid');
+    const spine = rows.filter(r => r.anatomical_region === 'lumbar_spine' && r.metrics && r.metrics.abs_angle !== undefined);
+    // норма серым, нарушение по оценке эксперта красным: пара проверена валидатором (CVD ΔE 9.4), у каждого ящика подпись
+    const GRAY = '#8a8983', RED = C('--critical');
+    const item = f => r => ({v: f(r), key: r.key});
+    function byExpert(code, f, okLabel, badLabel) {
+      if (!man.has_labels) return [{label: 'все снимки', color: C('--series-1'), items: spine.map(item(f))}];
+      const lab = spine.filter(r => r.expert);
+      return [{label: okLabel, color: GRAY, items: lab.filter(r => !r.expert.types.includes(code)).map(item(f))},
+              {label: '✕ ' + badLabel, color: RED, items: lab.filter(r => r.expert.types.includes(code)).map(item(f))}];
+    }
+    const lim = man.axis_limit || 5;
+    boxChart(boxGrid, {title: 'Наклон оси позвоночника', short: 'наклон оси',
+      sub: man.has_labels ? 'модуль угла по снимкам, группы по оценке экспертов' : 'модуль угла по снимкам',
+      legend: [['эксперт: без наклона', GRAY], ['эксперт: наклон оси', RED]],
+      groups: byExpert('axis_tilt', r => r.metrics.abs_angle, 'эксперт: норма', 'эксперт: наклон'),
+      unit: '°', digits: 1, threshold: {v: lim, label: `порог ТЗ ${lim}°`}});
+    boxChart(boxGrid, {title: 'Подвздошные кости в нижних углах', short: 'подвздошные кости',
+      sub: 'меньшая из яркостей слева и справа; ниже порога сервис считает, что кость не видна',
+      legend: [['эксперт: охват в норме', GRAY], ['эксперт: неполный охват', RED]],
+      groups: byExpert('coverage', r => Math.min(r.metrics.iliac_left, r.metrics.iliac_right), 'эксперт: норма', 'эксперт: охват'),
+      digits: 1, threshold: {v: man.iliac_min || 4, label: `порог ${man.iliac_min || 4}`}});
+    boxChart(boxGrid, {title: 'Яркие пиксели вне позвоночного столба', short: 'яркие пиксели',
+      sub: 'число пикселей, логарифмическая шкала; выше порога сервис видит посторонний предмет',
+      legend: [['эксперт: без предметов', GRAY], ['эксперт: посторонний предмет', RED]],
+      groups: byExpert('artifact', r => r.metrics.bright_px || 0, 'эксперт: норма', 'эксперт: предмет'),
+      digits: 0, log: true, threshold: {v: man.artifact_min || 50, label: `порог ${man.artifact_min || 50}`}});
+    boxChart(boxGrid, {title: 'Время обработки снимка', short: 'время', sub: 'секунды, по областям',
+      groups: ['lumbar_spine', 'hip_right', 'hip_left', 'unknown'].map(k => ({label: REGION[k], color: C('--series-1'),
+        items: rows.filter(r => r.anatomical_region === k).map(r => ({v: r.time_of_processing, key: r.key}))})),
+      unit: ' с', digits: 2});
+
+    const ciGrid = document.getElementById('ci-grid');
+    if (!ciGrid) return;
+    const st = {};
+    spine.filter(r => r.expert).forEach(r => {
+      const s = st[r.study_key] = st[r.study_key] || {key: r.study_key, pred: new Set(), bad: false, exp: r.expert};
+      (r.violation_list || []).forEach(v => s.pred.add(v));
+      s.bad = s.bad || r.quality_class === 1;
+    });
+    const studies = Object.values(st), n = studies.length;
+    if (!n) return;
+    const CHECKS = [['итоговый вердикт', s => s.bad, s => s.exp.bad === 1],
+                    ['охват', s => s.pred.has('coverage'), s => s.exp.types.includes('coverage')],
+                    ['наклон оси', s => s.pred.has('axis_tilt'), s => s.exp.types.includes('axis_tilt')],
+                    ['посторонние предметы', s => s.pred.has('artifact'), s => s.exp.types.includes('artifact')]];
+    function metrics(sample, ck) {   // как pipeline.evaluate: F1 = 0, если точность или чувствительность не определены
+      let tp = 0, fp = 0, fn = 0, tn = 0;
+      sample.forEach(s => { const p = ck[1](s), y = ck[2](s); if (p && y) tp++; else if (p) fp++; else if (y) fn++; else tn++; });
+      const se = tp + fn ? tp / (tp + fn) : null, sp = tn + fp ? tn / (tn + fp) : null, pr = tp + fp ? tp / (tp + fp) : null;
+      return {sens: se, spec: sp, f1: tp + fn ? (se && pr ? 2 * se * pr / (se + pr) : 0) : null};
+    }
+    let seed = 20260915;   // фиксированное зерно: интервалы одинаковы при каждом открытии
+    const rnd = () => { seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+    const boot = CHECKS.map(() => ({sens: [], spec: [], f1: []}));
+    for (let b = 0; b < 1000; b++) {
+      const sample = Array.from({length: n}, () => studies[Math.floor(rnd() * n)]);
+      CHECKS.forEach((ck, j) => { const m = metrics(sample, ck); ['sens', 'spec', 'f1'].forEach(k => { if (m[k] !== null) boot[j][k].push(m[k]); }); });
+    }
+    const point = CHECKS.map(ck => metrics(studies, ck));
+    [['sens', 'Чувствительность', 'доля нарушений по оценке экспертов, которые нашёл сервис', ck => s => ck[2](s)],
+     ['spec', 'Специфичность', 'доля исследований в норме, где сервис не поднял ложную тревогу', ck => s => !ck[2](s)],
+     ['f1', 'F1', 'баланс точности и чувствительности, главная метрика ТЗ', ck => s => ck[1](s) || ck[2](s)]]
+    .forEach(([k, title, sub, sel]) => {
+      const {c, svg} = card(ciGrid, title, sub, null);
+      const W = 460, left = 150, right = 104, top = 10, rowH = 42;
+      const bottom = top + CHECKS.length * rowH;
+      svg.setAttribute('viewBox', `0 0 ${W} ${bottom + 26}`); svg.setAttribute('width', '100%');
+      const x = v => left + (W - left - right) * v;
+      axis(svg, [0, 0.25, 0.5, 0.75, 1], x, top, bottom, '');
+      const table = [];
+      CHECKS.forEach((ck, j) => {
+        const yc = top + j * rowH + rowH / 2, arr = boot[j][k].slice().sort((a, b) => a - b), p = point[j][k];
+        const subset = new Set(studies.filter(sel(ck)).map(s => s.key));
+        text(svg, left - 12, yc + 4, ck[0], {'text-anchor': 'end', fill: C('--text-primary')});
+        if (!arr.length || p === null) {
+          text(svg, left + 4, yc + 4, 'нет данных', {fill: C('--text-muted')});
+          table.push([ck[0], '—', '—', String(subset.size)]);
+          return;
+        }
+        const g = {node: el('g', {}, svg), wlo: quant(arr, 0.025), whi: quant(arr, 0.975), q1: quant(arr, 0.25), q3: quant(arr, 0.75), med: quant(arr, 0.5), dot: p};
+        drawBox(svg, g, yc, x, C('--series-1'), `${title} ${fmt(p, 2)}`,
+          `${ck[0]} · 95% ДИ ${fmt(g.wlo, 2)}–${fmt(g.whi, 2)} · исследований ${subset.size} из ${n}`,
+          () => setFilter(`${title}: ${ck[0]}`, tr => tr.dataset.region === 'lumbar_spine' && subset.has(tr.dataset.study)));
+        text(svg, W - right + 10, yc + 4, `${fmt(p, 2)} [${fmt(g.wlo, 2)}–${fmt(g.whi, 2)}]`, {'font-size': 12, fill: C('--text-secondary')});
+        table.push([ck[0], fmt(p, 2), `${fmt(g.wlo, 2)}–${fmt(g.whi, 2)}`, String(subset.size)]);
+      });
+      twin(c, ['проверка', 'оценка', '95% ДИ', 'исследований в расчёте'], table);
+    });
+  })();
+
+  applyFilter();
+})();
+</script>
+{% endif %}
+{% endblock %}

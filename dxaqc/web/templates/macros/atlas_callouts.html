@@ -1,0 +1,32 @@
+{#-
+  Компонент «стилизованные подписи атласа».
+
+  Картинка атласа без впечатанного текста (/runs/{run}/images/{key}/clean.png) плюс подписи, которые рисует страница:
+  выноски SVG с градиентом от цвета зоны, светящиеся точки на зонах, плашки с размытием фона, заголовок, отметки
+  сторон и легенда. Координаты — из row.callouts, их кладёт пайплайн с версии 0.5.1 (atlas.render → callouts).
+  Подписи масштабируются вместе с картинкой (единицы cqw), появляются по очереди, подсвечиваются при наведении;
+  при prefers-reduced-motion — без анимации.
+
+  Подключение в шаблоне:
+    {% from "macros/atlas_callouts.html" import atlas_callouts_assets, atlas_figure with context %}
+    в <head>:   {{ atlas_callouts_assets() }}
+    в разметке: {{ atlas_figure(run_id, row.key, row.callouts, "что на снимке — для скринридера") }}
+                title=False / legend=False — без заголовка и легенды, если их уже показывает страница;
+                eager=True — для картинки первого экрана.
+  Размер: фигура занимает ширину контейнера, высота — по пропорциям атласа (aspect-ratio).
+  Для элементов, добавленных после загрузки: window.AtlasCallouts.mount(figure, data) или AtlasCallouts.mountAll(root).
+  Старые прогоны без row.callouts — показывайте обычную картинку row.overlay_png.
+-#}
+{% macro atlas_callouts_assets() -%}
+<link rel="stylesheet" href="/static/atlas-callouts.css?v={{ version }}">
+<script src="/static/atlas-callouts.js?v={{ version }}" defer></script>
+{%- endmacro %}
+
+{% macro atlas_figure(run_id, key, callouts, alt, cls="", title=True, legend=True, eager=False) -%}
+<figure class="acall {{ cls }}" style="aspect-ratio:{{ callouts.size[0] }}/{{ callouts.size[1] }}" data-atlas-callouts
+  {%- if not title %} data-title="off"{% endif %}{% if not legend %} data-legend="off"{% endif %}>
+  <img src="/runs/{{ run_id }}/images/{{ key }}/clean.png" width="{{ callouts.size[0] }}" height="{{ callouts.size[1] }}" alt="{{ alt }}"
+    decoding="async"{% if eager %} fetchpriority="high"{% else %} loading="lazy"{% endif %}>
+  <script type="application/json" class="acall-data">{{ callouts|tojson }}</script>
+</figure>
+{%- endmacro %}

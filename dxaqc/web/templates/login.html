@@ -1,0 +1,15 @@
+{% extends "doc.html" %}
+{% block title %}Вход{% endblock %}
+{% block doc %}
+<h1>Вход</h1>
+{% if error %}<p class="err" role="alert">{{ error }}</p>{% endif %}
+<form class="stack" method="post" action="/login">
+  <input type="hidden" name="next" value="{{ next }}">
+  <label for="login">Логин</label>
+  <input id="login" type="text" name="login" value="{{ login }}" autocomplete="username" required autofocus>
+  <label for="password">Пароль</label>
+  <input id="password" type="password" name="password" autocomplete="current-password" required>
+  <p style="margin-top:16px"><button class="go" type="submit">войти →</button></p>
+</form>
+<p class="muted small">Нет учётной записи? <a href="/register">Зарегистрируйтесь</a>. Задавать вопросы Claude можно после того, как админ выдаст доступ.</p>
+{% endblock %}

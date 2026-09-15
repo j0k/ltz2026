@@ -1,0 +1,91 @@
+{# Управление снимком в карточке: правка вердикта, исключение, пробный анализ. Действия — только админ. #}
+<div class="card" id="control" style="margin-top:16px">
+  <h2 style="margin-top:0">Управление снимком</h2>
+  {% set o = row.override or {} %}
+  {% set auto = row.auto or row %}
+  {% if row.override %}
+  <p class="note">Есть правка:
+    {% if o.excluded %}снимок исключён из результатов прогона{% if 'quality_class' in o %}; {% endif %}{% endif %}
+    {% if 'quality_class' in o %}вердикт «{{ 'качественное' if o.quality_class == 0 else 'есть нарушение' }}»{% for v in o.violations or [] %}{{ ': ' if loop.first else ', ' }}{{ violation_ru.get(v, v) }}{% endfor %}{% endif %}{% if o.note %} · «{{ o.note }}»{% endif %}
+    · {{ o.by }}, {{ o.at|msk }}.
+    Автоматически: {% if auto.quality_class == 0 %}качественное{% elif auto.quality_class == 1 %}есть нарушение{% else %}не оценено{% endif %}.</p>
+  {% endif %}
+  {% if not is_admin %}
+  <p class="muted">Исключить снимок из результатов, поправить вердикт или проверить снимок с другими параметрами может админ.
+    <a href="/login?next=/runs/{{ run_id }}/images/{{ row.key }}">Войти</a>.</p>
+  {% elif row.processing_status != 'Success' %}
+  <p class="muted">Снимок не был обработан, править нечего.</p>
+  {% else %}
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr));align-items:start">
+    <form method="post" action="/control/runs/{{ run_id }}/images/{{ row.key }}/override" class="card" style="background:#faf9f7">
+      <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="action" value="verdict">
+      <div style="font-weight:800;margin-bottom:6px">Поправить вердикт</div>
+      {% set q = o.quality_class if 'quality_class' in o else row.quality_class %}
+      <label style="display:block"><input type="radio" name="quality_class" value="0" {% if q == 0 %}checked{% endif %}> качественное</label>
+      <label style="display:block"><input type="radio" name="quality_class" value="1" {% if q == 1 %}checked{% endif %}> есть нарушение</label>
+      <div class="faint" style="margin-top:6px">нарушения, если есть:</div>
+      {% set cur = o.violations if 'quality_class' in o else row.violation_list %}
+      {% for c in override_codes %}
+      <label style="display:block;font-size:14px"><input type="checkbox" name="violations" value="{{ c }}" {% if c in (cur or []) %}checked{% endif %}> {{ violation_ru.get(c, c) }}</label>
+      {% endfor %}
+      <label class="faint" for="ov-note" style="display:block;margin-top:6px">комментарий</label>
+      <input id="ov-note" name="note" maxlength="500" value="{{ o.note or '' }}" style="width:100%;font:inherit;font-size:14px;padding:5px 7px;border:1px solid var(--line);border-radius:6px">
+      <div style="margin-top:10px"><button class="btn small" type="submit">Сохранить правку</button></div>
+    </form>
+
+    <div class="card" style="background:#faf9f7">
+      <div style="font-weight:800;margin-bottom:6px">Исключить из результатов</div>
+      <p class="faint" style="margin-top:0">Снимок не попадёт в таблицы csv и xlsx и в сводку прогона. Автоматический результат сохраняется,
+        оценка сервиса против экспертов считается без правок.</p>
+      <div class="act" style="display:flex;flex-wrap:wrap;gap:6px">
+        <form method="post" action="/control/runs/{{ run_id }}/images/{{ row.key }}/override" style="margin:0">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          {% if o.excluded %}<input type="hidden" name="action" value="include"><button class="btn ghost small" type="submit">Вернуть в результаты</button>
+          {% else %}<input type="hidden" name="action" value="exclude"><button class="btn small" type="submit" style="background:var(--bad-soft);color:#b3302f">Исключить снимок</button>{% endif %}
+        </form>
+        {% if row.override %}
+        <form method="post" action="/control/runs/{{ run_id }}/images/{{ row.key }}/override" style="margin:0">
+          <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="action" value="reset">
+          <button class="btn ghost small" type="submit">Снять все правки</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+
+    <form class="card" id="preview-form" style="background:#faf9f7" action="/control/runs/{{ run_id }}/images/{{ row.key }}/preview" method="post">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <div style="font-weight:800;margin-bottom:6px">Пробный анализ с другими параметрами</div>
+      <p class="faint" style="margin-top:0">Результат прогона не меняется. Для бедра параметры пока не действуют.</p>
+      {% for s in spec %}
+      <label style="display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:13.5px;margin:4px 0">{{ s.label }}{% if s.unit %}, {{ s.unit }}{% endif %}
+        <input type="number" name="{{ s.name }}" value="{{ run_params[s.name] }}" min="{{ s.min }}" max="{{ s.max }}" step="{{ s.step }}"
+               style="width:80px;font:inherit;font-size:14px;padding:3px 6px;border:1px solid var(--line);border-radius:6px"></label>
+      {% endfor %}
+      <div style="margin-top:10px"><button class="btn small" type="submit">Проверить</button></div>
+      <div id="preview-out" aria-live="polite" style="margin-top:10px"></div>
+    </form>
+  </div>
+  <script>
+  (function () {
+    const form = document.getElementById('preview-form'), out = document.getElementById('preview-out');
+    const el = (tag, text, cls) => { const e = document.createElement(tag); if (text) e.textContent = text; if (cls) e.className = cls; return e; };
+    const verdict = q => q === 0 ? ['качественное', 'pill ok'] : q === 1 ? ['есть нарушение', 'pill bad'] : ['не оценено', 'pill na'];
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      out.replaceChildren(el('span', 'анализирую…', 'faint'));
+      try {
+        const r = await fetch(form.action, {method: 'POST', body: new FormData(form), credentials: 'same-origin'});
+        const j = await r.json();
+        if (!r.ok) { out.replaceChildren(el('p', j.error || ('ошибка ' + r.status), 'faint')); return; }
+        const [t, c] = verdict(j.quality_class), [t0] = verdict(j.run_quality_class);
+        const head = el('div'); head.append(el('span', t, c), el('span', ` · было в прогоне: ${t0}`, 'faint'));
+        const list = el('ul'); list.style.cssText = 'margin:6px 0;padding-left:18px;font-size:14px';
+        (j.violations_ru.length ? j.violations_ru : ['нарушений нет']).forEach(v => list.append(el('li', v)));
+        const img = el('img'); img.src = j.atlas_png; img.alt = 'разметка при пробных параметрах'; img.style.cssText = 'width:100%;border-radius:6px;margin-top:6px';
+        out.replaceChildren(head, el('div', 'параметры: ' + j.params_desc, 'faint'), list, img);
+      } catch (err) { out.replaceChildren(el('p', 'не удалось: ' + err.message, 'faint')); }
+    });
+  })();
+  </script>
+  {% endif %}
+</div>

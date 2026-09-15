@@ -1,0 +1,7 @@
+# Для тестов на машине разработчика, в образ не входят.
+# pytest:  .venv/bin/python -m pytest tests -q
+# e2e:     python scripts/e2e_web.py http://127.0.0.1:8765 --write   (нужен Chromium: playwright install chromium)
+-r requirements.txt
+pytest==8.4.2
+httpx==0.28.1
+playwright==1.62.0

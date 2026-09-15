@@ -1,0 +1,738 @@
+{% extends "base.html" %}
+{% block title %}Снимок{% endblock %}
+{% block head %}
+<style>
+.atlas{background:#121418;border-radius:var(--radius);padding:10px;margin-bottom:16px;color:#e6e6e6}
+.stage{position:relative;line-height:0}
+.stage img{width:100%;display:block;border-radius:8px}
+.stage canvas{position:absolute;left:0;top:0;width:100%;height:100%;border-radius:8px;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.stage canvas[hidden]{display:none}
+.stage:focus-visible{outline:2px solid #fad25a;outline-offset:3px;border-radius:10px}
+.stage.loupe-on #atlasOv{touch-action:none;cursor:crosshair}
+/* лупа: круглая линза поверх рисунка, события проходят сквозь неё */
+.stage canvas.loupe{width:180px;height:180px;border-radius:50%;pointer-events:none;z-index:3;border:2px solid rgba(250,210,90,.9);
+  box-shadow:0 10px 28px rgba(0,0,0,.55),0 0 0 1px rgba(0,0,0,.6);background:#121418}
+.viewbar{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
+.vgroup{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.vlab{color:#9aa3ae;font-size:13px;margin-right:2px}
+.lbtn, .zbtn{display:inline-flex;align-items:center;gap:7px;background:#1c2027;color:#e3e7ec;border:1px solid #353b45;border-radius:999px;
+  padding:5px 11px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;line-height:1.2}
+.lbtn[data-layer]::before{content:"";width:9px;height:9px;border-radius:3px;border:1.5px solid #fad25a;background:#fad25a;box-sizing:border-box}
+.lbtn[data-layer][aria-pressed=false]{color:#8a939e;border-color:#2a2f37}
+.lbtn[data-layer][aria-pressed=false]::before{background:transparent;border-color:#6b737e}
+#bLoupe[aria-pressed=true], .zbtn[aria-pressed=true]{background:#2a78d6;border-color:#2a78d6;color:#fff}
+.zoombar{display:inline-flex;gap:4px}
+.zoombar[hidden]{display:none}
+.zbtn{padding:5px 9px;font-variant-numeric:tabular-nums}
+.lbtn:focus-visible, .zbtn:focus-visible{outline:2px solid #fad25a;outline-offset:2px}
+.ap{padding:14px 8px 6px;display:grid;gap:10px}
+.ap-head{display:flex;gap:12px;align-items:center}
+.ap-sw{width:16px;height:16px;border-radius:4px;background:#4a4f57;flex:none}
+.ap-title{font-weight:800;font-size:18px;color:#fff}
+.ap-sub{color:#9aa3ae;font-size:13px}
+.ap-text{margin:0;font-size:15px;line-height:1.55;color:#dfe3e8;min-height:3.1em}
+.ap-st{display:inline-block;margin-left:8px;padding:1px 8px;border-radius:999px;font-size:12px;font-weight:700;vertical-align:2px}
+.ap-st.ok{background:#0ca30c;color:#fff}.ap-st.bad{background:#d03b3b;color:#fff}.ap-st.info{background:#2e333b;color:#cfd5dc}
+.tools{display:flex;flex-wrap:wrap;gap:8px}
+.tbtn{background:#262a31;color:#e8ecf1;border:1px solid #3a404a;border-radius:8px;padding:8px 13px;font-weight:700;font-size:14px;cursor:pointer}
+.tbtn[aria-pressed=true]{background:#2a78d6;border-color:#2a78d6;color:#fff}
+.tbtn.rec{background:#d03b3b;border-color:#d03b3b;color:#fff}
+.tbtn[hidden]{display:none}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;background:#1c2027;color:#d7dce2;border:1px solid #30353e;border-radius:999px;padding:4px 10px;font-size:13px;cursor:pointer}
+.chip i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.chip.on{border-color:#fad25a;color:#fff}
+.vstat{color:#9aa3ae;font-size:13px;min-height:1.2em}
+/* волна голосового вопроса, как в аудиоредакторе */
+.vwave{background:#0d0f13;border:1px solid #2a2f37;border-radius:10px;padding:10px 12px}
+.vwave[hidden]{display:none}
+.vw-head{display:flex;align-items:center;gap:10px;margin-bottom:6px;font-size:13px;color:#aeb6c1}
+.vw-state{display:inline-flex;align-items:center;gap:8px;font-weight:700;color:#e6e9ee}
+.vw-dot{width:10px;height:10px;border-radius:50%;background:#9aa3ae;box-sizing:border-box}
+.vwave.recording .vw-dot{background:#ef4444;animation:vwblink 1s steps(2,start) infinite}
+.vwave.recognizing .vw-dot{background:transparent;border:2px solid #5aa7ff;border-top-color:transparent;animation:vwspin .8s linear infinite}
+.vwave.done .vw-dot{background:#1baf7a}
+.vwave.failed .vw-dot{background:#d03b3b}
+@keyframes vwblink{to{visibility:hidden}}
+@keyframes vwspin{to{transform:rotate(360deg)}}
+.vw-time{margin-left:auto;font-variant-numeric:tabular-nums}
+.vw-play{width:32px;height:26px;border-radius:6px;border:1px solid #3a404a;background:#262a31;color:#e8ecf1;font-size:12px;cursor:pointer}
+.vw-play[hidden]{display:none}
+.vw-canvas{display:block;width:100%;height:96px;border-radius:6px;background:#07080b}
+.vw-result{margin-top:8px;min-height:1.2em;font-size:14px;line-height:1.45;color:#dfe3e8}
+.vw-result .q{font-weight:700;color:#fff}
+.vw-result .hint{font-size:13px;color:#9aa3ae}
+@media (prefers-reduced-motion:reduce){.vwave .vw-dot{animation:none}}
+@media (min-width:1000px){  /* на широком экране панель справа, чтобы рисунок и пояснение были видны целиком */
+  .atlas{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(320px,1fr);gap:14px;align-items:start}
+  .ap{padding:4px 6px 6px}
+}
+</style>
+{% endblock %}
+{% block content %}
+<p class="faint"><a href="/runs/{{ run_id }}">← к прогону</a></p>
+<h1>{{ region_ru.get(row.anatomical_region, row.anatomical_region)|capitalize }}</h1>
+<p class="muted">{{ row.path_to_study }}</p>
+{% if preliminary %}
+<p class="note" id="preliminary" role="status">
+  {% if run_state in ['queued', 'running'] %}Прогон ещё идёт: это готовый результат анализа снимка. Таблицы, сравнение с экспертами и правки вердикта появятся по завершении.
+  {% else %}Прогон не завершён: это результат анализа снимка, таблиц и итогов у прогона нет.{% endif %}
+  <a href="/runs/{{ run_id }}">← к прогону</a>
+</p>
+{% endif %}
+{% if row.forced %}<p class="note">{{ row.explanations|first }}</p>{% endif %}
+{% if not organizer and row.key %}
+<div class="card claude-req" style="margin:0 0 16px;padding:14px 18px">
+  <b>Спросить Claude про этот снимок</b>
+  <span class="muted">— Claude посмотрит изображение и скажет, что это за исследование, пригодно ли оно по ТЗ и какие нарушения видны.
+    Запрос выполняется после одобрения админа; изображение без метаданных DICOM уходит во внешний сервис.</span>
+  {% set r = row %}
+  <style>.claude-req .req-acts{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-top:10px}.claude-req .req-form{margin:0}
+    .claude-req .btn.small{padding:6px 12px;font-size:13.5px}.claude-req .req-note{font-size:12px}.claude-req .req-link{font-weight:600}</style>
+  {% include "_request_actions.html" %}
+</div>
+{% endif %}
+
+{% if row.hit_png and row.regions %}
+<div class="atlas">
+  <div class="stage" id="stage" tabindex="0" aria-label="рисунок: при включённой лупе стрелки двигают её, плюс и минус меняют увеличение, Enter выбирает зону под лупой">
+    <img id="atlasImg" src="/runs/{{ run_id }}/files/{{ row.overlay_png }}" alt="разметка снимка в стиле атласа">
+    <canvas id="atlasCv" hidden aria-hidden="true"></canvas>
+    <canvas id="atlasOv" aria-hidden="true"></canvas>
+    <canvas id="loupe" class="loupe" hidden aria-hidden="true"></canvas>
+  </div>
+  <div class="ap">
+    <div class="ap-head">
+      <span class="ap-sw" id="apSw"></span>
+      <div><div class="ap-title"><span id="apTitle">Наведите на рисунок или коснитесь его</span><span id="apSt"></span></div>
+      <div class="ap-sub" id="apSub">зона подсветится, а сервис объяснит, что на ней и что он проверил</div></div>
+    </div>
+    <p class="ap-text" id="apText" aria-live="polite"></p>
+    <div class="tools">
+      <button class="tbtn" id="bSound" aria-pressed="true">🔊 Озвучка включена</button>
+      <button class="tbtn" id="bTour">▶ Рассказать по порядку</button>
+      <button class="tbtn" id="bMic" hidden>🎙 Спросить голосом</button>
+    </div>
+    <div class="viewbar">
+      {% set layer_names = (row.layers or [])|map(attribute='name')|list %}
+      {% if layer_names %}
+      <div class="vgroup" role="group" aria-label="слои рисунка">
+        <span class="vlab">Слои</span>
+        {% for key, label in [('image', 'снимок'), ('zones', 'зоны'), ('artifacts', 'артефакты'), ('axis', 'ось'), ('labels', 'подписи')] %}
+        {% if key in layer_names %}<button class="lbtn" type="button" data-layer="{{ key }}" aria-pressed="true">{{ label }}</button>{% endif %}
+        {% endfor %}
+      </div>
+      {% endif %}
+      <div class="vgroup" role="group" aria-label="лупа">
+        <button class="lbtn" type="button" id="bLoupe" aria-pressed="false">🔍 Лупа</button>
+        <span class="zoombar" id="zoomBar" hidden>{% for z in (2, 3, 4, 6) %}<button class="zbtn" type="button" data-zoom="{{ z }}" aria-pressed="false" aria-label="увеличение в {{ z }} раза">×{{ z }}</button>{% endfor %}</span>
+      </div>
+    </div>
+    <div class="vwave" id="vWave" hidden>
+      <div class="vw-head">
+        <span class="vw-state"><span class="vw-dot" aria-hidden="true"></span><span id="vwLabel" aria-live="polite">запись</span></span>
+        <span class="vw-time" id="vwTime">0,0 с</span>
+        <button class="vw-play" id="vwPlay" type="button" hidden aria-label="прослушать запись">▶</button>
+      </div>
+      <canvas class="vw-canvas" id="vwCanvas" role="img" aria-label="волна записи голосового вопроса"></canvas>
+      <div class="vw-result" id="vwResult" aria-live="polite"></div>
+    </div>
+    <div class="vstat" id="vStat"></div>
+    <div class="chips" id="chips"></div>
+  </div>
+</div>
+<script type="application/json" id="regionsData">{{ row.regions|tojson }}</script>
+<script>
+(function () {
+  const R = JSON.parse(document.getElementById('regionsData').textContent);
+  const HIT_URL = {{ ('/runs/' ~ run_id ~ '/files/' ~ row.hit_png)|tojson }};
+  const STEP = 20;
+  const byId = {};
+  R.forEach(r => { byId[r.id] = r; });
+  const $ = id => document.getElementById(id);
+  const ov = $('atlasOv');
+  let W = 0, H = 0, hitIds = null, paintIds = null, hover = 0, selected = 0, touring = false;
+  const cache = {};
+  const voice = { tts: false, stt: false };
+  let sound = localStorage.getItem('dxaqc-sound') !== '0';
+
+  // ---------- карта зон
+  const hitImg = new Image();
+  hitImg.onload = () => {
+    W = hitImg.naturalWidth; H = hitImg.naturalHeight;
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const x = c.getContext('2d', { willReadFrequently: true });
+    x.drawImage(hitImg, 0, 0);
+    const d = x.getImageData(0, 0, W, H).data;
+    hitIds = new Uint8Array(W * H); paintIds = new Uint8Array(W * H);
+    for (let i = 0; i < W * H; i++) { hitIds[i] = Math.round(d[i * 4] / STEP); paintIds[i] = Math.round(d[i * 4 + 1] / STEP); }
+    ov.width = W; ov.height = H;
+  };
+  hitImg.src = HIT_URL;
+
+  // выключенные подписи не ловят указатель и не подсвечиваются: иначе зона срабатывала бы на пустом месте
+  function labelHidden(i) { return labelA && labelsOff() && labelA[i] === 1; }
+  function idAtPx(x, y) {
+    x = Math.floor(x); y = Math.floor(y);
+    if (!hitIds || x < 0 || y < 0 || x >= W || y >= H) return 0;
+    const i = y * W + x;
+    return labelHidden(i) ? 0 : hitIds[i];
+  }
+  function idAt(ev) {
+    if (!hitIds) return 0;
+    const b = ov.getBoundingClientRect();
+    return idAtPx((ev.clientX - b.left) * W / b.width, (ev.clientY - b.top) * H / b.height);
+  }
+  function rgb(hex) { return [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)); }
+  function layer(id) {
+    if (cache[id]) return cache[id];
+    const im = ov.getContext('2d').createImageData(W, H), d = im.data;
+    const [r, g, b] = rgb(byId[id].color);
+    const lit = i => paintIds[i] === id && !labelHidden(i);
+    const inside = i => i >= 0 && i < W * H && lit(i);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const i = y * W + x, p = i * 4;
+      if (lit(i)) {
+        const edge = x < 2 || x >= W - 2 || !inside(i - 2) || !inside(i + 2) || !inside(i - 2 * W) || !inside(i + 2 * W);
+        if (edge) { d[p] = 255; d[p + 1] = 226; d[p + 2] = 120; d[p + 3] = 255; }
+        else { d[p] = r; d[p + 1] = g; d[p + 2] = b; d[p + 3] = 90; }
+      } else { d[p + 3] = 125; }   // остальное притемняем, чтобы зона выделялась
+    }
+    return (cache[id] = im);
+  }
+  function draw(id) {
+    if (!W) return;
+    const ctx = ov.getContext('2d');
+    ctx.clearRect(0, 0, W, H);
+    if (id && byId[id]) ctx.putImageData(layer(id), 0, 0);
+  }
+  const ST = { ok: 'в норме', bad: 'нарушение', info: 'ориентир' };
+  function show(id) {
+    const r = byId[id];
+    $('apSw').style.background = r ? r.color : '#4a4f57';
+    $('apTitle').textContent = r ? r.title : 'Наведите на рисунок или коснитесь его';
+    $('apSub').textContent = r ? r.sub : 'зона подсветится, а сервис объяснит, что на ней и что он проверил';
+    $('apText').textContent = r ? r.text : '';
+    const st = $('apSt'); st.textContent = r ? ST[r.status] || '' : ''; st.className = r ? 'ap-st ' + r.status : '';
+    document.querySelectorAll('#chips .chip').forEach(c => c.classList.toggle('on', +c.dataset.id === id));
+  }
+  function refresh() { const id = hover || selected; draw(id); show(id); drawLoupe(); }
+  function select(id, speakIt) {
+    selected = id; hover = 0; refresh();
+    if (id && speakIt && sound) speak(byId[id].text);
+  }
+
+  ov.addEventListener('pointermove', ev => {
+    if (ev.pointerType !== 'mouse') return;
+    const id = idAt(ev);
+    ov.style.cursor = id ? 'pointer' : 'default';
+    if (id !== hover) { hover = id; refresh(); }
+  });
+  ov.addEventListener('pointerleave', ev => { if (ev.pointerType === 'mouse') { hover = 0; refresh(); } });
+  ov.addEventListener('click', ev => { stopTour(); select(idAt(ev), true); });
+
+  const chips = $('chips');
+  R.forEach(r => {
+    const b = document.createElement('button');
+    b.className = 'chip'; b.dataset.id = r.id; b.type = 'button';
+    const i = document.createElement('i'); i.style.background = r.color;
+    b.append(i, document.createTextNode(r.title));
+    // только клик: наведение на кнопку меняло высоту пояснения, кнопки съезжали под курсором и подсветка дрожала
+    b.addEventListener('click', () => { stopTour(); select(r.id, true); });
+    chips.append(b);
+  });
+
+  // ---------- слои: рисунок собирается на холсте из файлов слоёв; без них остаётся готовая картинка атласа
+  const LAYERS = {{ (row.layers or [])|tojson }};
+  const FILES = {{ ('/runs/' ~ run_id ~ '/files/')|tojson }};
+  const ORDER = ['frame', 'image', 'zones', 'artifacts', 'axis', 'labels'];
+  const stage = $('stage'), acv = $('atlasCv'), img = $('atlasImg'), lens = $('loupe');
+  const layerImgs = {};
+  let layersReady = false, labelA = null;
+  const store = {
+    get(k, def) { try { const v = localStorage.getItem(k); return v === null ? def : JSON.parse(v); } catch (e) { return def; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* приватный режим */ } },
+  };
+  const on = Object.assign({ image: true, zones: true, artifacts: true, axis: true, labels: true }, store.get('dxaqc-layers', {}));
+  function labelsOff() { return layersReady && on.labels === false; }
+
+  function layersDone() {
+    const f = layerImgs.frame && layerImgs.frame.im;
+    if (!f || !f.naturalWidth) return;
+    acv.width = f.naturalWidth; acv.height = f.naturalHeight;
+    if (layerImgs.labels) {
+      const c = document.createElement('canvas'); c.width = acv.width; c.height = acv.height;
+      const x = c.getContext('2d', { willReadFrequently: true });
+      x.drawImage(layerImgs.labels.im, 0, 0);
+      const d = x.getImageData(0, 0, c.width, c.height).data;
+      labelA = new Uint8Array(c.width * c.height);
+      for (let i = 0; i < labelA.length; i++) labelA[i] = d[i * 4 + 3] > 0 ? 1 : 0;
+    }
+    layersReady = true;
+    acv.hidden = false;
+    img.style.visibility = 'hidden';   // картинка остаётся в потоке и держит размер сцены
+    compose();
+  }
+  function compose() {
+    document.querySelectorAll('[data-layer]').forEach(b => b.setAttribute('aria-pressed', String(on[b.dataset.layer] !== false)));
+    if (!layersReady) return;
+    const x = acv.getContext('2d');
+    x.clearRect(0, 0, acv.width, acv.height);
+    ORDER.forEach(n => {
+      const l = layerImgs[n];
+      if (l && (n === 'frame' || on[n] !== false)) x.drawImage(l.im, l.x, l.y);
+    });
+    Object.keys(cache).forEach(k => delete cache[k]);
+    refresh();
+  }
+  if (LAYERS.some(l => l.name === 'frame')) {
+    let left = LAYERS.length, failed = false;
+    LAYERS.forEach(l => {
+      const im = new Image();
+      im.onload = () => { if (--left === 0 && !failed) layersDone(); };
+      im.onerror = () => { failed = true; };
+      im.src = FILES + l.file;
+      layerImgs[l.name] = { im, x: l.x, y: l.y };
+    });
+  }
+  document.querySelectorAll('[data-layer]').forEach(b => b.addEventListener('click', () => {
+    on[b.dataset.layer] = on[b.dataset.layer] === false;
+    store.set('dxaqc-layers', on);
+    compose();
+  }));
+  compose();
+
+  // ---------- лупа: увеличивает то, что сейчас на рисунке, вместе с подсветкой зоны
+  const ZOOMS = [2, 3, 4, 6];
+  const loupe = { on: false, zoom: ZOOMS.includes(store.get('dxaqc-zoom', 3)) ? store.get('dxaqc-zoom', 3) : 3,
+                  x: 0, y: 0, shown: false, touch: false };
+  function srcSize() { return layersReady ? [acv.width, acv.height] : [img.naturalWidth, img.naturalHeight]; }
+  function lensSize() { return stage.clientWidth < 520 ? 132 : 180; }
+  function blit(g, src, sx, sy, span, dw, sw, sh) {   // копия с обрезкой по краю: Safari не рисует источник за границей
+    const x0 = Math.max(0, sx), y0 = Math.max(0, sy), x1 = Math.min(sw, sx + span), y1 = Math.min(sh, sy + span);
+    if (x1 <= x0 || y1 <= y0) return;
+    const s = dw / span;
+    g.drawImage(src, x0, y0, x1 - x0, y1 - y0, (x0 - sx) * s, (y0 - sy) * s, (x1 - x0) * s, (y1 - y0) * s);
+  }
+  function drawLoupe() {
+    const [sw, sh] = srcSize();
+    if (!loupe.on || !loupe.shown || !sw) { lens.hidden = true; return; }
+    const b = stage.getBoundingClientRect(), size = lensSize(), dpr = Math.min(window.devicePixelRatio || 1, 3);
+    const k = sw / b.width, span = size / loupe.zoom * k;
+    const px = Math.round(size * dpr);
+    lens.hidden = false;
+    lens.style.width = lens.style.height = size + 'px';
+    if (lens.width !== px) lens.width = lens.height = px;
+    const cx = loupe.x / k, cy = loupe.y / k;
+    lens.style.left = (cx - size / 2) + 'px';
+    lens.style.top = (loupe.touch ? cy - size - 28 : cy - size / 2) + 'px';   // на телефоне линза над пальцем
+    const g = lens.getContext('2d');
+    g.clearRect(0, 0, px, px);
+    g.save();
+    g.beginPath(); g.arc(px / 2, px / 2, px / 2, 0, Math.PI * 2); g.clip();
+    g.fillStyle = '#121418'; g.fillRect(0, 0, px, px);
+    g.imageSmoothingEnabled = false;   // исходные пиксели снимка, без размытия
+    const sx = loupe.x - span / 2, sy = loupe.y - span / 2;
+    blit(g, layersReady ? acv : img, sx, sy, span, px, sw, sh);
+    if (W === sw && ov.width === W) blit(g, ov, sx, sy, span, px, sw, sh);
+    g.restore();
+    const m = px / 2, t = 7 * dpr;
+    g.strokeStyle = 'rgba(250,210,90,.85)'; g.lineWidth = Math.max(1, dpr);
+    g.beginPath(); g.moveTo(m - t, m); g.lineTo(m + t, m); g.moveTo(m, m - t); g.lineTo(m, m + t); g.stroke();
+  }
+  function lensAt(ev, touch) {
+    const [sw, sh] = srcSize(), b = stage.getBoundingClientRect();
+    if (!sw) return;
+    loupe.x = Math.max(0, Math.min(sw, (ev.clientX - b.left) * sw / b.width));
+    loupe.y = Math.max(0, Math.min(sh, (ev.clientY - b.top) * sh / b.height));
+    loupe.touch = touch; loupe.shown = true;
+    drawLoupe();
+  }
+  function hideLens() { loupe.shown = false; drawLoupe(); }
+  function setZoom(z) {
+    loupe.zoom = z; store.set('dxaqc-zoom', z);
+    document.querySelectorAll('[data-zoom]').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.zoom === z)));
+    drawLoupe();
+  }
+  function setLoupe(v) {
+    loupe.on = v;
+    $('bLoupe').setAttribute('aria-pressed', String(v));
+    $('zoomBar').hidden = !v;
+    stage.classList.toggle('loupe-on', v);
+    if (v && document.activeElement === stage && !loupe.shown) { const [sw, sh] = srcSize(); loupe.x = sw / 2; loupe.y = sh / 2; loupe.shown = true; }
+    if (!v) loupe.shown = false;
+    drawLoupe();
+  }
+  $('bLoupe').addEventListener('click', () => setLoupe(!loupe.on));
+  document.querySelectorAll('[data-zoom]').forEach(b => b.addEventListener('click', () => setZoom(+b.dataset.zoom)));
+  setZoom(loupe.zoom);
+  ov.addEventListener('pointermove', ev => {
+    if (loupe.on && (ev.pointerType === 'mouse' || loupe.touch && loupe.shown)) lensAt(ev, ev.pointerType !== 'mouse');
+  });
+  ov.addEventListener('pointerdown', ev => { if (loupe.on && ev.pointerType !== 'mouse') lensAt(ev, true); });
+  ['pointerup', 'pointercancel'].forEach(t => ov.addEventListener(t, ev => { if (loupe.on && ev.pointerType !== 'mouse') hideLens(); }));
+  ov.addEventListener('pointerleave', ev => { if (loupe.on && ev.pointerType === 'mouse') hideLens(); });
+  stage.addEventListener('keydown', ev => {
+    if (!loupe.on || ev.target !== stage) return;
+    const [sw, sh] = srcSize(), step = ev.shiftKey ? 40 : 10;
+    const mv = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[ev.key];
+    if (mv) {
+      if (!loupe.shown) { loupe.x = sw / 2; loupe.y = sh / 2; }
+      loupe.x = Math.max(0, Math.min(sw, loupe.x + mv[0])); loupe.y = Math.max(0, Math.min(sh, loupe.y + mv[1]));
+      loupe.touch = false; loupe.shown = true; drawLoupe();
+    } else if (ev.key === '+' || ev.key === '=') setZoom(ZOOMS[Math.min(ZOOMS.length - 1, ZOOMS.indexOf(loupe.zoom) + 1)]);
+    else if (ev.key === '-' || ev.key === '_') setZoom(ZOOMS[Math.max(0, ZOOMS.indexOf(loupe.zoom) - 1)]);
+    else if (ev.key === 'Escape') setLoupe(false);
+    else if (ev.key === 'Enter' && loupe.shown) { stopTour(); select(idAtPx(loupe.x * W / sw, loupe.y * H / sh), true); }
+    else return;
+    ev.preventDefault();
+  });
+  window.addEventListener('resize', drawLoupe);
+
+  // ---------- озвучка
+  const audio = new Audio();
+  let unlocked = false;
+  function unlock() {   // iOS разрешает звук только после жеста: проигрываем тишину при первом касании
+    if (unlocked) return; unlocked = true;
+    const n = 400, buf = new ArrayBuffer(44 + n), v = new DataView(buf);
+    const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+    w(0, 'RIFF'); v.setUint32(4, 36 + n, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true);
+    v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, 8000, true); v.setUint32(28, 8000, true);
+    v.setUint16(32, 1, true); v.setUint16(34, 8, true); w(36, 'data'); v.setUint32(40, n, true);
+    for (let i = 0; i < n; i++) v.setUint8(44 + i, 128);
+    audio.src = URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+    const p = audio.play(); if (p) p.catch(() => {});
+  }
+  document.addEventListener('click', unlock, { capture: true, once: true });
+  document.addEventListener('touchend', unlock, { capture: true, once: true });
+
+  function stat(t) { $('vStat').textContent = t; }
+  function stopSpeech() {
+    audio.onended = null; audio.onerror = null; audio.pause();
+    if ('speechSynthesis' in window) speechSynthesis.cancel();
+  }
+  function browserSpeak(text, done) {
+    if (!('speechSynthesis' in window)) { setTimeout(done, 2500); return; }
+    const u = new SpeechSynthesisUtterance(text); u.lang = 'ru-RU';
+    u.onend = done; u.onerror = done;
+    speechSynthesis.speak(u);
+  }
+  function speak(text, onend) {
+    stopSpeech();
+    let fired = false;
+    const done = () => { if (!fired) { fired = true; if (onend) onend(); } };
+    if (!voice.tts) { browserSpeak(text, done); return; }
+    audio.onended = done;
+    audio.onerror = () => { audio.onerror = null; audio.onended = null; browserSpeak(text, done); };
+    audio.src = '/api/tts?text=' + encodeURIComponent(text);
+    const p = audio.play();
+    if (p) p.catch(e => { if (e && e.name === 'NotAllowedError') { stat('браузер не дал включить звук, нажмите ещё раз'); stopTour(); } });
+  }
+
+  function setSound() {
+    const b = $('bSound');
+    b.setAttribute('aria-pressed', sound ? 'true' : 'false');
+    b.textContent = sound ? '🔊 Озвучка включена' : '🔇 Озвучка выключена';
+  }
+  $('bSound').addEventListener('click', () => {
+    sound = !sound; localStorage.setItem('dxaqc-sound', sound ? '1' : '0'); setSound();
+    if (!sound) { stopSpeech(); stopTour(); }
+  });
+  setSound();
+
+  function stopTour() { if (touring) { touring = false; stopSpeech(); } $('bTour').textContent = '▶ Рассказать по порядку'; }
+  function tour() {
+    if (touring) { stopTour(); return; }
+    touring = true; $('bTour').textContent = '■ Остановить рассказ';
+    let k = 0;
+    const next = () => {
+      if (!touring) return;
+      if (k >= R.length) { stopTour(); select(0); stat(''); return; }
+      const r = R[k++];
+      select(r.id, false);
+      stat(`зона ${k} из ${R.length}`);
+      speak(r.text, () => setTimeout(next, 350));
+    };
+    next();
+  }
+  $('bTour').addEventListener('click', tour);
+
+  // ---------- голосовые вопросы
+  const NUM = { 'один': 1, 'два': 2, 'три': 3, 'четыре': 4, 'пять': 5 };
+  function norm(s) {
+    let t = ' ' + (s || '').toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я0-9]+/g, ' ').trim() + ' ';
+    t = t.replace(/ (th|тх|тэ аш|тэ|т) ?12(?= )/g, ' th12');
+    t = t.replace(/ (l|л|эл) ?([1-5])(?= )/g, ' l$2');
+    t = t.replace(/ эл (один|два|три|четыре|пять)(?= )/g, (m, w) => ' l' + NUM[w]);
+    t = t.replace(/ ([1-5]) (?:й |ий |ый |ой |ом |ого |го |м )?(?=поясн|позв)/g, ' l$1 ');
+    return t;
+  }
+  function match(text) {
+    const t = norm(text);
+    let best = null, score = 0;
+    for (const r of R) {
+      let s = 0;
+      for (const w of r.words || []) if (t.includes(' ' + w)) s += r.key === 'verdict' ? 0.5 : 1;
+      if (s > score) { best = r; score = s; }
+    }
+    if (best) return { region: best };
+    // общие вопросы о снимке («что изображено на рисунке», «что это») — рассказ по всем зонам
+    if (/ (расскаж|все|обзор|экскурс|по порядку|подряд|изображ|рисун|картин|что это|что здесь|что на )/.test(t)) return { tour: true };
+    return {};
+  }
+  function showResult(text, hint) {
+    const box = $('vwResult');
+    box.replaceChildren();
+    if (text) { const q = document.createElement('span'); q.className = 'q'; q.textContent = `«${text}»`; box.append(q); }
+    if (hint) { const h = document.createElement('div'); h.className = 'hint'; h.textContent = hint; box.append(h); }
+  }
+  function answer(text) {
+    if (!text) { showResult(null, 'в записи не нашлось речи, попробуйте ещё раз'); return; }
+    const m = match(text);
+    if (m.region) { showResult(text, `→ зона «${m.region.title}»`); select(m.region.id, false); speak(m.region.text); }
+    else if (m.tour) { showResult(text, '→ рассказываю по всем зонам по порядку'); tour(); }
+    else {
+      showResult(text, '→ зона не найдена, подсказываю, что можно спросить');
+      const names = R.filter(r => r.key !== 'verdict').slice(0, 2).map(r => r.title).join(' или ');
+      speak(`Не удалось понять вопрос. Спросите, например: что не так со снимком? Или назовите зону: ${names}.`);
+    }
+  }
+
+  // ---------- волна записи, как в аудиоредакторе
+  const MAX_SEC = 8;
+  const wave = { peaks: [], sec: 0, max: 0, mode: 'idle', playhead: -1, playing: false, raf: 0 };
+  const cv = $('vwCanvas');
+  let actx = null, analyser = null, abuf = null, recStartedAt = 0;
+  const fmtSec = s => s.toFixed(1).replace('.', ',') + ' с';
+
+  function setWaveState(mode, label) {
+    wave.mode = mode;
+    const box = $('vWave');
+    box.hidden = false;
+    box.classList.remove('recording', 'recognizing', 'done', 'failed');
+    box.classList.add(mode);
+    $('vwLabel').textContent = label;
+  }
+  function sample() {   // минимум и максимум отсчётов за кадр анимации
+    if (!analyser) { wave.sec = (performance.now() - recStartedAt) / 1000; return; }
+    if (analyser.getFloatTimeDomainData) analyser.getFloatTimeDomainData(abuf);
+    else { const b8 = new Uint8Array(abuf.length); analyser.getByteTimeDomainData(b8); for (let i = 0; i < b8.length; i++) abuf[i] = (b8[i] - 128) / 128; }
+    let lo = 0, hi = 0;
+    for (let i = 0; i < abuf.length; i++) { const v = abuf[i]; if (v < lo) lo = v; if (v > hi) hi = v; }
+    wave.peaks.push([lo, hi]);
+    wave.max = Math.max(wave.max, hi, -lo);
+    wave.sec = (performance.now() - recStartedAt) / 1000;
+  }
+  function drawWave() {
+    const dpr = window.devicePixelRatio || 1, w = cv.clientWidth || 300, h = cv.clientHeight || 96;
+    if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+    const g = cv.getContext('2d');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, w, h);
+    const ruler = 14, top = 4, mid = top + (h - ruler - top) / 2, amp = (h - ruler - top) / 2 - 2;
+    const span = wave.mode === 'recording' ? MAX_SEC : Math.max(wave.sec, 0.5);  // при записи шкала на 8 секунд, потом на всю запись
+    const stepSec = span > 4 ? 1 : 0.5;
+    g.font = '10px system-ui, sans-serif';
+    g.lineWidth = 1;
+    for (let s = 0; s <= span + 1e-6; s += stepSec) {
+      const x = Math.round(s / span * (w - 1)) + 0.5;
+      g.strokeStyle = '#1d2128'; g.beginPath(); g.moveTo(x, top); g.lineTo(x, h - ruler); g.stroke();
+      if (Number.isInteger(s) && x < w - 18) { g.fillStyle = '#6b7380'; g.fillText(s + ' с', x + 3, h - 3); }
+    }
+    g.strokeStyle = '#2b313a'; g.beginPath(); g.moveTo(0, mid + 0.5); g.lineTo(w, mid + 0.5); g.stroke();
+    const n = wave.peaks.length, cols = Math.floor(w);
+    const used = wave.mode === 'recording' ? Math.min(cols, Math.round(Math.min(wave.sec, MAX_SEC) / span * cols)) : cols;
+    const gain = 1 / Math.max(0.12, wave.max);   // тихую речь растягиваем, тишина остаётся тонкой линией
+    const playX = wave.playhead >= 0 ? wave.playhead / span * w : -1;
+    for (let x = 0; x < used && n; x++) {
+      const i0 = Math.floor(x / used * n), i1 = Math.max(i0 + 1, Math.floor((x + 1) / used * n));
+      let lo = 0, hi = 0;
+      for (let i = i0; i < i1 && i < n; i++) { const p = wave.peaks[i]; if (p[0] < lo) lo = p[0]; if (p[1] > hi) hi = p[1]; }
+      const y1 = mid - Math.max(Math.min(hi * gain, 1), 0.02) * amp, y2 = mid - Math.min(Math.max(lo * gain, -1), -0.02) * amp;
+      g.fillStyle = wave.mode === 'recording' ? '#ef6b6b' : (playX >= 0 && x <= playX ? '#34d399' : '#5aa7ff');
+      g.fillRect(x, y1, 1, Math.max(1, y2 - y1));
+    }
+    const cursor = (x, color) => { g.strokeStyle = color; g.lineWidth = 2; g.beginPath(); g.moveTo(x, top); g.lineTo(x, h - ruler); g.stroke(); };
+    if (wave.mode === 'recording') cursor(used + 1, '#ef4444');
+    if (playX >= 0) cursor(playX, '#fad25a');
+    if (wave.mode === 'recognizing') {   // бегущий блик поверх волны, пока идёт распознавание
+      const t = (performance.now() % 1400) / 1400, bx = -0.3 * w + t * 1.6 * w;
+      const grad = g.createLinearGradient(bx - 70, 0, bx + 70, 0);
+      grad.addColorStop(0, 'rgba(90,167,255,0)'); grad.addColorStop(0.5, 'rgba(90,167,255,0.38)'); grad.addColorStop(1, 'rgba(90,167,255,0)');
+      g.fillStyle = grad;
+      g.fillRect(0, top, w, h - ruler - top);
+    }
+  }
+  function loop() {
+    if (wave.mode === 'recording') { sample(); $('vwTime').textContent = `${fmtSec(Math.min(wave.sec, MAX_SEC))} из ${MAX_SEC} с`; }
+    drawWave();
+    if (wave.mode === 'recording' || wave.mode === 'recognizing') wave.raf = requestAnimationFrame(loop);
+  }
+  function startLoop() { cancelAnimationFrame(wave.raf); wave.raf = requestAnimationFrame(loop); }
+  window.addEventListener('resize', () => { if (!$('vWave').hidden) drawWave(); });
+
+  const clipAudio = new Audio();
+  let clipUrl = '';
+  function stopClip() { clipAudio.pause(); wave.playing = false; wave.playhead = -1; $('vwPlay').textContent = '▶'; }
+  $('vwPlay').addEventListener('click', () => {
+    if (!clipUrl) return;
+    if (wave.playing) { stopClip(); drawWave(); return; }
+    stopSpeech();
+    clipAudio.src = clipUrl;
+    const p = clipAudio.play(); if (p) p.catch(() => {});
+    wave.playing = true; $('vwPlay').textContent = '⏸';
+    const tick = () => { if (!wave.playing) return; wave.playhead = Math.min(clipAudio.currentTime, wave.sec); drawWave(); requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+  });
+  clipAudio.onended = () => { stopClip(); drawWave(); };
+
+  let rec = null, recTimer = null;
+  async function mic() {
+    if (rec && rec.state === 'recording') { rec.stop(); return; }
+    if (!navigator.mediaDevices || !window.MediaRecorder) { stat('этот браузер не умеет записывать звук'); return; }
+    stopTour(); stopSpeech(); stopClip();
+    let stream;
+    try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+    catch (e) { stat('нет доступа к микрофону'); return; }
+    const mime = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg'].find(m => MediaRecorder.isTypeSupported(m)) || '';
+    const recorder = rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+    const chunks = [];
+    recorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+    wave.peaks = []; wave.sec = 0; wave.max = 0; wave.playhead = -1;
+    try {   // живая волна: анализатор на том же потоке микрофона
+      const AC = window.AudioContext || window.webkitAudioContext;
+      actx = new AC();
+      analyser = actx.createAnalyser();
+      analyser.fftSize = 1024;
+      abuf = new Float32Array(analyser.fftSize);
+      actx.createMediaStreamSource(stream).connect(analyser);
+      if (actx.state === 'suspended') actx.resume();
+    } catch (e) { analyser = null; }
+    recorder.onstop = async () => {
+      clearTimeout(recTimer);
+      stream.getTracks().forEach(t => t.stop());
+      if (actx) { actx.close().catch(() => {}); actx = null; analyser = null; }
+      $('bMic').classList.remove('rec'); $('bMic').textContent = '🎙 Спросить голосом';
+      const type = (recorder.mimeType || 'audio/webm').split(';')[0];
+      const clip = new Blob(chunks, { type });
+      if (clipUrl) URL.revokeObjectURL(clipUrl);
+      clipUrl = URL.createObjectURL(clip);
+      wave.sec = Math.min(wave.sec, MAX_SEC);
+      $('vwTime').textContent = fmtSec(wave.sec);
+      $('vwPlay').hidden = false;
+      setWaveState('recognizing', 'распознаётся…');
+      showResult(null, '');
+      startLoop();
+      const fd = new FormData();
+      fd.append('file', clip, 'question.' + (type.split('/')[1] || 'webm'));
+      try {
+        const r = await fetch('/api/stt', { method: 'POST', body: fd });
+        if (!r.ok) throw new Error('код ' + r.status);
+        const text = ((await r.json()).text || '').trim();
+        setWaveState(text ? 'done' : 'failed', text ? 'распознано' : 'речь не распознана');
+        answer(text);
+      } catch (e) {
+        setWaveState('failed', 'не удалось распознать');
+        showResult(null, 'ошибка распознавания: ' + e.message);
+      }
+      drawWave();
+    };
+    recorder.start();
+    recStartedAt = performance.now();
+    $('bMic').classList.add('rec'); $('bMic').textContent = '⏹ Закончить вопрос';
+    $('vwPlay').hidden = true;
+    showResult(null, 'говорите, запись до 8 секунд; нажмите «Закончить вопрос», когда договорите');
+    setWaveState('recording', 'запись');
+    stat('');
+    startLoop();
+    recTimer = setTimeout(() => { if (recorder.state === 'recording') recorder.stop(); }, MAX_SEC * 1000);
+  }
+  $('bMic').addEventListener('click', mic);
+
+  fetch('/api/voice').then(r => r.json()).then(v => {
+    Object.assign(voice, v);
+    $('bMic').hidden = !(v.stt && navigator.mediaDevices && window.MediaRecorder);
+  }).catch(() => {});
+
+  // для автопроверок и съёмки: какая зона под точкой экрана и что знает страница о карте
+  window.__atlas = {
+    match, norm,
+    layers: () => ({ ready: layersReady, on: Object.assign({}, on), names: Object.keys(layerImgs) }),
+    loupe: () => ({ on: loupe.on, shown: loupe.shown, zoom: loupe.zoom, x: loupe.x, y: loupe.y, hidden: lens.hidden }),
+    // уменьшенная копия того, что сейчас на рисунке: автопроверка сравнивает состояния слоёв
+    snapshot: (cols = 64) => {
+      const [sw, sh] = srcSize(), rows = Math.max(1, Math.round(cols * sh / sw)), c = document.createElement('canvas');
+      c.width = cols; c.height = rows;
+      const g = c.getContext('2d'); g.drawImage(layersReady ? acv : img, 0, 0, cols, rows);
+      return Array.from(g.getImageData(0, 0, cols, rows).data).filter((_, i) => i % 4 !== 3);
+    },
+    lensStats: () => {
+      if (lens.hidden || !lens.width) return { hidden: true };
+      const d = lens.getContext('2d').getImageData(0, 0, lens.width, lens.height).data;
+      let n = 0, s = 0, s2 = 0;
+      for (let i = 0; i < d.length; i += 16) { const v = (d[i] + d[i + 1] + d[i + 2]) / 3; n++; s += v; s2 += v * v; }
+      const mean = s / n;
+      return { hidden: false, mean, std: Math.sqrt(Math.max(0, s2 / n - mean * mean)), sum: s };
+    },
+    probe: (cx, cy) => {
+      const b = ov.getBoundingClientRect();
+      const x = Math.floor((cx - b.left) * W / b.width), y = Math.floor((cy - b.top) * H / b.height);
+      return { W, H, loaded: !!hitIds, rect: [b.left, b.top, b.width, b.height], x, y, id: idAt({ clientX: cx, clientY: cy }),
+               raw: hitIds && x >= 0 && y >= 0 && x < W && y < H ? hitIds[y * W + x] : null, selected, hover };
+    },
+  };
+})();
+</script>
+{% else %}
+<div class="card" style="background:#121418;border-color:#121418;padding:10px;margin-bottom:16px">
+  <img src="/runs/{{ run_id }}/files/{{ row.overlay_png }}" style="width:100%;border-radius:8px;display:block" alt="разметка снимка в стиле атласа">
+</div>
+{% endif %}
+
+<div class="grid" style="grid-template-columns:minmax(220px,0.7fr) 1.3fr;align-items:start">
+  <div class="card" style="background:#07090d;border-color:#07090d;padding:12px">
+    <img src="/runs/{{ run_id }}/files/{{ row.original_png }}" style="width:100%;border-radius:6px" alt="исходный снимок">
+    <div style="color:#9aa3ae;font-size:12px;margin-top:6px">исходный снимок без разметки</div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="faint">вердикт</div>
+      <div style="margin:6px 0 10px">
+        {% if row.quality_class == 0 %}<span class="pill ok" style="font-size:15px">качественное</span>
+        {% elif row.quality_class == 1 %}<span class="pill bad" style="font-size:15px">есть нарушение</span>
+        {% else %}<span class="pill na" style="font-size:15px">не оценено</span>{% endif %}
+      </div>
+      {% if row.violation_list %}
+      <ul style="margin:0;padding-left:18px">
+        {% for v in row.violation_list %}<li>{{ violation_ru.get(v, v) }}</li>{% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+
+    {% if row.explanations %}
+    <div class="card">
+      <div class="faint" style="margin-bottom:6px">как сервис это увидел</div>
+      <ul style="margin:0;padding-left:18px" class="muted">
+        {% for e in row.explanations %}<li>{{ e }}</li>{% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    {% if row.measurements %}
+    <div class="card">
+      <div class="faint" style="margin-bottom:6px">измерения</div>
+      <table style="border:none">
+        {% for k, v in row.measurements.items() %}<tr><td class="muted" style="padding:4px 0">{{ k }}</td><td style="padding:4px 0;text-align:right;font-weight:700">{{ v }}</td></tr>{% endfor %}
+      </table>
+    </div>
+    {% endif %}
+
+    <div class="card faint">
+      study_uid: {{ row.study_uid }}<br>image_uid: {{ row.image_uid }}<br>
+      статус: {{ row.processing_status }} · {{ '%.2f'|format(row.time_of_processing) }} с
+    </div>
+  </div>
+</div>
+{% if not preliminary %}{% include "_image_control.html" %}{% endif %}
+{% endblock %}

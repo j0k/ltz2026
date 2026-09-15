@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+{% block title %}Пульт анализа{% endblock %}
+{% block head %}
+<style>
+.ctl-kpis{grid-template-columns:repeat(4,minmax(0,1fr));margin:16px 0}
+.ctl-kpis .tv{font-size:26px;font-weight:800}
+.ctl-grid{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);align-items:start}
+.scroll-x{overflow-x:auto}
+progress{width:110px;height:10px;vertical-align:middle;accent-color:var(--accent)}
+.prm{margin:14px 0 4px}
+.prm label{font-weight:700;font-size:14px}
+.prm .row{display:flex;gap:10px;align-items:center;margin-top:4px}
+.prm input[type=range]{flex:1;accent-color:var(--accent)}
+.prm input[type=number]{width:86px;font:inherit;font-size:14px;padding:4px 6px;border:1px solid var(--line);border-radius:6px}
+.prm .hint{font-size:12.5px;color:var(--ink3);margin-top:2px}
+.prm.changed label::after{content:" · изменён";color:var(--warn);font-weight:600}
+.act{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.act form{margin:0}
+.btn.small{padding:5px 10px;font-size:13px}
+.btn.danger{background:var(--bad-soft);color:#b3302f}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+table.cal th, table.cal td{padding:6px 8px;font-size:13px}
+.up{color:#0c7a53}.down{color:#b3302f}
+select.src{max-width:100%;font:inherit;font-size:14px;padding:4px}
+@media (max-width:900px){
+  .ctl-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .ctl-grid{grid-template-columns:minmax(0,1fr)}
+  .bar{flex-wrap:wrap;gap:6px 16px}
+  .bar nav{margin-left:0;flex-wrap:wrap;gap:6px 16px}
+}
+</style>
+{% endblock %}
+{% block content %}
+<h1>Пульт анализа</h1>
+<p class="muted" style="max-width:820px">Очередь и прогоны, параметры анализа, перезапуск с другими порогами и правки снимков.
+{% if is_admin %}Вы вошли как админ {{ user.login }}.{% else %}Смотреть может любой; запускать, отменять, удалять и править снимки — только админ.
+<a href="/login?next=/control">Войти</a>.{% endif %}</p>
+{% if error %}<p class="note" role="alert">{{ error }}</p>{% endif %}
+
+<div class="grid ctl-kpis" id="kpis">
+  <div class="card"><div class="faint">в очереди</div><div class="tv" data-k="queued">{{ counts.queued }}</div></div>
+  <div class="card"><div class="faint">обрабатывается</div><div class="tv" data-k="running">{{ counts.running }}</div></div>
+  <div class="card"><div class="faint">готово</div><div class="tv" data-k="done" style="color:#0a7d0a">{{ counts.done }}</div></div>
+  <div class="card"><div class="faint">ошибки и отмены</div><div class="tv" data-k="failed" style="color:#b3302f">{{ counts.failed }}</div></div>
+</div>
+
+<div class="grid ctl-grid">
+<div class="card" id="queue">
+  <h2 style="margin-top:0">Очередь и прогоны</h2>
+  {% if runs %}
+  <div class="scroll-x">
+  <table>
+    <thead><tr><th>Прогон</th><th>Статус</th><th>Параметры</th><th>Снимков · нарушений</th><th>Действия</th></tr></thead>
+    <tbody>
+    {% for r in runs %}
+    <tr id="run-{{ r.id }}" data-id="{{ r.id }}" data-state="{{ r.state }}">
+      <td><a href="/runs/{{ r.id }}">{{ r.title or r.id }}</a>
+        <div class="faint">{{ r.created_str }}{% if r.parent %} · от <a href="/runs/{{ r.parent }}">{{ r.parent }}</a>{% endif %}{% if r.started_by %} · {{ r.started_by }}{% endif %}</div></td>
+      <td class="st">
+        {% if r.state == 'done' %}<span class="pill ok">готово</span>
+        {% elif r.state == 'error' %}<span class="pill bad" title="{{ r.error }}">ошибка</span>
+        {% elif r.state == 'cancelled' %}<span class="pill na">отменён</span>
+        {% elif r.state == 'running' %}<span class="pill warn">обработка</span>
+          <div style="margin-top:4px"><progress max="{{ r.progress.total if r.progress else 1 }}" value="{{ r.progress.done if r.progress else 0 }}"></progress>
+          <span class="faint prog">{% if r.progress %}{{ r.progress.done }} из {{ r.progress.total }}{% endif %}</span></div>
+        {% else %}<span class="pill warn">в очереди</span>{% endif %}
+      </td>
+      <td class="faint">{{ r.params_desc }}</td>
+      <td>{% if r.state == 'done' %}{{ r.summary.get('images', 0) }} · {{ r.summary.get('bad', 0) }}{% if r.summary.get('excluded') %}
+        <div class="faint">исключено {{ r.summary.get('excluded') }}</div>{% endif %}{% else %}—{% endif %}</td>
+      <td><div class="act">
+        {% if is_admin %}
+          {% if r.state in ['queued', 'running'] %}
+          <form method="post" action="/control/runs/{{ r.id }}/cancel"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn ghost small" type="submit">Отменить</button></form>
+          {% else %}
+          {% if r.state == 'done' %}<a class="btn ghost small" href="/control?source={{ r.id }}#params">Перезапустить…</a>{% endif %}
+          {% if r.id != example_id %}
+          <form method="post" action="/control/runs/{{ r.id }}/delete" data-confirm="Удалить прогон {{ r.id }}?"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn danger small" type="submit">Удалить</button></form>
+          {% endif %}
+          {% endif %}
+        {% else %}<span class="faint">—</span>{% endif %}
+      </div></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="muted">Прогонов пока нет. Запустите проверку на <a href="/">главной</a>.</p>
+  {% endif %}
+</div>
+
+<div class="card" id="params">
+  <h2 style="margin-top:0">Параметры анализа</h2>
+  {% if done_runs %}
+  <form method="post" id="rerun-form" action="/control/runs/{{ source }}/rerun">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label class="faint" for="source" style="display:block">Какой прогон перезапустить: новый прогон возьмёт его исходные файлы</label>
+    <select class="src" id="source" name="source">
+      {% for r in done_runs %}<option value="{{ r.id }}" {% if r.id == source %}selected{% endif %}>{{ r.title or r.id }} · {{ r.created_str }}</option>{% endfor %}
+    </select>
+    {% for s in spec %}
+    <div class="prm" data-name="{{ s.name }}" data-default="{{ s.default }}">
+      <label for="p-{{ s.name }}">{{ s.label }}{% if s.unit %}, {{ s.unit }}{% endif %}</label>
+      <div class="row">
+        <input type="range" min="{{ s.min }}" max="{{ s.max }}" step="{{ s.step }}" value="{{ values[s.name] }}" aria-label="{{ s.label }}">
+        <input id="p-{{ s.name }}" type="number" name="{{ s.name }}" min="{{ s.min }}" max="{{ s.max }}" step="{{ s.step }}" value="{{ values[s.name] }}">
+      </div>
+      <div class="hint">{{ s.help }} По умолчанию {{ s.default }}{% if not s.recompute %} · в пересчёте ниже не участвует{% endif %}.</div>
+    </div>
+    {% endfor %}
+    <div class="act" style="margin-top:14px">
+      <button class="btn" type="submit" {% if not is_admin %}disabled title="только админ"{% endif %}>Перезапустить с этими параметрами</button>
+      <button class="btn ghost" type="button" id="reset-params">Значения по умолчанию</button>
+    </div>
+  </form>
+  {% else %}
+  <p class="muted">Параметры можно менять для готовых прогонов, а их пока нет.</p>
+  {% endif %}
+
+  {% if calib %}
+  <h3 style="margin:22px 0 4px">Как изменятся метрики</h3>
+  <p class="faint">Пересчёт на <a href="/runs/{{ calib_run }}">прогоне обучающего набора</a> по сохранённым измерениям, без повторного анализа,
+    на уровне исследований позвоночника. Яркость «металла» и полосу столба так пересчитать нельзя — их эффект виден после перезапуска.</p>
+  <div class="scroll-x">
+  <table class="cal" id="calib-table">
+    <thead><tr><th>проверка</th><th>чувств.</th><th>специф.</th><th>F1</th><th>F1 по умолчанию</th></tr></thead>
+    <tbody></tbody>
+  </table>
+  </div>
+  <script type="application/json" id="calib-data">{{ calib|tojson }}</script>
+  {% endif %}
+</div>
+</div>
+
+<div class="card" id="journal" style="margin-top:16px">
+  <h2 style="margin-top:0">Правки снимков</h2>
+  {% if journal %}
+  <div class="scroll-x">
+  <table>
+    <thead><tr><th>Когда</th><th>Кто</th><th>Прогон</th><th>Снимок</th><th>Правка</th><th>Комментарий</th></tr></thead>
+    <tbody>
+    {% for o in journal %}
+    <tr>
+      <td>{{ o.at|msk }}</td><td>{{ o.by }}</td>
+      <td><a href="/runs/{{ o.run_id }}">{{ o.run_title }}</a></td>
+      <td><a href="/runs/{{ o.run_id }}/images/{{ o.key }}#control">{{ o.image }}</a></td>
+      <td>{% if o.excluded %}<span class="pill na">исключён</span>{% endif %}
+        {% if o.quality_class == 0 %}<span class="pill ok">качественное</span>{% elif o.quality_class == 1 %}<span class="pill bad">нарушение</span>
+        {% for v in o.violations or [] %}<div class="faint">{{ violation_ru.get(v, v) }}</div>{% endfor %}{% endif %}</td>
+      <td class="muted">{{ o.note or '' }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="muted">Правок пока нет. Исключить снимок или поправить вердикт можно в карточке снимка, в блоке «Управление снимком».</p>
+  {% endif %}
+</div>
+
+<script>
+(function () {
+  // подтверждение удаления
+  document.querySelectorAll('form[data-confirm]').forEach(f => f.addEventListener('submit', e => { if (!confirm(f.dataset.confirm)) e.preventDefault(); }));
+
+  // параметры: ползунок и поле синхронны, изменённые подсвечены, форма перезапуска смотрит на выбранный прогон
+  const form = document.getElementById('rerun-form');
+  const values = () => {
+    const v = {};
+    document.querySelectorAll('.prm').forEach(p => { v[p.dataset.name] = parseFloat(p.querySelector('input[type=number]').value); });
+    return v;
+  };
+  document.querySelectorAll('.prm').forEach(p => {
+    const range = p.querySelector('input[type=range]'), num = p.querySelector('input[type=number]');
+    const mark = () => { p.classList.toggle('changed', parseFloat(num.value) !== parseFloat(p.dataset.default)); recalc(); };
+    range.addEventListener('input', () => { num.value = range.value; mark(); });
+    num.addEventListener('input', () => { range.value = num.value; mark(); });
+    p.classList.toggle('changed', parseFloat(num.value) !== parseFloat(p.dataset.default));
+  });
+  const reset = document.getElementById('reset-params');
+  if (reset) reset.addEventListener('click', () => {
+    document.querySelectorAll('.prm').forEach(p => {
+      p.querySelector('input[type=number]').value = p.dataset.default;
+      p.querySelector('input[type=range]').value = p.dataset.default;
+      p.classList.remove('changed');
+    });
+    recalc();
+  });
+  const src = document.getElementById('source');
+  if (src && form) src.addEventListener('change', () => { form.action = '/control/runs/' + src.value + '/rerun'; });
+
+  // пересчёт метрик по сохранённым измерениям обучающего набора — те же правила, что в анализе
+  const calEl = document.getElementById('calib-data');
+  const CAL = calEl ? JSON.parse(calEl.textContent) : null;
+  const DEF = {{ defaults|tojson }};
+  function evaluate(p) {
+    const st = {};
+    CAL.forEach(([s, ang, il, bp, types, bad]) => {
+      const o = st[s] = st[s] || {ang: 0, il: Infinity, bp: 0, types, bad};
+      o.ang = Math.max(o.ang, ang); o.il = Math.min(o.il, il); o.bp = Math.max(o.bp, bp);
+    });
+    const S = Object.values(st);
+    const conf = (pred, truth) => {
+      let tp = 0, fp = 0, fn = 0, tn = 0;
+      S.forEach(o => { const a = pred(o), b = truth(o); if (a && b) tp++; else if (a) fp++; else if (b) fn++; else tn++; });
+      const se = tp + fn ? tp / (tp + fn) : null, sp = tn + fp ? tn / (tn + fp) : null, pr = tp + fp ? tp / (tp + fp) : null;
+      return {se, sp, f1: se && pr ? 2 * se * pr / (se + pr) : 0};
+    };
+    const ax = o => o.ang > p.axis_limit_deg, cov = o => o.il < p.iliac_min_brightness, art = o => o.bp > p.artifact_min_pixels;
+    return [['итоговый вердикт', conf(o => ax(o) || cov(o) || art(o), o => o.bad === 1)],
+            ['охват', conf(cov, o => o.types.includes('coverage'))],
+            ['наклон оси', conf(ax, o => o.types.includes('axis_tilt'))],
+            ['посторонние предметы', conf(art, o => o.types.includes('artifact'))]];
+  }
+  const f = v => v === null ? '—' : v.toFixed(2);
+  function recalc() {
+    if (!CAL) return;
+    const now = evaluate(values()), base = evaluate(DEF);
+    const tb = document.querySelector('#calib-table tbody');
+    tb.replaceChildren();
+    now.forEach(([name, m], i) => {
+      const tr = document.createElement('tr');
+      const d = m.f1 - base[i][1].f1;
+      const cells = [name, f(m.se), f(m.sp), f(m.f1), f(base[i][1].f1)];
+      cells.forEach((c, j) => { const td = document.createElement('td'); td.textContent = c; tr.append(td); });
+      if (Math.abs(d) >= 0.005) {
+        const s = document.createElement('span'); s.className = d > 0 ? 'up' : 'down';
+        s.textContent = (d > 0 ? ' ▲ +' : ' ▼ ') + d.toFixed(2);
+        tr.children[3].append(s);
+      }
+      tr.dataset.check = name;
+      tb.append(tr);
+    });
+  }
+  recalc();
+
+  // очередь: пока что-то в работе, обновляем прогресс и счётчики каждые 2 секунды
+  const active = () => [...document.querySelectorAll('#queue tr[data-state]')].some(tr => ['queued', 'running'].includes(tr.dataset.state));
+  if (!active()) return;
+  async function poll() {
+    try {
+      const q = await (await fetch('/api/control/queue')).json();
+      for (const k in q.counts) { const el = document.querySelector(`#kpis [data-k="${k}"]`); if (el) el.textContent = q.counts[k]; }
+      for (const r of q.runs) {
+        const tr = document.getElementById('run-' + r.id);
+        if (!tr) continue;
+        if (tr.dataset.state !== r.state) { location.reload(); return; }
+        if (r.progress) {
+          const pr = tr.querySelector('progress'), t = tr.querySelector('.prog');
+          if (pr) { pr.max = r.progress.total || 1; pr.value = r.progress.done; }
+          if (t) t.textContent = `${r.progress.done} из ${r.progress.total}`;
+        }
+      }
+    } catch (e) { /* сеть моргнула */ }
+    setTimeout(poll, 2000);
+  }
+  setTimeout(poll, 2000);
+})();
+</script>
+{% endblock %}

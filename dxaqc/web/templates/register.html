@@ -1,0 +1,17 @@
+{% extends "doc.html" %}
+{% block title %}Регистрация{% endblock %}
+{% block doc %}
+<h1>Регистрация</h1>
+<p class="muted small">После регистрации вы сразу входите. Доступ к вопросам Claude выдают админы — Юрий или Алексей.</p>
+{% if error %}<p class="err" role="alert">{{ error }}</p>{% endif %}
+<form class="stack" method="post" action="/register">
+  <label for="login">Логин <span class="muted">· 3–32 символа: латиница, цифры, точка, дефис, подчёркивание</span></label>
+  <input id="login" type="text" name="login" value="{{ login }}" autocomplete="username" pattern="[A-Za-z0-9_.\-]{3,32}" required autofocus>
+  <label for="password">Пароль <span class="muted">· не короче 10 символов</span></label>
+  <input id="password" type="password" name="password" autocomplete="new-password" minlength="10" required>
+  <label for="password2">Пароль ещё раз</label>
+  <input id="password2" type="password" name="password2" autocomplete="new-password" minlength="10" required>
+  <p style="margin-top:16px"><button class="go" type="submit">зарегистрироваться →</button></p>
+</form>
+<p class="muted small">Уже есть учётная запись? <a href="/login">Войдите</a>.</p>
+{% endblock %}

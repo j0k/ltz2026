@@ -1,0 +1,54 @@
+{
+  "scenes": 150,
+  "recall_bins": [
+    {
+      "lo": 0,
+      "hi": 30,
+      "hit": 44,
+      "total": 44
+    },
+    {
+      "lo": 30,
+      "hi": 60,
+      "hit": 48,
+      "total": 49
+    },
+    {
+      "lo": 60,
+      "hi": 90,
+      "hit": 50,
+      "total": 52
+    },
+    {
+      "lo": 90,
+      "hi": 120,
+      "hit": 44,
+      "total": 48
+    }
+  ],
+  "recall_kinds": {
+    "crate": {
+      "hit": 71,
+      "total": 76
+    },
+    "person": {
+      "hit": 88,
+      "total": 88
+    },
+    "pipe": {
+      "hit": 27,
+      "total": 29
+    }
+  },
+  "recall_60": 0.989247311827957,
+  "recall_all": 0.9637305699481865,
+  "false_alarms": 0,
+  "false_alarms_per_1000": 0.0,
+  "bags": 76,
+  "bags_ignored": 76,
+  "latency_ms_median": 103.3805946353823,
+  "latency_ms_p95": 114.80877709109335,
+  "points_per_scan": 50016,
+  "beams": 96,
+  "wall_time_s": 69.7598090171814
+}

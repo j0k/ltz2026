@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}DXA QC{% endblock %} · ЛЦТ 2026</title>
+{# превью ссылок в Telegram и мессенджерах: страницы задают og_title, og_description и og_image, остальное по умолчанию #}
+{% set og_desc = og_description or 'Сервис контроля качества денситометрии DXA: область, вердикт и причина брака по каждому снимку, разметка в стиле анатомического атласа. ЛЦТ 2026, задача 04.' %}
+<meta name="description" content="{{ og_desc }}">
+<meta property="og:site_name" content="DXA QC · ЛЦТ 2026">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{ og_title or (self.title()|trim ~ ' · DXA QC') }}">
+<meta property="og:description" content="{{ og_desc }}">
+{% if request is defined %}<meta property="og:url" content="{{ public_url }}{{ request.url.path }}">{% endif %}
+<meta property="og:image" content="{{ public_url }}{{ og_image or '/og.jpg' }}">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<style>
+:root{
+  --bg:#f7f6f3; --card:#fff; --ink:#0b0b0b; --ink2:#52514e; --ink3:#8a8983; --line:#e6e4df;
+  --accent:#2a78d6; --accent-soft:#eaf2fc; --ok:#1baf7a; --ok-soft:#e5f6ef; --bad:#e34948; --bad-soft:#fdeceb;
+  --warn:#c98500; --warn-soft:#fdf4e0; --radius:12px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,"Segoe UI",Roboto,"Noto Sans",sans-serif}
+a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}
+header{background:var(--card);border-bottom:1px solid var(--line)}
+.bar{max-width:1180px;margin:0 auto;padding:14px 20px;display:flex;align-items:center;gap:18px}
+.logo{font-weight:800;letter-spacing:.02em}
+.logo small{font-weight:500;color:var(--ink3);margin-left:8px}
+.bar nav{margin-left:auto;display:flex;gap:18px;font-size:14px}
+main{max-width:1180px;margin:0 auto;padding:26px 20px 60px}
+h1{font-size:28px;margin:0 0 6px} h2{font-size:18px;margin:28px 0 12px}
+.muted{color:var(--ink2)} .faint{color:var(--ink3);font-size:13px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px}
+.grid{display:grid;gap:16px}
+table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle;font-size:14px}
+th{background:#faf9f7;color:var(--ink3);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.03em}
+tr:last-child td{border-bottom:none}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.pill.ok{background:var(--ok-soft);color:#0c7a53} .pill.bad{background:var(--bad-soft);color:#b3302f}
+.pill.na{background:#efeeea;color:var(--ink2)} .pill.warn{background:var(--warn-soft);color:#8a5b00}
+.btn{display:inline-block;background:var(--accent);color:#fff;border:0;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer;font-size:14px}
+.btn.ghost{background:var(--accent-soft);color:var(--accent)}
+.thumb{width:84px;height:84px;object-fit:cover;background:#000;border-radius:8px;display:block}
+.note{background:var(--warn-soft);border:1px solid #f1dfb5;border-radius:10px;padding:10px 14px;color:#6b4a00;font-size:14px}
+footer{max-width:1180px;margin:0 auto;padding:0 20px 30px;color:var(--ink3);font-size:12px}
+@media (max-width:760px){
+  /* на телефоне шапка переносится, а не растягивает страницу вбок */
+  .bar{flex-wrap:wrap;gap:6px 16px}
+  .logo small{display:inline-block;margin-left:6px}
+  .bar nav{margin-left:0;flex-wrap:wrap;gap:6px 16px}
+  h1{font-size:24px}
+}
+</style>
+{% block head %}{% endblock %}
+</head>
+<body>
+<header><div class="bar">
+  <a class="logo" href="/">DXA QC<small>контроль качества денситометрии</small></a>
+  {% set me = request.state.user if request is defined and request.state.user is defined else None %}
+  <nav><a href="/">Прогоны</a><a href="/control">Пульт</a><a href="/tz/">Доки</a><a href="/ask">Спросить Claude</a>{% if me and me.is_admin %}<a href="/admin">Админка</a>{% endif %}<a href="/docs">API</a><a href="{{ trac_url }}">Трекер</a>{% if me %}<a href="/account">{{ me.login }}</a>{% else %}<a href="/login">Войти</a>{% endif %}</nav>
+</div></header>
+{% block fullbleed %}{% endblock %}
+<main>{% block content %}{% endblock %}</main>
+<footer>ЛЦТ 2026 · задача Департамента здравоохранения · команда «Квантовый Скачок» · версия {{ version }} · только обезличенные данные организатора</footer>
+</body>
+</html>

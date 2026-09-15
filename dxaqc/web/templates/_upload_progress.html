@@ -1,0 +1,63 @@
+{# Прогресс отправки файлов на главной: полоса в байтах и процентах, затем переход на живую страницу прогона. Без JS форма работает как обычно. #}
+<style>
+.up-progress{margin:10px 8px 4px;font-size:13px;line-height:18px}
+.up-progress[hidden]{display:none}
+.up-row{display:flex;justify-content:space-between;gap:12px;font-weight:650;color:var(--bio-ink,#0b0b0b)}
+.up-pct{font-variant-numeric:tabular-nums}
+.up-track{height:8px;border-radius:999px;background:#e8edf3;overflow:hidden;margin:6px 0 4px}
+.up-fill{height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,#2563eb,#14b8a6);transition:width .2s ease}
+.up-sub{color:var(--bio-ink3,#8a8983);font-variant-numeric:tabular-nums}
+.up-progress.fail .up-fill{background:#d03b3b}
+@media (prefers-reduced-motion:reduce){.up-fill{transition:none}}
+</style>
+<script>
+(function () {
+  const form = document.querySelector('form.upload');
+  if (!form || !window.XMLHttpRequest || !window.FormData) return;
+  const input = form.querySelector('input[type=file]');
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; };
+  const box = el('div', 'up-progress');
+  box.hidden = true;
+  box.setAttribute('role', 'status');
+  box.setAttribute('aria-live', 'polite');
+  const label = el('span', 'up-label', 'Отправляем файлы…'), pct = el('span', 'up-pct', '0%');
+  const row = el('div', 'up-row'); row.append(label, pct);
+  const fill = el('div', 'up-fill'), track = el('div', 'up-track'); track.append(fill);
+  const sub = el('div', 'up-sub');
+  box.append(row, track, sub);
+  form.append(box);
+  const size = b => b >= 1048576 ? (b / 1048576).toFixed(1).replace('.', ',') + ' МБ' : Math.max(1, Math.round(b / 1024)) + ' КБ';
+
+  form.addEventListener('submit', e => {
+    if (e.defaultPrevented || !input || !input.files || !input.files.length) return;
+    e.preventDefault();
+    const btn = form.querySelector('button[type=submit]');
+    if (btn) btn.disabled = true;
+    box.hidden = false;
+    box.classList.remove('fail');
+    const started = Date.now();
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', form.action);
+    xhr.upload.onprogress = ev => {
+      if (!ev.lengthComputable) return;
+      const p = Math.round(ev.loaded / ev.total * 100);
+      pct.textContent = p + '%';
+      fill.style.width = p + '%';
+      const speed = ev.loaded / Math.max((Date.now() - started) / 1000, 0.1);
+      sub.textContent = `${size(ev.loaded)} из ${size(ev.total)} · ${size(speed)}/с`;
+    };
+    xhr.upload.onload = () => { label.textContent = 'Файлы отправлены, создаём прогон…'; pct.textContent = '100%'; fill.style.width = '100%'; };
+    const fail = msg => {
+      box.classList.add('fail');
+      label.textContent = msg;
+      if (btn) btn.disabled = false;
+    };
+    xhr.onload = () => {
+      if (xhr.status < 400 && xhr.responseURL) window.location.href = xhr.responseURL;  // страница прогона после перенаправления
+      else fail('Не удалось отправить: ответ ' + xhr.status);
+    };
+    xhr.onerror = () => fail('Связь оборвалась, попробуйте ещё раз');
+    xhr.send(new FormData(form));
+  });
+})();
+</script>

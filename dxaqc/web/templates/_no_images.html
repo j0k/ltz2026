@@ -1,0 +1,18 @@
+{# Прогон без единого подходящего снимка: что сервис принимает, почему отклонены файлы и что можно сделать. #}
+<section class="card noimg" id="no-images" role="status">
+  <h2>Ни одного подходящего снимка</h2>
+  <p>Сервис проверяет DICOM-файлы денситометрии DXA: поясничный отдел в прямой проекции, правое и левое бедро.
+    Обычный рентген, КТ, МРТ, фотографии и картинки JPG или PNG он не оценивает.</p>
+  {% set rejected = man.rows|selectattr('processing_status', 'ne', 'Success')|list %}
+  {% if rejected %}
+  <ul class="noimg-list">
+    {% for r in rejected %}
+    <li><b>{{ r.path_to_study }}</b><div class="muted">{{ (r.explanations or ['не прочитан'])|first }}</div>{% include "_request_actions.html" %}</li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="muted">В загрузке не нашлось файлов со снимками.</p>
+  {% endif %}
+  <p class="muted" style="margin-bottom:0">Как выглядит результат на подходящих снимках: <a href="/#check">проверить на наборах организатора</a>
+    или открыть <a href="/runs/example">пример</a>.</p>
+</section>

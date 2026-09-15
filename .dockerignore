@@ -1,0 +1,15 @@
+.git
+.venv
+data
+films
+results
+web
+tunnelguard
+scripts
+*.zip
+*.pdf
+*.png
+*.dcm
+**/__pycache__
+infra/trac
+models

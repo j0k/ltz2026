@@ -1,0 +1,64 @@
+{% extends "doc.html" %}
+{% block title %}Спросить Claude{% endblock %}
+{% block doc %}
+<h1>Спросить Claude</h1>
+<p>Claude отвечает по рабочей папке проекта: это копия кода стенда, скриптов, тестов и ТЗ, медицинских данных в ней нет.
+Вопрос и прочитанные файлы уходят в Claude, то есть во внешний сервис.</p>
+<p class="muted small">По умолчанию Claude только читает файлы. Если нужно что-то запустить или изменить, отметьте «нужно исполнение»:
+вопрос дождётся одобрения админа и выполнится с полными правами в рабочей папке. Каждый вопрос — новый разговор, прошлые вопросы Claude не помнит.</p>
+
+{% if not user.can_ask %}
+<p class="err" role="alert">Доступ к вопросам ещё не выдан. Его выдают админы — Юрий или Алексей.</p>
+{% else %}
+<form class="stack" method="post" action="/ask">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <label for="text">Вопрос <span class="muted">· сегодня {{ asked_today }} из {{ user.daily_limit }}</span></label>
+  <textarea id="text" name="text" maxlength="4000" required>{{ draft }}</textarea>
+  <label class="inline"><input type="checkbox" name="want_exec" value="1">нужно исполнение: запуск команд или правка файлов, после одобрения админа</label>
+  {% if error %}<p class="err" role="alert">{{ error }}</p>{% endif %}
+  {% if not broker %}<p class="muted small">Исполнитель вопросов на этом стенде не подключён: вопрос завершится ошибкой.</p>{% endif %}
+  <p style="margin-top:14px"><button class="go" type="submit">спросить →</button></p>
+</form>
+{% endif %}
+
+<h2>Мои вопросы</h2>
+{% if questions %}
+<ul class="qlist">
+  {% for q in questions %}
+  <li id="q{{ q.id }}" data-id="{{ q.id }}" data-status="{{ q.status }}">
+    <div class="qmeta"><time>{{ q.created|msk }}</time> · {{ 'исполнение' if q.mode == 'full' else 'только чтение' }} ·
+      <span class="st-{{ q.status }}">{{ status_ru[q.status] }}</span>{% if q.finished and q.started %} · {{ '%.0f'|format(q.finished - q.started) }} с{% endif %}</div>
+    <div class="qtext">{{ q.text }}</div>
+    {% if q.status == 'done' %}<div class="answer">{{ q.answer|md|safe }}</div>{% endif %}
+    {% if q.status == 'error' %}<p class="err small">{{ q.error }}</p>{% endif %}
+    {% if q.mode == 'read' and q.status in ['done', 'error'] and user.can_ask %}
+    <form method="post" action="/ask/{{ q.id }}/exec">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="go small" type="submit">запросить исполнение у админа →</button>
+    </form>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="muted">Вопросов пока нет.</p>
+{% endif %}
+
+<script>
+(function () {
+  // пока вопрос в работе, раз в 4 секунды спрашиваем статус и обновляем страницу, когда он сменится
+  const pending = [...document.querySelectorAll('.qlist li')].filter(li => ['queued', 'running', 'awaiting_approval'].includes(li.dataset.status));
+  if (!pending.length) return;
+  async function tick() {
+    for (const li of pending) {
+      try {
+        const r = await fetch('/api/ask/' + li.dataset.id, {credentials: 'same-origin'});
+        if (r.ok && (await r.json()).status !== li.dataset.status) { location.reload(); return; }
+      } catch (e) { /* сеть моргнула, попробуем позже */ }
+    }
+    setTimeout(tick, 4000);
+  }
+  setTimeout(tick, 4000);
+})();
+</script>
+{% endblock %}

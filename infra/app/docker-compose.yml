@@ -1,0 +1,50 @@
+# Стенд сервиса на https://ltz2026.juri-konoplev.pro/ (nginx с паролем команды проксирует на 127.0.0.1:8098).
+services:
+  ltz-app:
+    build:
+      context: ../..
+      dockerfile: infra/app/Dockerfile
+    image: ltz2026-app:latest
+    container_name: ltz_app
+    restart: unless-stopped
+    environment:
+      DXAQC_SEED: "/seed/Для теста.zip"
+      DXAQC_TRAC_URL: "https://ltz2026.juri-konoplev.pro/trac/"
+      DXAQC_DATASETS: "/datasets"
+      # вопросы к Claude: брокер tools/ask_broker.py на хосте слушает шлюз сети этого контейнера
+      DXAQC_ASK_URL: "http://172.27.0.1:8099"
+      DXAQC_ASK_TOKEN_FILE: "/run/ask/broker_token"
+      DXAQC_TG_TOKEN_FILE: "/run/tg/bot_token"
+      # владелец команды в Telegram может подключать бота к группам; Trac для тикетов #NN — изнутри сети, снаружи он за паролем
+      DXAQC_TG_OWNERS: "5362969749"
+      DXAQC_TG_TRAC: "http://ltz_trac:8000/trac"
+    networks:
+      - default
+      - trac
+    volumes:
+      - ltz_app_data:/data
+      - "/home/jk/exp/LTZ2026/Для теста.zip:/seed/Для теста.zip:ro"
+      # наборы организатора для выбора на стенде: тестовый фрагмент и обучающий набор с разметкой
+      - "/home/jk/exp/LTZ2026/data/Для теста:/datasets/test:ro"
+      - "/home/jk/exp/LTZ2026/data/train/Исследования:/datasets/train:ro"
+      - "/home/jk/exp/LTZ2026/data/labels_clean.csv:/datasets/train_labels.csv:ro"
+      # документы для /tz/: собирает scripts/tz_docs.py, в образ и git не попадают
+      - "/home/jk/exp/LTZ2026/docs/tz:/tz:ro"
+      # копия токена брокера, доступная только пользователю контейнера (uid 10001), см. infra/app/README.md
+      - "/etc/ltz2026/ask_token:/run/ask/broker_token:ro"
+      # токен Telegram-бота @QuJump_bot, тоже только для uid 10001
+      - "/etc/ltz2026/tg_bot_token:/run/tg/bot_token:ro"
+    ports:
+      - "127.0.0.1:8098:8000"
+    # Whisper small и Piper добавляют до 700 МБ, Whisper выгружается после простоя
+    mem_limit: 1500m
+    cpus: 1.5
+
+volumes:
+  ltz_app_data:
+
+networks:
+  # сеть контейнера Trac (infra/trac): бот читает тикеты без пароля nginx
+  trac:
+    external: true
+    name: trac_default

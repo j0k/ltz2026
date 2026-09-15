@@ -1,0 +1,101 @@
+/* Mind map ТЗ: /tz/mindmap.html. Цвета веток — категориальная палитра стенда в фиксированном порядке,
+   статусы — отдельная статусная палитра и всегда со значком и подписью. */
+.mm-page{--br0:#2a78d6;--br1:#eb6834;--br2:#1baf7a;--br3:#eda100;--br4:#e87ba4;--br5:#008300;--br6:#4a3aa7;--br7:#e34948;
+  --s-done:#0ca30c;--s-partial:#fab219;--s-todo:#d03b3b;--s-info:#8a8983}
+.mm-lead{max-width:860px}
+.visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.mm-tiles{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin:14px 0 12px}
+.mm-tile{display:inline-flex;align-items:center;gap:9px;font:inherit;font-size:14.5px;padding:8px 14px;border-radius:12px;cursor:pointer;
+  background:var(--card);border:1px solid var(--line);color:var(--ink)}
+.mm-tile b{font-size:18px}
+.mm-tile[aria-pressed=true]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.mm-total{font-size:13px}
+.mm-ic{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;font-size:11.5px;font-weight:800;color:#fff;flex:none;line-height:1}
+.mm-ic.s-done{background:var(--s-done)}
+.mm-ic.s-partial{background:var(--s-partial);color:#3b2a00}
+.mm-ic.s-todo{background:var(--s-todo)}
+.mm-ic.s-info{background:#e6e4df;color:#52514e;font-style:italic}
+.mm-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 10px}
+.mm-search input{font:inherit;font-size:14px;padding:7px 11px;border:1px solid var(--line);border-radius:9px;background:#fff;width:260px;max-width:60vw}
+.mm-search input:focus{outline:2px solid var(--accent);outline-offset:1px}
+.mm-found{font-size:13px;min-width:70px}
+.mm-sep{flex:1}
+.mm-btn{font:inherit;font-size:13.5px;font-weight:600;padding:6px 12px;border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+.mm-btn:hover{border-color:#cfccc4}
+.mm-btn[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:#fff}
+.mm-icon{width:34px;padding:6px 0;font-size:16px}
+.mm-btn:focus-visible, .mm-tile:focus-visible, .mm-node button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.mm-body{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:14px;align-items:start}
+.mm-viewport{position:relative;height:min(74vh,760px);min-height:420px;overflow:hidden;border-radius:16px;border:1px solid var(--line);
+  background:#fbfaf8;background-image:radial-gradient(rgba(11,11,11,.07) 1px,transparent 1.2px);background-size:22px 22px;
+  cursor:grab;touch-action:none;user-select:none}
+.mm-viewport.is-panning{cursor:grabbing}
+.mm-viewport:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mm-world{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
+.mm-links{position:absolute;left:0;top:0;overflow:visible;pointer-events:none}
+.mm-links path{fill:none;stroke-width:1.8;stroke-linecap:round;opacity:.55;transition:opacity .2s}
+.mm-links path.is-dim{opacity:.12}
+.mm-hint{position:absolute;right:12px;bottom:8px;margin:0;font-size:12px;pointer-events:none}
+
+.mm-node{position:absolute;display:flex;align-items:stretch;max-width:250px;border-radius:12px;background:#fff;
+  border:1px solid rgba(11,11,11,.1);box-shadow:0 1px 2px rgba(11,11,11,.05),0 6px 18px -12px rgba(11,11,11,.25);
+  transition:left .32s ease,top .32s ease,opacity .2s ease,box-shadow .2s ease;overflow:hidden}
+.mm-node::before{content:"";width:4px;flex:none;background:var(--b,#8a8983)}
+.mm-node .mm-main{display:flex;align-items:flex-start;gap:8px;min-width:0;padding:8px 10px 8px 9px;font:inherit;font-size:13.5px;line-height:1.3;
+  text-align:left;background:none;border:0;color:var(--ink);cursor:pointer}
+.mm-node .mm-main .mm-ic{width:17px;height:17px;font-size:10px;margin-top:1px}
+.mm-node .mm-t{min-width:0}
+.mm-node .mm-p{display:block;margin-top:2px;font-size:11.5px;color:var(--ink3)}
+.mm-node .mm-tog{flex:none;align-self:stretch;min-width:30px;padding:0 8px;font:inherit;font-size:13px;font-weight:700;color:var(--ink2);
+  background:rgba(11,11,11,.035);border:0;border-left:1px solid rgba(11,11,11,.07);cursor:pointer}
+.mm-node .mm-tog:hover{background:rgba(11,11,11,.07)}
+.mm-node.d0{max-width:280px;background:#0f1b2d;border-color:#0f1b2d}
+.mm-node.d0::before{background:linear-gradient(#2a78d6,#1baf7a)}
+.mm-node.d0 .mm-main{color:#fff;font-size:16px;font-weight:700;padding:12px 14px}
+.mm-node.d0 .mm-p{color:#9fb3c8}
+.mm-node.d0 .mm-tog{color:#dbe6f2;background:rgba(255,255,255,.06);border-left-color:rgba(255,255,255,.1)}
+.mm-node.d1 .mm-main{font-size:14.5px;font-weight:700}
+.mm-node.is-selected{box-shadow:0 0 0 2px var(--accent),0 8px 22px -12px rgba(11,11,11,.35)}
+.mm-node.is-match{box-shadow:0 0 0 2px #fab219,0 8px 22px -12px rgba(11,11,11,.35)}
+.mm-node.is-dim{opacity:.32}
+.mm-node[hidden]{display:none}
+.mm-world.mm-noanim .mm-node{transition:none}
+
+.mm-panel{position:sticky;top:12px;padding:16px 18px}
+.mm-panel h2{margin:4px 0 8px;font-size:18px;line-height:1.3}
+.mm-crumbs{font-size:12.5px;line-height:1.4}
+.mm-st{display:inline-flex;align-items:center;gap:7px;margin:0 0 8px;font-size:13.5px;font-weight:600}
+.mm-panel p{margin:0 0 10px;color:var(--ink2);line-height:1.55}
+.mm-stand{margin:0 0 10px;padding:10px 12px;border-radius:10px;background:#f6f5f2;font-size:14px;line-height:1.5}
+.mm-stand:empty{display:none}
+.mm-links-list{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:14px}
+
+.mm-outline{margin-top:16px;padding:18px 20px;display:none}
+.mm-outline h2{margin:0 0 10px}
+.mm-page.is-list .mm-outline{display:block}
+.mm-page.is-list .mm-body{display:none}
+.mm-tree, .mm-tree ul{list-style:none;margin:0;padding:0}
+.mm-tree ul{margin:6px 0 4px 11px;padding-left:16px;border-left:1px solid var(--line)}
+.mm-tree li{margin:6px 0}
+.mm-o-title{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px 8px}
+.mm-o-title .mm-ic{width:18px;height:18px;font-size:10px}
+.mm-o-st{font-size:12px;color:var(--ink3)}
+.mm-o-text{color:var(--ink2);font-size:14px;margin:2px 0 0 26px}
+.mm-o-stand{font-size:13.5px;margin:2px 0 0 26px;color:var(--ink2)}
+
+@media (max-width:980px){
+  .mm-body{grid-template-columns:minmax(0,1fr)}
+  .mm-panel{position:static}
+  .mm-viewport{height:62vh;min-height:360px}
+  .mm-sep{display:none}
+}
+@media (prefers-reduced-motion:reduce){.mm-node{transition:none}}
+/* без JS и при печати — список вместо карты */
+.mm-page.no-js .mm-body, .mm-page.no-js .mm-toolbar{display:none}
+.mm-page.no-js .mm-outline{display:block}
+@media print{
+  header, footer, .mm-toolbar, .mm-body, .mm-tiles button{display:none !important}
+  .mm-outline{display:block !important;box-shadow:none;border:0;padding:0}
+  .mm-tree ul{break-inside:auto}
+}

@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Шпаргалка scikit-learn для задачи 04{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="/static/ml-map.css?v={{ version }}">
+<script src="/static/ml-map.js?v={{ version }}" defer></script>
+{% endblock %}
+{% block content %}
+<div class="ml-page">
+<p class="faint"><a href="/tz/">← документы задачи</a> · <a href="/tz/mindmap.html">mind map ТЗ</a></p>
+<h1>Шпаргалка scikit-learn для задачи 04</h1>
+<p class="muted ml-lead">Официальная схема выбора алгоритма scikit-learn, перерисованная интерактивно. Нажмите на алгоритм или решение:
+  справа — используется ли он у нас и насколько перспективен для контроля качества денситометрии. Сейчас стенд работает на правилах без scikit-learn,
+  поэтому оценки — про следующую версию с обучением.</p>
+
+<div class="ml-bar" role="toolbar" aria-label="управление схемой">
+  <button type="button" class="ml-btn" id="mlPath" aria-pressed="true">Путь задачи 04</button>
+  <span class="ml-sep faint">Перспективность:</span>
+  {% for key, (label, icon) in perspective.items() %}
+  <button type="button" class="ml-chip p-{{ key }}" data-level="{{ key }}" aria-pressed="false"><span class="ml-pic" aria-hidden="true">{{ icon }}</span>{{ label }} · {{ by_level[key] }}</button>
+  {% endfor %}
+</div>
+
+<div class="ml-body">
+  <div class="ml-scroll" id="mlScroll">
+    <svg class="ml-svg" id="mlSvg" viewBox="0 0 1280 703" role="img" aria-label="Схема выбора алгоритма scikit-learn с оценкой для задачи 04">
+      <defs>
+        {% for k in ['yes', 'no', 'nw', 'go'] %}
+        <marker id="ml-arrow-{{ k }}" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="13" markerHeight="13" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" class="ml-ah e-{{ k }}"/></marker>
+        {% endfor %}
+      </defs>
+      <g id="mlRegions">{% for r in regions %}
+        <path d="{{ r.d }}" class="ml-region" style="--c:{{ r.color }}"/>
+        {% for line in r.lines %}<text x="{{ r.label[0] }}" y="{{ r.label[1] + loop.index0 * 27 }}" class="ml-rlabel">{{ line }}</text>{% endfor %}
+        <text x="{{ r.label[0] }}" y="{{ r.label[1] + r.lines|length * 27 - 6 }}" class="ml-rsub">{{ r.ru }}</text>
+      {% endfor %}</g>
+      <g id="mlEdges"></g>
+      <g id="mlNodes"></g>
+      <g id="mlEdgeLabels"></g>
+      <text x="1262" y="62" class="ml-title" text-anchor="end">scikit-learn</text>
+      <text x="1262" y="92" class="ml-title" text-anchor="end">algorithm cheat-sheet</text>
+    </svg>
+    <p class="ml-hint faint">на телефоне схему можно листать вбок</p>
+  </div>
+  <aside class="card ml-panel" id="mlPanel" aria-live="polite">
+    <div class="faint ml-kind" id="mlKind">как читать</div>
+    <h2 id="mlTitle">Выберите элемент схемы</h2>
+    <div id="mlBadges"></div>
+    <div id="mlBody"><p>Стрелки «да», «нет» и «не сработало» ведут от вопросов к алгоритмам. Подсвечен путь, по которому идёт задача 04:
+      классификация качества по признакам снимка с экспертными метками.</p></div>
+  </aside>
+</div>
+
+<div class="ml-legend faint">
+  <span><i class="ml-lk e-yes"></i>да</span><span><i class="ml-lk e-no"></i>нет</span><span><i class="ml-lk e-nw"></i>не сработало</span>
+  <span><i class="ml-node-k"></i>алгоритм</span><span><i class="ml-dec-k"></i>вопрос</span>
+  <span>Источник схемы: <a href="https://scikit-learn.org/stable/machine_learning_map.html" target="_blank" rel="noopener">scikit-learn, BSD</a></span>
+</div>
+
+<section class="ml-beyond">
+  {% for b in beyond %}
+  <div class="card ml-note">{% if b.perspective %}<span class="ml-pbadge p-{{ b.perspective }}"><span aria-hidden="true">{{ perspective[b.perspective][1] }}</span> перспективность {{ perspective[b.perspective][0] }}</span>{% endif %}
+    <h3>{{ b.title }}</h3><p>{{ b.text }}</p></div>
+  {% endfor %}
+</section>
+
+<section class="card ml-table" id="mlTable">
+  <h2>Все алгоритмы схемы</h2>
+  <div class="scroll-x">
+  <table>
+    <thead><tr><th>Алгоритм</th><th>Область</th><th>Классы scikit-learn</th><th>У нас</th><th>Перспективность для задачи 04</th></tr></thead>
+    <tbody>
+    {% for n in estimators %}
+    <tr id="row-{{ n.id }}">
+      <td><b>{{ n.label }}</b><div class="faint">{{ n.ru }}</div></td>
+      <td>{{ (regions|selectattr('id', 'equalto', n.region)|first).ru }}</td>
+      <td>{% for s in n.sklearn %}<code>{{ s }}</code>{% if not loop.last %}<br>{% endif %}{% endfor %}</td>
+      <td>{{ n.used }}</td>
+      <td><span class="ml-pbadge p-{{ n.perspective }}"><span aria-hidden="true">{{ perspective[n.perspective][1] }}</span> {{ perspective[n.perspective][0] }}</span>
+        <div class="ml-why">{{ n.why }}</div></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+</div>
+<script type="application/json" id="ml-data">{{ data|tojson }}</script>
+{% endblock %}

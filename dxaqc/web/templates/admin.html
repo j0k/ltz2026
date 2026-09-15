@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+{% block title %}Админка{% endblock %}
+{% block head %}
+<style>
+.adm-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 18px}
+.adm-tabs a{display:inline-flex;align-items:center;gap:8px;padding:7px 14px;border-radius:999px;background:var(--card);border:1px solid var(--line);font-weight:600;font-size:14px;color:var(--ink)}
+.adm-tabs a:hover{border-color:var(--accent);text-decoration:none}
+.adm-tabs .n{min-width:20px;padding:0 6px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-size:12px;text-align:center}
+.adm-grid{display:grid;gap:16px}
+.adm-card h2{margin:0 0 4px}
+.adm-card .sub{margin:0 0 14px;color:var(--ink3);font-size:13.5px}
+.scroll-x{overflow-x:auto}
+.inv-form{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,2fr) auto;gap:10px;align-items:end;margin-bottom:14px}
+.inv-form label{display:block;font-size:13px;color:var(--ink2);margin-bottom:4px}
+.inv-form select, .inv-form input[type=text], .adm-card input[type=number]{width:100%;font:inherit;font-size:14px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:#fff}
+.adm-card input[type=number]{width:90px}
+.new-link{background:var(--ok-soft);border:1px solid #bfe6d6;border-radius:10px;padding:12px 14px;margin-bottom:14px}
+.new-link .row{display:flex;gap:8px;margin-top:8px}
+.new-link input{flex:1;min-width:0;font:inherit;font-size:13.5px;padding:8px 10px;border:1px solid #bfe6d6;border-radius:8px;background:#fff}
+.btn.small{padding:6px 11px;font-size:13px}
+.btn.danger{background:var(--bad-soft);color:#b3302f}
+.acts{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.acts form{margin:0}
+.q-item{border-top:1px solid var(--line);padding:12px 0}
+.q-item:first-child{border-top:0}
+.q-text{white-space:pre-wrap;margin:4px 0 10px}
+.st-done{color:#0c7a53}.st-error, .st-rejected{color:#b3302f}.st-queued, .st-running, .st-awaiting_approval{color:#8a5b00}
+@media (max-width:760px){.inv-form{grid-template-columns:minmax(0,1fr)}}
+</style>
+{% endblock %}
+{% block content %}
+<h1>Админка</h1>
+<p class="muted">Приглашения, пользователи, одобрение исполнения вопросов к Claude и журнал. Исполнитель вопросов:
+  {% if broker_ok %}<span class="pill ok">на связи</span>{% elif broker %}<span class="pill bad">не отвечает</span>{% else %}<span class="pill na">не подключён</span>{% endif %}</p>
+{% if error %}<p class="note" role="alert">{{ error }}</p>{% endif %}
+
+<nav class="adm-tabs" aria-label="разделы админки">
+  <a href="#invites">Приглашения <span class="n">{{ invites|selectattr('status', 'equalto', 'active')|list|length }}</span></a>
+  <a href="#requests">Запросы на анализ <span class="n">{{ requests|length }}</span></a>
+  <a href="#approvals">Ждут одобрения <span class="n">{{ approvals|length }}</span></a>
+  <a href="#users">Пользователи <span class="n">{{ users|length }}</span></a>
+  <a href="#journal">Журнал вопросов</a>
+  <a href="/control">Пульт анализа →</a>
+  <a href="/admin/mcp">MCP-сервер и токены →</a>
+</nav>
+
+<div class="adm-grid">
+<section class="card adm-card" id="invites">
+  <h2>Приглашения</h2>
+  <p class="sub">Одноразовая ссылка со сроком действия. Кто перейдёт по ней, зарегистрируется или войдёт и получит выбранную роль.
+    Ссылку показываем один раз — сразу отправьте её человеку.</p>
+  {% if new_invite %}
+  <div class="new-link" role="status">
+    <b>Ссылка создана</b> · {{ invite_roles[new_invite.role] }} · до {{ new_invite.expires|msk }} МСК{% if new_invite.note %} · «{{ new_invite.note }}»{% endif %}
+    <div class="row"><input id="inviteUrl" type="text" value="{{ new_invite.url }}" readonly aria-label="инвайт-ссылка">
+      <button class="btn small" type="button" id="copyInvite">Скопировать</button></div>
+  </div>
+  {% endif %}
+  <form class="inv-form" method="post" action="/admin/invites">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div><label for="inv-role">Роль</label>
+      <select id="inv-role" name="role">{% for k, v in invite_roles.items() %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select></div>
+    <div><label for="inv-hours">Срок</label>
+      <select id="inv-hours" name="hours"><option value="1">1 час</option><option value="24">сутки</option><option value="48" selected>2 суток</option><option value="168">неделя</option></select></div>
+    <div><label for="inv-note">Кому и зачем</label><input id="inv-note" type="text" name="note" maxlength="200" placeholder="например, Алексей — пульт анализа"></div>
+    <div><button class="btn" type="submit">Создать ссылку</button></div>
+  </form>
+  {% if invites %}
+  <div class="scroll-x">
+  <table>
+    <thead><tr><th>Создана</th><th>Кто выдал</th><th>Роль</th><th>Действует до</th><th>Статус</th><th>Комментарий</th><th></th></tr></thead>
+    <tbody>
+    {% for i in invites %}
+    <tr>
+      <td>{{ i.created|msk }}</td><td>{{ i.created_by }}</td><td>{{ invite_roles.get(i.role, i.role) }}</td><td>{{ i.expires|msk }}</td>
+      <td>{% if i.status == 'active' %}<span class="pill ok">активна</span>
+        {% elif i.status == 'used' %}<span class="pill na">использована</span> <span class="faint">{{ i.used_login }}, {{ i.used_at|msk }}</span>
+        {% elif i.status == 'expired' %}<span class="pill warn">истекла</span>
+        {% else %}<span class="pill bad">отозвана</span>{% endif %}</td>
+      <td class="muted">{{ i.note }}</td>
+      <td>{% if i.status == 'active' %}<form method="post" action="/admin/invites/{{ i.id }}/revoke" style="margin:0">
+        <input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn danger small" type="submit">Отозвать</button></form>{% endif %}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="muted">Приглашений пока не было.</p>
+  {% endif %}
+</section>
+
+<section class="card adm-card" id="requests">
+  <h2>Запросы на анализ</h2>
+  <p class="sub">Принудительный анализ файлов, которые не прошли проверку, и анализ снимка в Claude через Codellake.
+    Для Claude изображение без метаданных DICOM уходит во внешний сервис; снимки организатора туда не отправляются.</p>
+  {% for r in requests %}
+  <div class="q-item" id="rq{{ r.id }}">
+    <div class="faint">{{ r.created|msk }} · {{ r.login }} · <a href="/runs/{{ r.run_id }}">прогон {{ r.run_id }}</a></div>
+    <div style="margin:4px 0"><b>{{ request_kinds[r.kind][:1]|upper }}{{ request_kinds[r.kind][1:] }}</b>: {{ r.label }}
+      {% if r.kind == 'claude' %}<span class="pill warn">изображение уйдёт во внешний сервис</span>{% endif %}</div>
+    {% if r.reason %}<div class="q-text muted">{{ r.reason }}</div>{% endif %}
+    <form method="post" action="/admin/requests/{{ r.id }}" class="acts">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="btn small" type="submit" name="decision" value="approve">{{ 'Одобрить и запустить' if r.kind == 'force' else 'Одобрить и отправить в Claude' }}</button>
+      <button class="btn danger small" type="submit" name="decision" value="reject">Отклонить</button>
+    </form>
+  </div>
+  {% else %}
+  <p class="muted">Нет запросов, ждущих одобрения.</p>
+  {% endfor %}
+  {% if recent_requests %}
+  <details style="margin-top:10px"><summary class="faint">Решённые запросы · {{ recent_requests|length }}</summary>
+  <div class="scroll-x">
+  <table>
+    <thead><tr><th>Время</th><th>Вид</th><th>Файл</th><th>Кто просил</th><th>Решение</th><th>Результат</th></tr></thead>
+    <tbody>
+    {% for r in recent_requests %}
+    <tr>
+      <td>{{ r.created|msk }}</td><td>{{ request_kinds[r.kind] }}</td><td>{{ r.label }}</td><td>{{ r.login }}</td>
+      <td>{{ request_status[r.status] }}{% if r.approver %} · {{ r.approver }}{% endif %}</td>
+      <td>{% if r.result_run %}<a href="/runs/{{ r.result_run }}">прогон</a>{% elif r.question_id %}вопрос №{{ r.question_id }}{% elif r.error %}<span class="muted">{{ r.error }}</span>{% endif %}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  </details>
+  {% endif %}
+</section>
+
+<section class="card adm-card" id="approvals">
+  <h2>Ждут одобрения исполнения</h2>
+  <p class="sub">После одобрения вопрос выполняется с полными правами в рабочей папке.</p>
+  {% if approvals %}
+  {% for q in approvals %}
+  <div class="q-item" id="aq{{ q.id }}">
+    <div class="faint">{{ q.created|msk }} · {{ q.login }}</div>
+    <div class="q-text">{{ q.text }}</div>
+    <form method="post" action="/admin/questions/{{ q.id }}" class="acts">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="btn small" type="submit" name="decision" value="approve">Одобрить исполнение с полными правами</button>
+      <button class="btn danger small" type="submit" name="decision" value="reject">Отклонить</button>
+    </form>
+  </div>
+  {% endfor %}
+  {% else %}
+  <p class="muted">Нет вопросов, ждущих одобрения.</p>
+  {% endif %}
+</section>
+
+<section class="card adm-card" id="users">
+  <h2>Пользователи</h2>
+  <p class="sub">Доступ к вопросам Claude, лимит вопросов в сутки, роль и блокировка.</p>
+  <div class="scroll-x">
+  <table>
+    <thead><tr><th>Логин</th><th>Роль</th><th>Вопросы</th><th>Сегодня</th><th>Лимит в сутки</th><th>Действия</th></tr></thead>
+    <tbody>
+    {% for u in users %}
+    <tr id="u{{ u.id }}">
+      <td><b>{{ u.login }}</b>{% if u.blocked %} <span class="pill bad">заблокирован</span>{% endif %}</td>
+      <td>{% if u.is_admin %}<span class="pill ok">админ</span>{% else %}пользователь{% endif %}</td>
+      <td>{% if u.can_ask %}<span class="pill ok">есть доступ</span>{% else %}<span class="pill na">нет доступа</span>{% endif %}</td>
+      <td>{{ u.asked_today }}</td>
+      <td>
+        <form method="post" action="/admin/users/{{ u.id }}" class="acts">
+          <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="action" value="limit">
+          <input type="number" name="daily_limit" value="{{ u.daily_limit }}" min="0" max="100000" aria-label="лимит в сутки для {{ u.login }}">
+          <button class="btn ghost small" type="submit">Сохранить</button>
+        </form>
+      </td>
+      <td>
+        <form method="post" action="/admin/users/{{ u.id }}" class="acts">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          {% if u.can_ask %}<button class="btn ghost small" type="submit" name="action" value="revoke">Забрать доступ</button>
+          {% else %}<button class="btn small" type="submit" name="action" value="grant">Выдать доступ</button>{% endif %}
+          {% if u.id != user.id %}
+            {% if u.is_admin %}<button class="btn ghost small" type="submit" name="action" value="make_user">Снять админа</button>
+            {% else %}<button class="btn ghost small" type="submit" name="action" value="make_admin">Сделать админом</button>{% endif %}
+            {% if u.blocked %}<button class="btn ghost small" type="submit" name="action" value="unblock">Разблокировать</button>
+            {% else %}<button class="btn danger small" type="submit" name="action" value="block">Заблокировать</button>{% endif %}
+          {% endif %}
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section class="card adm-card" id="journal">
+  <h2>Журнал вопросов</h2>
+  <p class="sub">Последние 100 вопросов к Claude.</p>
+  <div class="scroll-x">
+  <table>
+    <thead><tr><th>Время</th><th>Кто</th><th>Режим</th><th>Статус</th><th>Секунд</th><th>Одобрил</th><th>Вопрос</th></tr></thead>
+    <tbody>
+    {% for q in journal %}
+    <tr>
+      <td>{{ q.created|msk }}</td><td>{{ q.login }}</td><td>{{ 'исполнение' if q.mode == 'full' else 'чтение' }}</td>
+      <td class="st-{{ q.status }}">{{ status_ru[q.status] }}</td>
+      <td>{% if q.finished and q.started %}{{ '%.0f'|format(q.finished - q.started) }}{% endif %}</td>
+      <td>{{ q.approver or '' }}</td>
+      <td class="muted">{{ q.text[:120] }}{% if q.text|length > 120 %}…{% endif %}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7" class="muted">Пока пусто.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+</div>
+
+<script>
+(function () {
+  const btn = document.getElementById('copyInvite'), field = document.getElementById('inviteUrl');
+  if (!btn || !field) return;
+  field.addEventListener('focus', () => field.select());
+  btn.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(field.value); }
+    catch (e) { field.select(); document.execCommand && document.execCommand('copy'); }
+    btn.textContent = 'Скопировано';
+    setTimeout(() => { btn.textContent = 'Скопировать'; }, 1600);
+  });
+})();
+</script>
+{% endblock %}

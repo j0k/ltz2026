@@ -1,0 +1,30 @@
+.venv/
+__pycache__/
+*.pyc
+pg-*.png
+.env
+data/
+web/.server.log
+# медицинские данные и материалы организатора в git не кладём
+*.dcm
+*.zip
+4. ДепЗдрав.pdf
+docs/tz/
+# кадры и сборки роликов содержат снимки организатора
+films/*/assets/
+films/*/out/
+films/*/voice/
+films/*/_work/
+films/*/meta.json
+# модели распознавания речи для стенда, подключаются томом
+models/
+
+# данные, модели, ролики и материалы организатора лежат рядом с репозиторием и подключены симлинками
+/data
+/docs
+/films
+/models
+/.venv
+/.pytest_cache
+/*.pdf
+/*.png

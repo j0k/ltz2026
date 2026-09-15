@@ -1,0 +1,402 @@
+{# Живая панель прогресса прогона: этапы, общий процент, текущий файл, счётчики, список проанализированных снимков
+   и просмотр результата любого из них, не дожидаясь конца прогона. #}
+<style>
+.live{margin:16px 0 8px;padding:22px 24px}
+.live-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.live-kicker{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--accent)}
+.live-kicker .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:livepulse 1.6s ease-out infinite}
+@keyframes livepulse{0%{box-shadow:0 0 0 0 rgba(42,120,214,.5)}80%{box-shadow:0 0 0 9px rgba(42,120,214,0)}100%{box-shadow:0 0 0 0 rgba(42,120,214,0)}}
+.live-title{font-size:20px;line-height:1.3;font-weight:800;margin:6px 0 2px}
+.live-detail{font-size:13px;color:var(--ink3);overflow-wrap:anywhere;min-height:18px}
+.live-pct{text-align:right;min-width:90px}
+.live-pct b{display:block;font-size:34px;line-height:1;font-weight:800;font-variant-numeric:tabular-nums}
+.live-track{position:relative;height:10px;border-radius:999px;background:#eceae5;overflow:hidden;margin:16px 0 20px}
+.live-fill{position:relative;height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,#2a78d6,#1baf7a);transition:width .45s ease;overflow:hidden}
+.live-fill::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.45),rgba(255,255,255,0));
+  transform:translateX(-100%);animation:liveshimmer 1.4s linear infinite}
+@keyframes liveshimmer{to{transform:translateX(100%)}}
+.milestones{list-style:none;padding:0;margin:0 0 18px;display:grid;grid-template-columns:repeat(var(--n,6),minmax(0,1fr));gap:8px}
+.milestones li{position:relative;margin:0;padding-top:36px;font-size:13px;color:var(--ink3)}
+.milestones li::before{content:"";position:absolute;top:13px;left:30px;right:-6px;height:2px;background:#e3e1dc}
+.milestones li:last-child::before{display:none}
+.milestones li.done::before{background:#1baf7a}
+.ms-dot{position:absolute;top:0;left:0;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#fff;
+  border:2px solid #d9d6cf;font-size:12px;font-weight:800;color:var(--ink3)}
+.milestones li.done .ms-dot{background:#1baf7a;border-color:#1baf7a;color:#fff}
+.milestones li.active .ms-dot{border-color:var(--accent);color:var(--accent)}
+.milestones li.active .ms-dot::after{content:"";position:absolute;inset:-6px;border-radius:50%;border:2px solid transparent;border-top-color:var(--accent);animation:livespin .9s linear infinite}
+@keyframes livespin{to{transform:rotate(360deg)}}
+.ms-label{display:block;font-weight:700;line-height:1.3;color:var(--ink)}
+.milestones li.pending .ms-label{color:var(--ink3);font-weight:600}
+.ms-meta{display:block;margin-top:2px;font-size:12px;font-variant-numeric:tabular-nums}
+.milestones li.active .ms-meta{color:var(--accent);font-weight:600}
+.live-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:16px}
+/* плитки счётчиков — фильтры списка снимков */
+.live-kpi{display:block;width:100%;background:#f6f5f2;border:1px solid transparent;border-radius:10px;padding:10px 12px;text-align:left;font:inherit;color:inherit;cursor:pointer}
+.live-kpi:hover{border-color:#d9d6cf}
+.live-kpi[aria-pressed=true]{background:#fff;border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.live-kpi b{display:block;font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
+.live-kpi span{font-size:12px;color:var(--ink3)}
+.peek-wrap{display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
+.peek-head{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;justify-content:space-between;margin-bottom:6px}
+.peek-hint{font-size:12.5px;color:var(--ink3)}
+/* колонка сжимается до ширины экрана: иначе самая длинная строка ленты растягивала страницу на телефоне */
+.feed{list-style:none;padding:0 2px 0 0;margin:0;display:grid;grid-template-columns:minmax(0,1fr);gap:4px;max-height:430px;overflow-y:auto;overscroll-behavior:contain}
+.feed li{min-width:0;margin:0;border-radius:8px;background:#faf9f7;animation:livefeed .35s ease}
+.feed li.still{animation:none}
+.feed li.sel{background:var(--accent-soft);box-shadow:inset 0 0 0 1.5px var(--accent)}
+.feed-btn{display:flex;align-items:center;gap:10px;width:100%;min-width:0;padding:6px 10px;border:0;border-radius:8px;background:none;font:inherit;font-size:13.5px;
+  color:inherit;text-align:left;cursor:pointer}
+.feed-btn:hover{background:rgba(0,0,0,.035)}
+.feed-btn:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.feed .pill{flex:none}
+@keyframes livefeed{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.feed .name{flex:1;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.feed .reg{color:var(--ink3);white-space:nowrap}
+.feed .more{padding:6px 10px;background:none;font-size:12.5px;color:var(--ink3)}
+/* просмотр результата: тёмный, как атлас в карточке снимка */
+.peek{background:#121418;color:#e6e6e6;border-radius:12px;padding:12px 12px 14px;min-width:0}
+.peek-bar{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:6px 10px;margin-bottom:10px}
+.peek-cap{font-size:13px;color:#aeb6c1;font-weight:600}
+.peek-follow{display:inline-flex;align-items:center;gap:7px;font:inherit;font-size:12.5px;font-weight:600;padding:4px 11px;border-radius:999px;cursor:pointer;
+  background:#1c2027;color:#e3e7ec;border:1px solid #353b45}
+.peek-follow::before{content:"";width:8px;height:8px;border-radius:50%;background:#6b737e}
+.peek-follow[aria-pressed=true]{background:#2a78d6;border-color:#2a78d6;color:#fff}
+.peek-follow[aria-pressed=true]::before{background:#fff;animation:livepulse 1.6s ease-out infinite}
+.peek-empty{margin:0;padding:34px 10px;text-align:center;color:#9aa3ae;font-size:14px}
+.peek-card[hidden]{display:none}
+.peek-img{display:block;border-radius:8px;overflow:hidden;background:#0b0c0f;min-height:120px}
+.peek-img img{display:block;width:100%;height:auto;transition:opacity .2s ease}
+.peek-img[hidden]{display:none}
+.peek-meta{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin:10px 0 3px;font-size:14px}
+.peek-meta .reg{font-weight:700;color:#fff}
+.peek-meta .t{color:#9aa3ae;font-size:12.5px;font-variant-numeric:tabular-nums}
+.peek-name{font-size:12.5px;color:#9aa3ae;overflow-wrap:anywhere}
+.peek-viol{margin:8px 0 0;padding-left:18px;color:#ffb3ae;font-size:14px}
+.peek-viol:empty, .peek-expl:empty{display:none}
+.peek-expl{margin:8px 0 0;padding-left:18px;color:#cfd5dc;font-size:13.5px;line-height:1.5}
+.peek-open{display:inline-block;margin-top:12px}
+.peek-open[hidden]{display:none}
+.live-foot{margin:14px 0 0}
+.live-done{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:14px 0 0;padding:12px 14px;border-radius:10px;background:var(--ok-soft);font-weight:600}
+.live-done[hidden]{display:none}
+@media (min-width:900px){
+  .peek-wrap{grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);align-items:start}
+  .peek{position:sticky;top:12px}
+}
+@media (max-width:720px){
+  .milestones{grid-template-columns:minmax(0,1fr);gap:0}
+  .milestones li{padding:4px 0 14px 42px;min-height:42px}
+  .milestones li::before{left:13px;top:30px;bottom:-2px;right:auto;width:2px;height:auto}
+  .live-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .live-pct{text-align:left}
+  .feed{max-height:300px}
+}
+@media (prefers-reduced-motion:reduce){
+  .live-fill{transition:none}
+  .live-fill::after, .live-kicker .dot, .milestones li.active .ms-dot::after, .feed li, .peek-follow::before{animation:none}
+}
+</style>
+<section class="card live" id="live" aria-labelledby="live-stage">
+  <div class="live-head">
+    <div style="min-width:0;flex:1">
+      <div class="live-kicker"><span class="dot" aria-hidden="true"></span><span id="live-state">{{ 'в очереди' if st.state == 'queued' else 'обработка' }}</span></div>
+      <div class="live-title" id="live-stage" aria-live="polite">Прогон начинается</div>
+      <div class="live-detail" id="live-detail"></div>
+    </div>
+    <div class="live-pct"><b id="live-pct">0%</b><span class="faint" id="live-eta"></span></div>
+  </div>
+  <div class="live-track" id="live-bar" role="progressbar" aria-label="прогресс прогона" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+    <div class="live-fill" id="live-fill"></div>
+  </div>
+  <ol class="milestones" id="live-steps"></ol>
+  <div class="live-grid" role="group" aria-label="счётчики и фильтр снимков">
+    <button type="button" class="live-kpi" data-f="all" aria-pressed="true"><b id="k-done">0</b><span>снимков проанализировано</span></button>
+    <button type="button" class="live-kpi" data-f="good" aria-pressed="false"><b id="k-good" style="color:#0a7d0a">0</b><span>качественных</span></button>
+    <button type="button" class="live-kpi" data-f="bad" aria-pressed="false"><b id="k-bad" style="color:#b3302f">0</b><span>с нарушением</span></button>
+    <button type="button" class="live-kpi" data-f="na" aria-pressed="false"><b id="k-na">0</b><span>не оценено или отказ</span></button>
+  </div>
+  <div class="peek-wrap">
+    <div style="min-width:0">
+      <div class="peek-head">
+        <span class="faint" id="feed-title">Проанализированные снимки</span>
+        <span class="peek-hint">нажмите на снимок — справа его результат</span>
+      </div>
+      <ul class="feed" id="live-feed"><li class="still more">появятся, как только начнётся анализ</li></ul>
+    </div>
+    <aside class="peek" id="peek" aria-label="результат анализа снимка">
+      <div class="peek-bar">
+        <span class="peek-cap" id="peek-cap" aria-live="polite">Результат анализа</span>
+        <button type="button" class="peek-follow" id="peek-follow" aria-pressed="true">следить за последним</button>
+      </div>
+      <p class="peek-empty" id="peek-empty">Здесь появится разметка первого проанализированного снимка.</p>
+      <div class="peek-card" id="peek-card" hidden>
+        <a class="peek-img" id="peek-link" href="#"><img id="peek-img" alt="разметка снимка в стиле атласа"></a>
+        <div class="peek-meta"><span class="pill" id="peek-pill"></span><span class="reg" id="peek-reg"></span><span class="t" id="peek-time"></span></div>
+        <div class="peek-name" id="peek-name"></div>
+        <ul class="peek-viol" id="peek-viol"></ul>
+        <ul class="peek-expl" id="peek-expl"></ul>
+        <a class="btn peek-open" id="peek-open" href="#">Открыть карточку: слои, лупа, голос →</a>
+      </div>
+    </aside>
+  </div>
+  <div class="live-done" id="live-done" hidden><span id="live-done-text">Прогон готов.</span>
+    <button type="button" class="btn" id="live-open">Открыть результаты прогона</button></div>
+  <p class="faint live-foot" id="live-foot">Страница сама перейдёт к результатам, если вы не смотрите снимки. Отменить прогон можно в <a href="/control#run-{{ run_id }}">пульте</a>.</p>
+</section>
+<script type="application/json" id="live-data">{{ live|tojson }}</script>
+<script type="application/json" id="live-viol">{{ violation_ru|tojson }}</script>
+<script>
+(function () {
+  const RUN = {{ run_id|tojson }};
+  const REG = {lumbar_spine: 'поясничный отдел', hip_right: 'правое бедро', hip_left: 'левое бедро', unknown: 'не определена'};
+  const VIOL = JSON.parse(document.getElementById('live-viol').textContent);
+  const $ = id => document.getElementById(id);
+  let finished = false;
+  const secs = s => s < 1 ? 'меньше секунды' : s < 60 ? `${Math.round(s)} с` : `${Math.floor(s / 60)} мин ${Math.round(s % 60)} с`;
+
+  function percent(p, plan) {
+    if (p.state === 'done') return 100;
+    let total = 0, got = 0;
+    const stages = p.stages || {}, step = p.step || {};
+    plan.forEach(s => {
+      if (s.key === 'done') return;
+      total += s.weight;
+      const st = stages[s.key] || {};
+      if (st.end) got += s.weight;
+      else if (s.key === p.stage && st.start && p.state === 'running') got += s.weight * (step.total ? Math.min(1, step.done / step.total) : 0.3);
+    });
+    return total ? Math.min(99, Math.floor(got / total * 100)) : 0;
+  }
+
+  // ---------- проанализированные снимки и просмотр результата
+  const LIMIT = 200;             // сколько строк держать в списке: остальные доступны фильтром и в итогах
+  const rows = [];               // строки по порядку анализа, n — номер снимка
+  let filter = 'all', selected = 0, follow = true, interacted = false;
+  let fetching = false, again = false, lastFetch = 0, fetchTimer = 0, finalRows = false, followTimer = 0, lastFollow = 0;
+  const kind = r => r.processing_status !== 'Success' ? 'na' : r.quality_class === 0 ? 'good' : r.quality_class === 1 ? 'bad' : 'na';
+  const verdict = r => r.processing_status !== 'Success' ? ['na', 'отказ'] : r.quality_class === 0 ? ['ok', 'качественное']
+    : r.quality_class === 1 ? ['bad', 'нарушение'] : ['na', 'не оценено'];
+  const baseName = p => (p || '').split('/').pop();
+  const matches = r => filter === 'all' || kind(r) === filter;
+
+  function fetchRows() {
+    if (finalRows) return;
+    const wait = 700 - (Date.now() - lastFetch);
+    if (fetching || wait > 0) {
+      again = true;
+      if (!fetching && !fetchTimer) fetchTimer = setTimeout(() => { fetchTimer = 0; fetchRows(); }, wait);
+      return;
+    }
+    fetching = true; again = false; lastFetch = Date.now();
+    fetch(`/api/runs/${RUN}/live-rows?after=${rows.length}`, {cache: 'no-store'})
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (!d) return;
+        if (d.final) { rows.length = 0; finalRows = true; }
+        const before = rows.length;
+        d.rows.forEach(r => rows.push(r));
+        if (d.final) rebuild(); else append(before);
+        if (rows.length < d.total) again = true;
+        if (follow) peekLatest();
+        else if (selected && d.final) { const r = rows.find(x => x.key && x.key === (selectedRow || {}).key); if (r) openPeek(r, false); }
+      })
+      .catch(() => {})
+      .finally(() => { fetching = false; if (again && !finalRows) fetchRows(); });
+  }
+
+  function item(r, animate) {
+    const li = document.createElement('li');
+    li.dataset.n = String(r.n);
+    if (!animate) li.classList.add('still');
+    if (selected === r.n) li.classList.add('sel');
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'feed-btn';
+    const [cls, text] = verdict(r);
+    const pill = document.createElement('span'); pill.className = 'pill ' + cls; pill.textContent = text;
+    const name = document.createElement('span'); name.className = 'name'; name.textContent = baseName(r.path_to_study);
+    name.title = r.path_to_study || '';
+    const reg = document.createElement('span'); reg.className = 'reg'; reg.textContent = REG[r.anatomical_region] || r.anatomical_region || '';
+    b.append(pill, name, reg);
+    b.addEventListener('click', () => { interacted = true; setFollow(false); openPeek(r, true); });
+    li.append(b);
+    return li;
+  }
+  function counts() {
+    const c = {all: rows.length, good: 0, bad: 0, na: 0};
+    rows.forEach(r => { c[kind(r)]++; });
+    const shown = filter === 'all' ? c.all : c[filter];
+    const names = {all: 'Проанализированные снимки', good: 'Качественные', bad: 'С нарушением', na: 'Не оценено или отказ'};
+    $('feed-title').textContent = `${names[filter]} · ${shown}` + (shown > LIMIT ? `, показаны последние ${LIMIT}` : '');
+  }
+  // новые снимки добавляются сверху и только они плавно появляются: старые строки не перерисовываются, иначе лента мигала
+  function append(from) {
+    const ul = $('live-feed');
+    if (!rows.length) return;
+    if (!ul.querySelector('li[data-n]')) ul.replaceChildren();
+    rows.slice(from).forEach(r => { if (matches(r)) ul.prepend(item(r, true)); });
+    while (ul.children.length > LIMIT) ul.lastElementChild.remove();
+    counts();
+    if (!follow && selectedRow) $('peek-cap').textContent = `Снимок №${selectedRow.n} из ${rows.length}`;
+  }
+  function rebuild() {
+    const ul = $('live-feed');
+    const shown = rows.filter(matches).slice(-LIMIT).reverse();
+    ul.replaceChildren(...shown.map(r => item(r, false)));
+    if (!shown.length) {
+      const li = document.createElement('li'); li.className = 'still more';
+      li.textContent = rows.length ? 'таких снимков пока нет' : 'появятся, как только начнётся анализ';
+      ul.append(li);
+    }
+    counts();
+  }
+  function setFilter(f) {
+    filter = f;
+    document.querySelectorAll('.live-kpi[data-f]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.f === f)));
+    rebuild();
+  }
+  document.querySelectorAll('.live-kpi[data-f]').forEach(b => b.addEventListener('click', () => { interacted = true; setFilter(b.dataset.f); }));
+
+  let selectedRow = null;
+  function openPeek(r, scroll) {
+    selected = r.n; selectedRow = r;
+    document.querySelectorAll('#live-feed li.sel').forEach(li => li.classList.remove('sel'));
+    const li = document.querySelector(`#live-feed li[data-n="${r.n}"]`);
+    if (li) li.classList.add('sel');
+    $('peek-empty').hidden = true;
+    $('peek-card').hidden = false;
+    const card = r.key && r.overlay_png ? `/runs/${RUN}/images/${r.key}` : '';
+    const img = $('peek-img'), link = $('peek-link');
+    link.hidden = !r.overlay_png;
+    if (r.overlay_png) {
+      const src = `/runs/${RUN}/files/${r.overlay_png}`;
+      if (img.getAttribute('src') !== src) {
+        // новая картинка подменяет старую, когда загрузится: в режиме слежения просмотр не мигает пустотой
+        const pre = new Image();
+        pre.onload = () => { if (selected === r.n) img.src = src; };
+        pre.src = src;
+        if (!img.getAttribute('src')) img.src = src;
+      }
+      link.href = card;
+    }
+    const [cls, text] = verdict(r);
+    $('peek-pill').className = 'pill ' + cls; $('peek-pill').textContent = text;
+    $('peek-reg').textContent = REG[r.anatomical_region] || r.anatomical_region || '';
+    $('peek-time').textContent = r.time_of_processing ? r.time_of_processing.toFixed(2).replace('.', ',') + ' с' : '';
+    $('peek-name').textContent = r.path_to_study || '';
+    $('peek-viol').replaceChildren(...(r.violation_list || []).filter(v => !v.startsWith('hip_not')).map(v => {
+      const x = document.createElement('li'); x.textContent = VIOL[v] || v; return x;
+    }));
+    $('peek-expl').replaceChildren(...(r.explanations || []).slice(0, 5).map(t => { const x = document.createElement('li'); x.textContent = t; return x; }));
+    $('peek-open').hidden = !card;
+    $('peek-open').href = card || '#';
+    $('peek-cap').textContent = follow ? `Последний снимок · №${r.n}` : `Снимок №${r.n} из ${rows.length}`;
+    if (scroll && window.matchMedia('(max-width: 899px)').matches) {
+      $('peek').scrollIntoView({behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start'});
+    }
+  }
+  function peekLatest() {   // в режиме слежения просмотр меняется не чаще раза в 1,2 секунды, чтобы успеть рассмотреть
+    const wait = 1200 - (Date.now() - lastFollow);
+    if (wait > 0) { if (!followTimer) followTimer = setTimeout(() => { followTimer = 0; if (follow) peekLatest(); }, wait); return; }
+    const last = rows[rows.length - 1];
+    if (!last) return;
+    lastFollow = Date.now();
+    openPeek(last, false);
+  }
+  function setFollow(v) {
+    follow = v;
+    $('peek-follow').setAttribute('aria-pressed', String(v));
+    if (v) { lastFollow = 0; peekLatest(); }
+    else if (selectedRow) $('peek-cap').textContent = `Снимок №${selectedRow.n} из ${rows.length}`;
+  }
+  $('peek-follow').addEventListener('click', () => { interacted = true; setFollow(!follow); });
+
+  function render(p) {
+    const plan = p.stage_list || [], stages = p.stages || {}, step = p.step || {};
+    const active = p.state === 'running' ? p.stage : null;
+    const pct = percent(p, plan);
+    $('live-pct').textContent = pct + '%';
+    $('live-fill').style.width = pct + '%';
+    $('live-bar').setAttribute('aria-valuenow', String(pct));
+
+    const ol = $('live-steps');
+    ol.style.setProperty('--n', String(plan.length));
+    ol.replaceChildren();
+    plan.forEach((s, i) => {
+      const st = stages[s.key] || {};
+      const done = !!st.end || (s.key === 'done' && p.state === 'done');
+      const isActive = !done && s.key === active;
+      const li = document.createElement('li');
+      li.className = done ? 'done' : isActive ? 'active' : 'pending';
+      const dot = document.createElement('span'); dot.className = 'ms-dot'; dot.textContent = done ? '✓' : String(i + 1);
+      const label = document.createElement('span'); label.className = 'ms-label'; label.textContent = s.label;
+      const meta = document.createElement('span'); meta.className = 'ms-meta';
+      if (s.key === 'received' && st.start) meta.textContent = new Date(st.start * 1000).toLocaleTimeString('ru-RU');
+      else if (done && st.start && st.end && s.key !== 'done') meta.textContent = 'за ' + secs(st.end - st.start);
+      else if (isActive) meta.textContent = step.total ? `${step.done} из ${step.total}` : 'идёт…';
+      li.append(dot, label, meta);
+      ol.append(li);
+    });
+
+    const cur = plan.find(s => s.key === active);
+    if (p.state === 'queued') {
+      $('live-state').textContent = 'в очереди';
+      $('live-stage').textContent = p.queue_position ? `Ждём очереди: впереди прогонов — ${p.queue_position}` : 'Прогон сейчас начнётся';
+      $('live-detail').textContent = 'сервер обрабатывает прогоны по одному';
+    } else if (p.state === 'running') {
+      $('live-state').textContent = 'обработка';
+      $('live-stage').textContent = cur ? cur.label : 'Обработка';
+      $('live-detail').textContent = p.detail || '';
+    }
+    $('live-eta').textContent = p.state === 'running' && p.stage === 'analyze' && p.eta ? 'осталось ≈ ' + secs(p.eta) : '';
+
+    const t = p.tally || {}, pr = p.progress || {};
+    $('k-done').textContent = pr.total ? `${pr.done} из ${pr.total}` : String(pr.done || 0);
+    $('k-good').textContent = String(t.good || 0);
+    $('k-bad').textContent = String(t.bad || 0);
+    $('k-na').textContent = String((t.na || 0) + (t.failed || 0));
+    if ((pr.done || 0) > rows.length || (p.state === 'done' && !finalRows)) fetchRows();
+
+    if (finished) return;
+    if (p.state === 'done' || p.state === 'error' || p.state === 'cancelled') {
+      finished = true;
+      const ok = p.state === 'done';
+      $('live-state').textContent = ok ? 'готово' : p.state === 'error' ? 'ошибка' : 'отменён';
+      $('live-stage').textContent = ok ? 'Готово' : p.state === 'error' ? 'Обработка остановилась с ошибкой' : 'Прогон отменён';
+      $('live-detail').textContent = ok ? '' : p.error || '';
+      if (!interacted) {   // никто не смотрит снимки — открываем результаты сами
+        if (ok) $('live-stage').textContent = 'Готово — открываем результаты';
+        setTimeout(() => location.reload(), ok ? 700 : 1500);
+      } else {             // человек смотрит снимок: не уводим страницу, предлагаем перейти
+        $('live-done-text').textContent = ok ? 'Прогон готов: таблицы, графики и сравнение с экспертами.' : 'Прогон остановлен.';
+        $('live-open').textContent = ok ? 'Открыть результаты прогона' : 'Обновить страницу';
+        $('live-done').hidden = false;
+        $('live-foot').hidden = true;
+      }
+    }
+  }
+  $('live-open').addEventListener('click', () => location.reload());
+
+  render(JSON.parse($('live-data').textContent));
+  fetchRows();
+
+  function poll() {
+    if (finished) return;
+    fetch(`/api/runs/${RUN}/progress`, {cache: 'no-store'})
+      .then(r => r.ok ? r.json() : null).then(p => { if (p) render(p); })
+      .catch(() => {})
+      .finally(() => { if (!finished) setTimeout(poll, 1000); });
+  }
+  if (window.EventSource) {
+    const es = new EventSource(`/api/runs/${RUN}/events`);
+    es.addEventListener('progress', e => { render(JSON.parse(e.data)); if (finished) es.close(); });
+    es.onerror = () => { es.close(); if (!finished) setTimeout(poll, 800); };  // поток оборвался — продолжаем опросом
+  } else {
+    poll();
+  }
+
+  // для автопроверок: что знает панель о снимках и просмотре
+  window.__live = { rows: () => rows.length, follow: () => follow, selected: () => selected, filter: () => filter,
+                    interacted: () => interacted, finished: () => finished };
+})();
+</script>

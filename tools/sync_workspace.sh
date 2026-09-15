@@ -6,9 +6,10 @@ set -euo pipefail
 SRC="$(cd "$(dirname "$0")/.." && pwd)"
 DST="${1:-/home/jk/exp/ltz2026-workspace}"
 mkdir -p "$DST"
-rsync -a --delete \
+rsync -aL --delete --delete-excluded \
   --exclude '.git/' --exclude '.venv/' --exclude '__pycache__/' --exclude '.pytest_cache/' \
   --exclude 'data/' --exclude '*.zip' --exclude '*.dcm' \
+  --exclude '/data' --exclude '/docs' --exclude '/films' --exclude '/models' --exclude '/.venv' \
   --exclude 'films/' --exclude 'results/' --exclude 'web/.server.log' \
   --exclude '.env' --exclude '*.htpasswd' \
   --exclude 'README_WORKSPACE.md' \

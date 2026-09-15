@@ -106,6 +106,10 @@ def _conn() -> sqlite3.Connection:
                 c.execute("ALTER TABLE questions ADD COLUMN attachment TEXT NOT NULL DEFAULT ''")
             except sqlite3.OperationalError:
                 pass
+            try:  # id того, кто добавил бота в группу, появился позже таблицы групп
+                c.execute("ALTER TABLE tg_groups ADD COLUMN added_by_id INTEGER")
+            except sqlite3.OperationalError:
+                pass
             # вопросы, прерванные перезапуском, возвращаем в очередь
             c.execute("UPDATE questions SET status='queued', started=NULL WHERE status='running'")
             _ready = True
@@ -584,9 +588,9 @@ def tg_group(chat_id: int) -> dict | None:
     return _q("SELECT * FROM tg_groups WHERE chat_id=?", (chat_id,), one=True)
 
 
-def tg_group_save(chat_id: int, title: str, status: str, added_by: str = ""):
-    _x("INSERT OR REPLACE INTO tg_groups (chat_id, title, status, added_by, created) VALUES (?,?,?,?,?)",
-       (chat_id, (title or "")[:120], status, (added_by or "")[:64], time.time()))
+def tg_group_save(chat_id: int, title: str, status: str, added_by: str = "", added_by_id: int | None = None):
+    _x("INSERT OR REPLACE INTO tg_groups (chat_id, title, status, added_by, added_by_id, created) VALUES (?,?,?,?,?,?)",
+       (chat_id, (title or "")[:120], status, (added_by or "")[:64], added_by_id, time.time()))
 
 
 def tg_group_set(chat_id: int, **fields):
@@ -595,7 +599,9 @@ def tg_group_set(chat_id: int, **fields):
         _x(f"UPDATE tg_groups SET {', '.join(k + '=?' for k in cols)} WHERE chat_id=?", (*cols.values(), chat_id))
 
 
-def tg_groups(status: str = "allowed") -> list[dict]:
+def tg_groups(status: str | None = "allowed") -> list[dict]:
+    if status is None:
+        return _q("SELECT * FROM tg_groups ORDER BY created")
     return _q("SELECT * FROM tg_groups WHERE status=? ORDER BY created", (status,))
 
 

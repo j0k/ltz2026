@@ -145,3 +145,23 @@ def test_unfurl_links_tickets_and_team_announcements(client, bot, monkeypatch):
     n = len(sent_to(api, chat))
     bot.announce()
     assert len(sent_to(api, chat)) == n, "каждое событие — один раз"
+
+
+def test_pending_group_of_owner_is_admitted_on_start(client, bot, monkeypatch):
+    """Владелец команды добавил бота, но в личку боту не писал: уведомление ему уйти не может,
+    поэтому группа разрешается при старте по сохранённому id того, кто её подключил."""
+    A, T = mods()
+    api, chat = bot.api_log, -1005
+    monkeypatch.setattr(T, "OWNERS", {777})
+    bot.handle(member(777, chat=chat))
+    assert A.tg_group(chat)["status"] == "allowed" and A.tg_group(chat)["added_by_id"] == 777, "id подключившего сохранён"
+
+    A.tg_group_set(chat, status="pending")          # как будто владельца не узнали при добавлении
+    api.calls.clear()
+    bot.admit_pending()
+    assert A.tg_group(chat)["status"] == "allowed"
+    assert any("Привет, команда" in p["text"] for p in sent_to(api, chat)), "приветствие отправлено"
+
+    A.tg_group_save(-1006, "Чужая", "pending", "кто-то", 999)
+    bot.admit_pending()
+    assert A.tg_group(-1006)["status"] == "pending", "чужую группу сама собой не разрешаем"

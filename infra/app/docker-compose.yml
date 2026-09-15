@@ -16,7 +16,7 @@ services:
       DXAQC_ASK_TOKEN_FILE: "/run/ask/broker_token"
       DXAQC_TG_TOKEN_FILE: "/run/tg/bot_token"
       # владелец команды в Telegram может подключать бота к группам; Trac для тикетов #NN — изнутри сети, снаружи он за паролем
-      DXAQC_TG_OWNERS: "5362969749"
+      DXAQC_TG_OWNERS: "52160369 1630607943"
       DXAQC_TG_TRAC: "http://ltz_trac:8000/trac"
     networks:
       - default

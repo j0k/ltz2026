@@ -112,7 +112,9 @@ def setup(**kw):
 
 
 def _url(path: str) -> str:
-    return ctx["public_url"] + path
+    # ctx пуст, когда модуль запущен отдельной командой (управление группами): адрес берём из окружения
+    base = ctx.get("public_url") or os.environ.get("DXAQC_PUBLIC_URL", "https://ltz2026.juri-konoplev.pro").rstrip("/")
+    return base + path
 
 
 _tickets: dict = {}
@@ -371,11 +373,11 @@ class Bot:
             self.call("leaveChat", chat_id=cid)
             return None
         if self.trusted(actor.get("id")):
-            A.tg_group_save(cid, title, "allowed", who)
+            A.tg_group_save(cid, title, "allowed", who, actor.get("id"))
             self.welcome(cid)
             return A.tg_group(cid)
         if not g:
-            A.tg_group_save(cid, title, "pending", who)
+            A.tg_group_save(cid, title, "pending", who, actor.get("id"))
             text = (f"Бота добавили в группу <b>{esc(title or cid)}</b>{f' (участник {esc(who)})' if who else ''}. "
                     "Пока группа не разрешена, бот в ней молчит.")
             for chat_id in sorted(set(A.admin_tg_chats()) | OWNERS):
@@ -750,6 +752,15 @@ class Bot:
 
     # ---------------------------------------------------------------- фоновые потоки
 
+    def admit_pending(self):
+        """Группы, добавленные владельцем команды, но повисшие в ожидании: разрешить при старте.
+        Так чинится случай, когда владелец не писал боту в личку и уведомление ему уйти не могло."""
+        for g in A.tg_groups("pending"):
+            if g.get("added_by_id") in OWNERS:
+                A.tg_group_set(g["chat_id"], status="allowed")
+                print(f"[tg] группа {g['title']!r} разрешена: её подключил владелец команды", flush=True)
+                self.welcome(g["chat_id"])
+
     def setup_profile(self):
         me = self.call("getMe")
         if isinstance(me, dict) and me.get("username"):
@@ -771,6 +782,7 @@ class Bot:
                 if offset is None:                  # профиль и сохранённое смещение — при старте и после сбоя базы
                     self.setup_profile()
                     offset = int(A.tg_state("offset") or 0)
+                    self.admit_pending()
                     print(f"[tg] бот @{self.username} слушает обновления", flush=True)
                 updates = self.call("getUpdates", timeout=40, offset=offset,
                                     allowed_updates=["message", "callback_query", "my_chat_member"])
@@ -857,3 +869,37 @@ def account_unlink(request: Request, csrf: str = Form("")):
     ask._check_csrf(request, csrf)
     A.unlink_tg(user_id=user["id"])
     return RedirectResponse("/account", status_code=303)
+
+
+# ------------------------------------------------------------------ управление группами из командной строки
+
+def _cli():
+    """python -m dxaqc.web.tgbot groups | allow <chat_id> | block <chat_id> — когда решить вопрос в личке нельзя."""
+    import argparse
+    ap = argparse.ArgumentParser(description="группы Telegram-бота стенда")
+    ap.add_argument("command", choices=["groups", "allow", "block"])
+    ap.add_argument("chat_id", nargs="?", type=int)
+    a = ap.parse_args()
+    if a.command == "groups":
+        for g in A.tg_groups(None):
+            print(f"{g['chat_id']:>16}  {g['status']:<8} {g['title']} (добавил {g['added_by'] or '?'})")
+        return
+    g = A.tg_group(a.chat_id)
+    if not g:
+        raise SystemExit("группа не найдена, посмотрите список: groups")
+    token = open(TOKEN_FILE).read().strip() if TOKEN_FILE else ""
+    if not token:
+        raise SystemExit("нет токена бота")
+    bot = Bot(token)                      # одноразовый клиент: только отправка, опрос работающего бота не трогаем
+    if a.command == "allow":
+        A.tg_group_set(a.chat_id, status="allowed")
+        bot.welcome(a.chat_id)
+        print(f"группа {g['title']!r} разрешена, приветствие отправлено")
+    else:
+        A.tg_group_set(a.chat_id, status="blocked")
+        bot.call("leaveChat", chat_id=a.chat_id)
+        print(f"бот вышел из группы {g['title']!r}")
+
+
+if __name__ == "__main__":
+    _cli()

@@ -6,7 +6,10 @@
 .adm-tabs a{display:inline-flex;align-items:center;gap:8px;padding:7px 14px;border-radius:999px;background:var(--card);border:1px solid var(--line);font-weight:600;font-size:14px;color:var(--ink)}
 .adm-tabs a:hover{border-color:var(--accent);text-decoration:none}
 .adm-tabs .n{min-width:20px;padding:0 6px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-size:12px;text-align:center}
-.adm-grid{display:grid;gap:16px}
+.adm-grid{display:grid;gap:16px;grid-template-columns:minmax(0,1fr)}
+/* без min-width:0 широкая таблица внутри .scroll-x растягивает карточку и всю страницу вбок на телефоне */
+.adm-card{min-width:0}
+.scroll-x{min-width:0}
 .adm-card h2{margin:0 0 4px}
 .adm-card .sub{margin:0 0 14px;color:var(--ink3);font-size:13.5px}
 .scroll-x{overflow-x:auto}

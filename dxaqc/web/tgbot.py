@@ -400,8 +400,10 @@ class Bot:
             A.tg_group_migrate(cid, msg["migrate_to_chat_id"])
             return None
         frm = msg.get("from") or {}
-        if frm.get("is_bot") or not self.admit(chat, frm):
+        if frm.get("is_bot"):
             return None
+        if not self.admit(chat, frm):
+            return self._pending_note(cid, msg)   # молчание без объяснения выглядит как поломка бота
         if msg.get("document") or msg.get("photo") or msg.get("video"):
             return None                              # файлы с исследованиями в группе не обрабатываем
         text = (msg.get("text") or msg.get("caption") or "").strip()
@@ -423,6 +425,19 @@ class Bot:
         if f"@{self.username.lower()}" in text.lower() or (replied.get("is_bot") and (replied.get("username") or "").lower() == self.username.lower()):
             return self.send(cid, GROUP_HELP, reply_to=msg.get("message_id"))
         return None
+
+    def _pending_note(self, cid: int, msg: dict):
+        """В неразрешённой группе бот молчит, но на прямое обращение раз в час объясняет, почему."""
+        text = (msg.get("text") or msg.get("caption") or "").lower()
+        if f"@{self.username.lower()}" not in text:
+            return None
+        key = f"pending_note:{cid}"
+        if time.time() - float(A.tg_state(key) or 0) < 3600:
+            return None
+        A.tg_state(key, str(time.time()))
+        return self.send(cid, "Меня ещё не подключили к этой группе, поэтому я здесь молчу. Разрешить может владелец "
+                              "команды или админ стенда — после этого я поздороваюсь и начну отвечать.",
+                         reply_to=msg.get("message_id"))
 
     def links_text(self) -> str:
         return (f"Стенд: {_url('/')}\nТрекер: {TRAC_PUBLIC}\nДокументы ТЗ: {_url('/tz/')}\n"

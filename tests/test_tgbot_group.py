@@ -165,3 +165,20 @@ def test_pending_group_of_owner_is_admitted_on_start(client, bot, monkeypatch):
     A.tg_group_save(-1006, "Чужая", "pending", "кто-то", 999)
     bot.admit_pending()
     assert A.tg_group(-1006)["status"] == "pending", "чужую группу сама собой не разрешаем"
+
+
+def test_pending_group_explains_itself_once(client, bot, monkeypatch):
+    """В неразрешённой группе бот молчит, но на прямое обращение один раз объясняет причину."""
+    A, T = mods()
+    api, chat = bot.api_log, -1007
+    monkeypatch.setattr(T, "OWNERS", set())
+    bot.handle(gmsg("/status", chat=chat))                    # регистрирует группу как ожидающую
+    assert A.tg_group(chat)["status"] == "pending" and not sent_to(api, chat)
+    bot.handle(gmsg("привет всем", chat=chat))
+    assert not sent_to(api, chat), "на обычные сообщения по-прежнему молчит"
+
+    bot.handle(gmsg("/help@QuJump_bot", chat=chat))
+    note = sent_to(api, chat)[-1]
+    assert "ещё не подключили" in note["text"] and note["reply_parameters"]["message_id"] == 55
+    bot.handle(gmsg("@QuJump_bot ау", chat=chat))
+    assert len(sent_to(api, chat)) == 1, "объясняет один раз, а не на каждое сообщение"

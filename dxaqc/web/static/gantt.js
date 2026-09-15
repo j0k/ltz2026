@@ -60,10 +60,18 @@
   on('gtCollapse', () => all(false));
   on('gtZoomIn', () => zoom(Math.round(perDay * 1.35)));
   on('gtZoomOut', () => zoom(Math.round(perDay / 1.35)));
-  on('gtToday', () => {
-    const line = chart.querySelector('.gt-today');
-    if (line) chart.querySelector('.gt-wrap').scrollLeft = line.offsetLeft - chart.clientWidth / 2;
+  const wrapEl = () => chart.querySelector('.gt-wrap');
+  function scrollToPct(p) {                     // доля дорожки → положение прокрутки
+    const wrap = wrapEl(), label = parseInt(getComputedStyle(inner).getPropertyValue('--label')) || 300;
+    const track = inner.getBoundingClientRect().width - label;
+    wrap.scrollTo({ left: Math.max(0, label + track * p / 100 - wrap.clientWidth / 2), behavior: 'smooth' });
+  }
+  on('gtToday', () => scrollToPct(pct(Date.now())));
+  on('gtWork', () => {
+    const [a, b] = (chart.dataset.work || '0,100').split(',').map(Number);
+    scrollToPct((a + b) / 2);
   });
+  on('gtDue', () => scrollToPct(+chart.dataset.due || 0));
   on('gtOpenOnly', e => {
     const btn = e.currentTarget, pressed = btn.getAttribute('aria-pressed') === 'true';
     btn.setAttribute('aria-pressed', String(!pressed));
@@ -71,6 +79,11 @@
   });
 
   zoom(perDay);
-  const today = chart.querySelector('.gt-today'), wrap = chart.querySelector('.gt-wrap');
-  if (today && wrap) wrap.scrollLeft = Math.max(0, today.offsetLeft - wrap.clientWidth * 0.6);
+  const wrap = wrapEl();                        // при заходе показываем участок с работой, вехи — правее
+  if (wrap) {
+    const [a, b] = (chart.dataset.work || '0,100').split(',').map(Number);
+    const label = parseInt(getComputedStyle(inner).getPropertyValue('--label')) || 300;
+    const track = inner.getBoundingClientRect().width - label;
+    wrap.scrollLeft = Math.max(0, label + track * (a + b) / 200 - wrap.clientWidth / 2);
+  }
 })();

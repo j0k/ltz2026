@@ -130,6 +130,10 @@ def _layout(d: dict) -> dict:
         for t in e["tasks"]:
             t["left"], t["width"] = pct(t["start"]), max(round((t["end"] - t["start"]) / span * 100, 3), 0.35)
     d["now_left"] = pct(d["now"])
+    work_end = max([e["end"] for e in d["epics"]] + [d["now"]]) if d["epics"] else d["now"]
+    d["work_left"], d["work_right"] = pct(min(e["start"] for e in d["epics"])) if d["epics"] else 0, pct(work_end)
+    dues = [e["due"] for e in d["epics"] if e["due"]]
+    d["due_left"] = pct(min(dues)) if dues else None
     d["days"] = round(span / DAY, 1)
     return d
 

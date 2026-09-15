@@ -27,11 +27,14 @@
   <button type="button" class="gt-btn" id="gtCollapse">Свернуть</button>
   <button type="button" class="gt-btn" id="gtOpenOnly" aria-pressed="false">Только незакрытые</button>
   <button type="button" class="gt-btn" id="gtToday">Сегодня</button>
+  <button type="button" class="gt-btn" id="gtWork">Где работа</button>
+  {% if d.due_left is not none %}<button type="button" class="gt-btn" id="gtDue">К вехам</button>{% endif %}
   <button type="button" class="gt-btn icon" id="gtZoomOut" aria-label="уменьшить масштаб">−</button>
   <button type="button" class="gt-btn icon" id="gtZoomIn" aria-label="увеличить масштаб">+</button>
 </div>
 
-<div id="gtChart" data-start="{{ d.start|round|int }}" data-end="{{ d.end|round|int }}">
+<div id="gtChart" data-start="{{ d.start|round|int }}" data-end="{{ d.end|round|int }}"
+     data-work="{{ d.work_left }},{{ d.work_right }}"{% if d.due_left is not none %} data-due="{{ d.due_left }}"{% endif %}>
 <div class="gt-wrap">
   <div class="gt-inner">
     <div class="gt-ruler">

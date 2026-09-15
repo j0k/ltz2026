@@ -41,9 +41,9 @@
 .gt-lane{position:relative;flex:1;min-width:0;height:30px}
 .gt-row.epic .gt-lane{height:38px}
 
-.gt-bar{position:absolute;top:50%;transform:translateY(-50%);height:14px;border-radius:7px;background:var(--accent);min-width:3px}
+.gt-bar{position:absolute;top:50%;transform:translateY(-50%);height:14px;border-radius:7px;background:var(--accent);min-width:9px}
 .gt-bar.done{background:var(--ok)}
-.gt-row.epic .gt-bar{height:20px;border-radius:10px;background:#e7e4de;overflow:hidden}
+.gt-row.epic .gt-bar{height:20px;border-radius:10px;background:#e7e4de;overflow:hidden;min-width:14px}
 .gt-row.epic .gt-bar i{display:block;height:100%;background:var(--ok);border-radius:10px 0 0 10px}
 .gt-bar.open::after{content:"";position:absolute;inset:0;border-radius:inherit;
   background:repeating-linear-gradient(135deg,rgba(255,255,255,.45) 0 5px,transparent 5px 10px)}

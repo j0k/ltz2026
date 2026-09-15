@@ -13,3 +13,4 @@ scripts
 **/__pycache__
 infra/trac
 models
+docs

@@ -39,7 +39,7 @@ infra/app/deploy.sh
 Брокер работает на хосте в окне tmux `ltz-ask` и слушает шлюз сети контейнера `172.27.0.1:8099`, из интернета недоступен:
 
 ```bash
-tmux new-window -d -t 0: -n ltz-ask "cd /home/jk/exp/LTZ2026 && tools/run_ask_broker.sh 2>&1 | tee -a /tmp/ltz-ask-broker.log"
+tmux new-window -d -t 0: -n ltz-ask "cd /home/jk/exp/LTZ2026/ltz2026 && tools/run_ask_broker.sh 2>&1 | tee -a /tmp/ltz-ask-broker.log"
 ```
 
 Токен брокер создаёт при первом запуске в `~/.codellake/instances/LTZ-ASK/broker_token`. Контейнер работает от uid 10001,

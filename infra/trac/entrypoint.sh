@@ -55,6 +55,8 @@ fi
 if [ -d "$REPO/.git" ]; then
   trac-admin "$ENVDIR" repository add "$REPO_NAME" "$REPO" git 2>/dev/null || true
   trac-admin "$ENVDIR" repository resync "$REPO_NAME" 2>/dev/null || true
+  # репозиторий по умолчанию: ссылки вида /changeset/<хеш> и /browser без имени репозитория
+  trac-admin "$ENVDIR" repository alias "" "$REPO_NAME" 2>/dev/null || true
 fi
 
 # вход команды: tracd сам проверяет пароль на /login по хешу из $ENVDIR/htpasswd;

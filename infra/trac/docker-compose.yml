@@ -16,7 +16,7 @@ services:
     volumes:
       - ltz_trac_env:/trac
       - ./entrypoint.sh:/entrypoint.sh:ro
-      - /home/jk/exp/LTZ2026:/repo:ro
+      - /home/jk/exp/LTZ2026/ltz2026:/repo:ro
     ports:
       - "127.0.0.1:8097:8000"
 

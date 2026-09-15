@@ -145,7 +145,8 @@ def _page(request: Request, source: str = "", error: str = "", status_code: int 
         counts=queue_state()["counts"], spec=P.SPEC, defaults=P.DEFAULTS, values=values, source=source, error=error,
         calib=_calibration(train["id"]) if train else None, calib_run=train["id"] if train else "",
         journal=_journal(runs), example_id=ctx["example_id"], trac_url=ctx["trac_url"], version=__version__,
-        violation_ru=ctx["violation_ru"]), status_code=status_code)
+        violation_ru=ctx["violation_ru"], og_image="/og/control.jpg",
+        og_description="Пороги и параметры анализа, перезапуск прогонов с новыми параметрами, очередь, отмена и правка вердикта снимка."), status_code=status_code)
 
 
 # ------------------------------------------------------------------ страницы и состояние

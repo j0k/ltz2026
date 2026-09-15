@@ -702,6 +702,57 @@ def site_og():
     return _og_response(lambda: og.site(example), cache)
 
 
+# страницы без собственной картинки: карточка с заголовком, счётчиками и мотивом — чтобы ссылка узнавалась в Telegram
+OG_PAGES = ("tz", "mindmap", "mlmap", "control", "ask")
+
+
+def _og_page(key: str):
+    if key == "tz":
+        return og.page("Документы задачи 04", [
+            "техническое задание ДепЗдрава постранично",
+            "mind map требований со статусом на стенде",
+            "интерактивная шпаргалка scikit-learn для задачи",
+        ], "docs", [("документов", len(tz._docs()), og.WHITE)])
+    if key == "mindmap":
+        from dxaqc.web import tz_mindmap as MM
+        c = MM.counts()
+        return og.page("Mind map ТЗ задачи 04", [
+            "все требования ТЗ деревом, с номерами страниц",
+            "у каждого пункта — статус на стенде и что именно сделано",
+        ], "tree", [("сделано", c["done"], (70, 205, 100)), ("частично", c["partial"], (232, 170, 60)),
+                    ("не сделано", c["todo"], og.MUTED)])
+    if key == "mlmap":
+        from dxaqc.web import ml_map as ML
+        est = ML.estimators()
+        hot = sum(1 for e in est if e.get("perspective") in ("high", "mid"))
+        return og.page("Шпаргалка scikit-learn для задачи 04", [
+            "карта выбора алгоритма для контроля качества денситометрии",
+            "по каждому: используется ли на стенде и насколько перспективен",
+        ], "scatter", [("алгоритмов", len(est), og.WHITE), ("перспективных", hot, og.ACCENT)])
+    if key == "control":
+        return og.page("Пульт анализа", [
+            "пороги и параметры разбора меняются без пересборки сервиса",
+            "перезапуск прогона с новыми параметрами, очередь и отмена",
+            "правка вердикта снимка и пробный анализ",
+        ], "sliders")
+    if key == "ask":
+        return og.page("Спросить Claude о сервисе", [
+            "вопрос по коду и данным стенда прямо из браузера",
+            "отвечает Claude через Codellake по копии проекта",
+            "лимиты и одобрение админом, снимки наружу не уходят",
+        ], "chat")
+    raise HTTPException(404)
+
+
+@app.get("/og/{key}.jpg", include_in_schema=False)
+def page_og(key: str):
+    if key not in OG_PAGES:
+        raise HTTPException(404)
+    folder = os.path.join(DATA, "og")
+    os.makedirs(folder, exist_ok=True)
+    return _og_response(lambda: _og_page(key), os.path.join(folder, f"page_{key}_v{og.VERSION}.jpg"))
+
+
 LIVE_FIELDS = ("key", "path_to_study", "anatomical_region", "quality_class", "violation_list", "processing_status",
                "explanations", "overlay_png", "thumb_png", "time_of_processing")
 LIVE_PAGE = 500

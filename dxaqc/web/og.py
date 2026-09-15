@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Картинки превью ссылок (OpenGraph) 1200×630: карточка снимка, сводка прогона и общая картинка стенда.
+"""Картинки превью ссылок (OpenGraph) 1200×630: карточка снимка, сводка прогона, общая картинка стенда и карточки страниц.
 
 Telegram и другие мессенджеры показывают их рядом со ссылкой. Рисуются тем же шрифтом Inter и в тех же тёмных
 цветах, что атлас, поэтому превью узнаётся с первого взгляда.
@@ -11,7 +11,7 @@ from PIL import Image, ImageDraw
 from dxaqc import atlas as T
 
 W, H = 1200, 630
-VERSION = 1  # поднять при смене оформления: кэшированные картинки пересоздадутся
+VERSION = 2  # поднять при смене оформления: кэшированные картинки пересоздадутся
 BG, PANEL = (18, 20, 24), (28, 32, 39)
 WHITE, BODY, MUTED, ACCENT = (240, 243, 247), (214, 220, 227), (143, 154, 167), (90, 167, 255)
 VERDICT = {0: ("качественное", (12, 163, 12)), 1: ("нарушение", (208, 59, 59)), None: ("не оценено", (120, 128, 138))}
@@ -166,4 +166,145 @@ def site(example_atlas: str | None) -> Image.Image:
             img.paste(a, (W - 40 - a.width, (H - a.height) // 2))
         except (OSError, ValueError):
             pass
+    return img
+
+
+# ------------------------------------------------------------------ карточки страниц
+
+def _tiles(d, x: int, y: int, width: float, tiles: list) -> int:
+    """Ряд плиток со счётчиками, как в сводке прогона."""
+    gap, n = 18, len(tiles)
+    tw = (width - gap * (n - 1)) / n
+    for i, (label, value, color) in enumerate(tiles):
+        tx = x + i * (tw + gap)
+        d.rounded_rectangle([tx, y, tx + tw, y + 118], radius=18, fill=PANEL)
+        d.text((tx + 20, y + 16), str(value), font=T.font(50, True), fill=color, anchor="la")
+        for ln in _wrap(d, label, T.font(20), tw - 36, 1):
+            d.text((tx + 20, y + 84), ln, font=T.font(20), fill=MUTED, anchor="la")
+    return y + 118
+
+
+def _art_tree(d, box):
+    """Дерево требований: ветви и узлы со статусами — мотив mind map."""
+    x0, y0, x1, y1 = box
+    cx, cy = x0 + 46, (y0 + y1) / 2
+    d.ellipse([cx - 16, cy - 16, cx + 16, cy + 16], fill=ACCENT)
+    colors = {"done": (70, 205, 100), "partial": (232, 170, 60), "todo": (120, 128, 138)}
+    # ветвь: сдвиг по вертикали, статус и сдвиги листьев — фиксированные, чтобы узлы не наезжали друг на друга
+    branches = [(-150, "done", (-42, 42)), (-50, "done", (0,)), (50, "partial", (-42, 42)), (150, "todo", (0,))]
+    for dy, status, leaves in branches:
+        mx, my = cx + 116, cy + dy
+        d.line([cx + 16, cy, mx, my], fill=T._mix(colors[status], BG, 0.45), width=5)
+        d.ellipse([mx - 13, my - 13, mx + 13, my + 13], fill=colors[status])
+        for off in leaves:
+            lx, ly = mx + 112, my + off
+            if not (y0 + 18 < ly < y1 - 18):
+                continue
+            d.line([mx + 13, my, lx, ly], fill=T._mix(colors[status], BG, 0.6), width=4)
+            d.rounded_rectangle([lx, ly - 13, min(lx + 122, x1 - 10), ly + 13], radius=13,
+                                fill=T._mix(colors[status], BG, 0.78))
+
+
+def _art_scatter(d, box):
+    """Россыпь оценщиков и путь выбора по ним — мотив шпаргалки scikit-learn."""
+    x0, y0, x1, y1 = box
+    w, h = x1 - x0, y1 - y0
+    dots = [(0.16, 0.22), (0.34, 0.12), (0.52, 0.26), (0.72, 0.16), (0.86, 0.34),
+            (0.12, 0.52), (0.3, 0.44), (0.48, 0.58), (0.66, 0.46), (0.84, 0.62),
+            (0.22, 0.78), (0.42, 0.86), (0.6, 0.74), (0.78, 0.88)]
+    path = [dots[i] for i in (0, 2, 8, 12)]
+    for i in range(len(path) - 1):
+        d.line([x0 + path[i][0] * w, y0 + path[i][1] * h, x0 + path[i + 1][0] * w, y0 + path[i + 1][1] * h],
+               fill=T._mix(ACCENT, BG, 0.5), width=5)
+    for i, (rx, ry) in enumerate(dots):
+        px, py = x0 + rx * w, y0 + ry * h
+        on_path = (rx, ry) in path
+        r = 17 if on_path else 11
+        color = ACCENT if on_path else T._mix(MUTED, BG, 0.45)
+        d.ellipse([px - r, py - r, px + r, py + r], fill=color)
+
+
+def _art_docs(d, box):
+    """Стопка листов с текстом — мотив раздела документов."""
+    x0, y0, x1, y1 = box
+    sw, sh = (x1 - x0) * 0.56, (y1 - y0) * 0.72
+    for i, off in enumerate((44, 22, 0)):
+        sx, sy = x0 + off + 20, y0 + (y1 - y0 - sh) / 2 - off * 0.5
+        fill = PANEL if i < 2 else T._mix(WHITE, PANEL, 0.12)
+        d.rounded_rectangle([sx, sy, sx + sw, sy + sh], radius=16, fill=fill, outline=T._mix(MUTED, BG, 0.4), width=2)
+        if i == 2:
+            for k in range(6):
+                ly = sy + 40 + k * 30
+                if ly > sy + sh - 30:
+                    break
+                d.rounded_rectangle([sx + 26, ly, sx + sw - (26 if k % 3 else 80), ly + 10], radius=5,
+                                    fill=T._mix(ACCENT if k == 0 else MUTED, PANEL, 0.35 if k == 0 else 0.6))
+
+
+def _art_sliders(d, box):
+    """Ползунки параметров — мотив пульта анализа."""
+    x0, y0, x1, y1 = box
+    w = x1 - x0 - 60
+    top = (y0 + y1) / 2 - 1.5 * 74          # ряд ползунков по центру рисунка
+    for i, pos in enumerate((0.62, 0.35, 0.78, 0.5)):
+        sy = top + i * 74
+        if sy > y1 - 40:
+            break
+        d.rounded_rectangle([x0 + 30, sy - 7, x0 + 30 + w, sy + 7], radius=7, fill=PANEL)
+        d.rounded_rectangle([x0 + 30, sy - 7, x0 + 30 + w * pos, sy + 7], radius=7, fill=T._mix(ACCENT, BG, 0.35))
+        kx = x0 + 30 + w * pos
+        d.ellipse([kx - 18, sy - 18, kx + 18, sy + 18], fill=ACCENT)
+
+
+def _art_chat(d, box):
+    """Реплики диалога — мотив вопросов к Claude."""
+    x0, y0, x1, y1 = box
+    w = x1 - x0 - 60
+    top = (y0 + y1) / 2 - (3 * 116 - 30) / 2    # реплики по центру рисунка
+    for i, (side, frac) in enumerate(((0, 0.74), (1, 0.56), (0, 0.62))):
+        by = top + i * 116
+        if by + 86 > y1:
+            break
+        bw = w * frac
+        bx = x0 + 30 + (w - bw if side else 0)
+        d.rounded_rectangle([bx, by, bx + bw, by + 86], radius=22,
+                            fill=T._mix(ACCENT, BG, 0.62) if side else PANEL)
+        for k in range(2):
+            d.rounded_rectangle([bx + 24, by + 26 + k * 26, bx + bw - (24 if k else 90), by + 36 + k * 26],
+                                radius=5, fill=T._mix(WHITE if side else MUTED, PANEL, 0.55))
+
+
+ARTS = {"tree": _art_tree, "scatter": _art_scatter, "docs": _art_docs, "sliders": _art_sliders, "chat": _art_chat}
+
+
+def page(title: str, bullets: list[str], art: str = "", tiles: list | None = None) -> Image.Image:
+    """Карточка обычной страницы: заголовок, короткие пункты, счётчики и рисунок-мотив справа."""
+    img = Image.new("RGB", (W, H), BG)
+    d = ImageDraw.Draw(img)
+    x = 60
+    draw_art = ARTS.get(art)
+    width = (640 if draw_art else W - 2 * x) - 0
+    _brand(d, x, 84)
+    y = 118
+    ft = T.font(50, True)
+    for ln in _wrap(d, title, ft, width, 2):
+        d.text((x, y), ln, font=ft, fill=WHITE, anchor="la")
+        y += 60
+    y += 14
+    f = T.font(25)
+    limit = H - (150 if tiles else 70)
+    for text in bullets[:4]:
+        wrapped = _wrap(d, text, f, width - 24, 2)
+        if y + 34 * len(wrapped) > limit:
+            break
+        d.ellipse([x + 1, y + 11, x + 10, y + 20], fill=ACCENT)
+        for ln in wrapped:
+            d.text((x + 24, y), ln, font=f, fill=BODY, anchor="la")
+            y += 34
+        y += 8
+    if tiles:
+        _tiles(d, x, H - 190, width, tiles)
+    if draw_art:
+        draw_art(d, (x + width + 40, 70, W - 40, H - 70))
+    d.text((x, H - 38), FOOTER, font=T.font(18), fill=MUTED, anchor="ls")
     return img

@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Диаграмма Ганта проекта{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="/static/gantt.css?v={{ version }}">
+<script src="/static/gantt.js?v={{ version }}" defer></script>
+{% endblock %}
+{% block content %}
+<div class="gt-page">
+<p class="faint"><a href="/tz/">← документы задачи</a> · <a href="/tz/mindmap.html">mind map требований</a> · <a href="{{ d.trac_url }}">трекер</a></p>
+<h1>Диаграмма Ганта проекта</h1>
+<p class="muted gt-lead">Задачи трекера по эпикам: когда заведены, когда закрыты и какие вехи достигнуты. Данные берутся из
+  трекера при заходе на страницу. Требования самого ТЗ — на <a href="/tz/mindmap.html">mind map</a>.</p>
+
+{% if not d.ok %}
+<p class="note" role="alert">Трекер сейчас не отвечает, поэтому диаграмму построить не из чего. Обновите страницу позже
+  или откройте <a href="{{ d.trac_url }}">трекер</a> напрямую.</p>
+{% else %}
+<div class="gt-tiles" role="group" aria-label="сводка по задачам">
+  <span class="gt-tile"><span class="gt-dot closed"></span><b>{{ d.counts.closed }}</b> задач закрыто</span>
+  <span class="gt-tile"><span class="gt-dot open"></span><b>{{ d.counts.open }}</b> в работе</span>
+  <span class="gt-tile"><span class="gt-dot mile"></span><b>{{ d.counts.reached }}</b> из {{ d.counts.epics }} вех достигнуто</span>
+  <span class="gt-hint">всего {{ d.counts.total }} задач · окно {{ d.start|msk }} — {{ d.end|msk }}</span>
+</div>
+
+<div class="gt-toolbar" role="toolbar" aria-label="управление диаграммой">
+  <button type="button" class="gt-btn" id="gtExpand">Раскрыть всё</button>
+  <button type="button" class="gt-btn" id="gtCollapse">Свернуть</button>
+  <button type="button" class="gt-btn" id="gtOpenOnly" aria-pressed="false">Только незакрытые</button>
+  <button type="button" class="gt-btn" id="gtToday">Сегодня</button>
+  <button type="button" class="gt-btn icon" id="gtZoomOut" aria-label="уменьшить масштаб">−</button>
+  <button type="button" class="gt-btn icon" id="gtZoomIn" aria-label="увеличить масштаб">+</button>
+</div>
+
+<div id="gtChart" data-start="{{ d.start|round|int }}" data-end="{{ d.end|round|int }}">
+<div class="gt-wrap">
+  <div class="gt-inner">
+    <div class="gt-ruler">
+      <div class="gt-ruler-name">эпик и задачи</div>
+      <div class="gt-ruler-lane" id="gtRuler"></div>
+    </div>
+    {% for e in d.epics %}{% set ei = loop.index0 %}
+    <div class="gt-row epic" {% if e.reached %}data-done="1"{% endif %}>
+      <div class="gt-name">
+        <button type="button" class="gt-toggle" data-epic="{{ ei }}" aria-expanded="false"
+                aria-label="показать задачи эпика {{ e.name }}">▶</button>
+        <span class="txt" title="{{ e.name }}">{{ e.name }}</span>
+        <span class="n">{{ e.closed }}/{{ e.total }}</span>
+      </div>
+      <div class="gt-lane">
+        <div class="gt-bar" style="left:{{ e.left }}%;width:{{ e.width }}%"
+             title="{{ e.name }} · закрыто {{ e.closed }} из {{ e.total }} · с {{ e.start|msk }} по {{ e.end|msk }}"><i style="width:{{ e.progress }}%"></i></div>
+        {% if e.due_left is not none %}
+        <span class="gt-mile {% if e.reached %}reached{% elif e.overdue %}overdue{% endif %}" style="left:{{ e.due_left }}%"
+              title="веха «{{ e.name }}» · срок {{ e.due|msk }} · {% if e.reached %}достигнута{% elif e.overdue %}срок прошёл, осталось {{ e.open }}{% else %}осталось {{ e.open }} задач{% endif %}"></span>
+        {% endif %}
+      </div>
+    </div>
+      {% for t in e.tasks %}
+      <div class="gt-row task" data-of="{{ ei }}" {% if t.closed %}data-done="1"{% endif %} hidden>
+        <div class="gt-name">
+          <a class="gt-id" href="{{ d.trac_url }}ticket/{{ t.id }}" target="_blank" rel="noopener">#{{ t.id }}</a>
+          <span class="txt" title="{{ t.summary }}">{{ t.summary }}</span>
+        </div>
+        <div class="gt-lane">
+          <div class="gt-bar {{ 'done' if t.closed else 'open' }}" style="left:{{ t.left }}%;width:{{ t.width }}%"
+               title="#{{ t.id }} {{ t.summary }} · {{ t.component }} · заведена {{ t.start|msk }}{% if t.closed %} · закрыта {{ t.end|msk }}{% else %} · в работе{% endif %}"></div>
+        </div>
+      </div>
+      {% endfor %}
+    {% endfor %}
+    <div class="gt-today" style="left:calc(var(--label,300px) + (100% - var(--label,300px)) * {{ d.now_left / 100 }})"><span>сегодня</span></div>
+  </div>
+</div>
+</div>
+
+<p class="gt-legend">
+  <span><i style="background:var(--ok)"></i>закрытая задача</span>
+  <span><i style="background:var(--accent)"></i>в работе</span>
+  <span><i style="background:var(--warn);width:12px;height:12px;border-radius:3px;transform:rotate(45deg)"></i>веха со сроком</span>
+  <span class="faint">полоска эпика заполняется по мере закрытия задач; красная линия — сегодня</span>
+</p>
+<noscript><p class="muted">Без JavaScript видны полоски задач, но без линейки дат и масштаба.</p></noscript>
+{% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,66 @@
+/* Диаграмма Ганта: слева липкие названия, справа общая дорожка времени с горизонтальной прокруткой. */
+.gt-page{max-width:1180px;margin:0 auto;padding:22px 20px 40px}
+.gt-lead{margin:0 0 16px;max-width:760px}
+.gt-tiles{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:0 0 14px}
+.gt-tile{display:inline-flex;align-items:center;gap:8px;padding:7px 13px;border:1px solid var(--line);border-radius:999px;background:var(--card);font-size:14px}
+.gt-tile b{font-size:16px}
+.gt-dot{width:11px;height:11px;border-radius:50%;flex:none}
+.gt-dot.closed{background:var(--ok)}.gt-dot.open{background:var(--accent)}.gt-dot.mile{background:var(--warn)}
+.gt-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 12px}
+.gt-btn{font:inherit;font-size:13.5px;padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--ink);cursor:pointer}
+.gt-btn:hover{border-color:var(--accent);color:var(--accent)}
+.gt-btn[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
+.gt-btn.icon{width:34px;padding:6px 0;text-align:center}
+.gt-hint{color:var(--ink3);font-size:13px}
+
+.gt-wrap{border:1px solid var(--line);border-radius:var(--radius);background:var(--card);overflow-x:auto;overflow-y:hidden;min-width:0}
+.gt-inner{position:relative;min-width:100%;width:var(--track,1400px)}
+.gt-ruler{position:sticky;top:0;z-index:3;display:flex;height:46px;border-bottom:1px solid var(--line);background:var(--card)}
+.gt-ruler-name{position:sticky;left:0;z-index:4;flex:none;width:var(--label,300px);background:var(--card);border-right:1px solid var(--line);
+  display:flex;align-items:flex-end;padding:0 12px 6px;font-size:12px;color:var(--ink3)}
+.gt-ruler-lane{position:relative;flex:1;min-width:0}
+.gt-month{position:absolute;top:4px;font-size:12px;font-weight:600;color:var(--ink2);white-space:nowrap}
+.gt-day{position:absolute;bottom:4px;font-size:11px;color:var(--ink3);transform:translateX(-50%);white-space:nowrap}
+.gt-day.weekend{color:var(--bad)}
+.gt-grid-line{position:absolute;top:0;bottom:0;width:1px;background:var(--line)}
+.gt-grid-line.month{background:#d8d5ce}
+
+.gt-row{display:flex;align-items:center;min-height:30px;border-bottom:1px solid #f1efea}
+.gt-row:last-child{border-bottom:0}
+.gt-row.epic{background:#fbfaf8;min-height:38px}
+.gt-row.epic:hover,.gt-row.task:hover{background:var(--accent-soft)}
+.gt-name{position:sticky;left:0;z-index:2;flex:none;width:var(--label,300px);background:inherit;border-right:1px solid var(--line);
+  padding:4px 12px;display:flex;align-items:center;gap:8px;font-size:13.5px;min-width:0}
+.gt-row.epic .gt-name{background:#fbfaf8;font-weight:600}
+.gt-row.epic:hover .gt-name,.gt-row.task:hover .gt-name{background:var(--accent-soft)}
+.gt-name .txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gt-name .n{margin-left:auto;flex:none;font-size:12px;color:var(--ink3);font-variant-numeric:tabular-nums}
+.gt-toggle{flex:none;width:20px;height:20px;border:0;background:none;cursor:pointer;color:var(--ink3);font-size:11px;padding:0}
+.gt-toggle[aria-expanded=true]{transform:rotate(90deg)}
+.gt-id{flex:none;color:var(--ink3);font-size:12px;font-variant-numeric:tabular-nums}
+.gt-lane{position:relative;flex:1;min-width:0;height:30px}
+.gt-row.epic .gt-lane{height:38px}
+
+.gt-bar{position:absolute;top:50%;transform:translateY(-50%);height:14px;border-radius:7px;background:var(--accent);min-width:3px}
+.gt-bar.done{background:var(--ok)}
+.gt-row.epic .gt-bar{height:20px;border-radius:10px;background:#e7e4de;overflow:hidden}
+.gt-row.epic .gt-bar i{display:block;height:100%;background:var(--ok);border-radius:10px 0 0 10px}
+.gt-bar.open::after{content:"";position:absolute;inset:0;border-radius:inherit;
+  background:repeating-linear-gradient(135deg,rgba(255,255,255,.45) 0 5px,transparent 5px 10px)}
+.gt-mile{position:absolute;top:50%;width:16px;height:16px;margin-left:-8px;transform:translateY(-50%) rotate(45deg);
+  background:var(--warn);border:2px solid var(--card);border-radius:3px;z-index:2}
+.gt-mile.reached{background:var(--ok)}
+.gt-mile.overdue{background:var(--bad)}
+.gt-today{position:absolute;top:0;bottom:0;width:2px;background:var(--bad);opacity:.5;z-index:1;pointer-events:none}
+.gt-today span{position:absolute;top:2px;left:4px;font-size:11px;color:var(--bad);background:var(--card);padding:0 4px;border-radius:4px}
+.gt-legend{margin:14px 0 0;display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--ink2)}
+.gt-legend i{display:inline-block;width:22px;height:10px;border-radius:5px;margin-right:6px;vertical-align:middle}
+.gt-empty{padding:18px;color:var(--ink3)}
+.gt-row.hidden{display:none}
+/* display:flex у строки перебивает служебное правило браузера для hidden, поэтому скрываем явно */
+.gt-row[hidden]{display:none}
+@media (max-width:760px){
+  .gt-page{padding:16px 12px 30px}
+  .gt-wrap{--label:150px}
+  .gt-name{font-size:12.5px;gap:5px;padding:4px 8px}
+}

@@ -103,6 +103,18 @@ def tz_mindmap_short():
     return RedirectResponse("/tz/mindmap.html", status_code=301)
 
 
+@router.get("/tz/gantt.html", response_class=HTMLResponse)
+def tz_gantt(request: Request, refresh: int = 0):
+    """Диаграмма Ганта по данным трекера: задачи эпиков со сроками и вехи с признаком достижения."""
+    from dxaqc.web import gantt as G
+    d = G.data(force=bool(refresh))
+    c = d["counts"]
+    return templates.TemplateResponse(request, "tz_gantt.html", dict(
+        d=d, version=__version__, og_title="Диаграмма Ганта проекта · DXA QC", og_image="/og/gantt.jpg",
+        og_description=(f"Задачи и вехи проекта контроля качества денситометрии: закрыто {c['closed']} из {c['total']} задач, "
+                        f"достигнуто {c['reached']} из {c['epics']} вех.")))
+
+
 @router.get("/tz/mindmap.html", response_class=HTMLResponse)
 def tz_mindmap(request: Request):
     """Mind map ТЗ задачи 04: разделы деревом, страницы PDF и статус реализации на стенде."""

@@ -274,7 +274,23 @@ def _art_chat(d, box):
                                 radius=5, fill=T._mix(WHITE if side else MUTED, PANEL, 0.55))
 
 
-ARTS = {"tree": _art_tree, "scatter": _art_scatter, "docs": _art_docs, "sliders": _art_sliders, "chat": _art_chat}
+def _art_gantt(d, box):
+    """Полоски задач и ромб вехи — мотив диаграммы Ганта."""
+    x0, y0, x1, y1 = box
+    w = x1 - x0 - 60
+    rows = ((0.0, 0.46, True), (0.14, 0.34, True), (0.3, 0.44, False), (0.22, 0.3, True), (0.5, 0.38, False))
+    top = (y0 + y1) / 2 - (len(rows) * 58 - 20) / 2
+    for i, (off, frac, done) in enumerate(rows):
+        by = top + i * 58
+        d.rounded_rectangle([x0 + 30, by - 9, x0 + 30 + w, by + 9], radius=9, fill=T._mix(PANEL, BG, 0.4))
+        bx = x0 + 30 + w * off
+        d.rounded_rectangle([bx, by - 9, bx + w * frac, by + 9], radius=9,
+                            fill=(70, 205, 100) if done else T._mix(ACCENT, BG, 0.25))
+    mx = x0 + 30 + w * 0.82
+    d.regular_polygon((mx, (y0 + y1) / 2, 22), n_sides=4, rotation=45, fill=(232, 170, 60))
+
+
+ARTS = {"gantt": _art_gantt, "tree": _art_tree, "scatter": _art_scatter, "docs": _art_docs, "sliders": _art_sliders, "chat": _art_chat}
 
 
 def page(title: str, bullets: list[str], art: str = "", tiles: list | None = None) -> Image.Image:

@@ -51,6 +51,13 @@ tr:last-child td{border-bottom:none}
 .btn.ghost{background:var(--accent-soft);color:var(--accent)}
 .thumb{width:84px;height:84px;object-fit:cover;background:#000;border-radius:8px;display:block}
 .note{background:var(--warn-soft);border:1px solid #f1dfb5;border-radius:10px;padding:10px 14px;color:#6b4a00;font-size:14px}
+.cookie-bar{position:fixed;left:0;right:0;bottom:0;z-index:60;background:var(--card);border-top:1px solid var(--line);box-shadow:0 -6px 24px rgba(16,24,40,.10)}
+.cookie-bar[hidden]{display:none}
+.cookie-in{max-width:1180px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;gap:16px}
+.cookie-in p{margin:0;font-size:13.5px;color:var(--ink2);min-width:0}
+.cookie-in code{font-size:12.5px;background:var(--accent-soft);color:var(--accent);padding:1px 5px;border-radius:5px}
+.cookie-in .btn{flex:none}
+@media (max-width:760px){.cookie-in{flex-direction:column;align-items:stretch;gap:10px;padding:12px 16px}}
 footer{max-width:1180px;margin:0 auto;padding:0 20px 30px;color:var(--ink3);font-size:12px}
 @media (max-width:760px){
   /* на телефоне шапка переносится, а не растягивает страницу вбок */
@@ -70,6 +77,7 @@ footer{max-width:1180px;margin:0 auto;padding:0 20px 30px;color:var(--ink3);font
 </div></header>
 {% block fullbleed %}{% endblock %}
 <main>{% block content %}{% endblock %}</main>
-<footer>ЛЦТ 2026 · задача Департамента здравоохранения · команда «Квантовый Скачок» · версия {{ version }} · только обезличенные данные организатора</footer>
+<footer>ЛЦТ 2026 · задача Департамента здравоохранения · команда «Квантовый Скачок» · версия {{ version }} · только обезличенные данные организатора · <a href="/cookies">cookie</a></footer>
+{% include "_cookie_notice.html" %}
 </body>
 </html>

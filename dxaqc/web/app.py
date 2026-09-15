@@ -26,7 +26,7 @@ from starlette.concurrency import run_in_threadpool
 from dxaqc import __version__, atlas, datasets, pipeline, voice
 from dxaqc import params as P
 from dxaqc.io import safe_extract
-from dxaqc.web import analysis, ask, control, mcp, og, progress, showcase, tgbot, tz
+from dxaqc.web import accounts, analysis, ask, control, mcp, og, progress, showcase, tgbot, tz
 
 DATA = os.environ.get("DXAQC_DATA", "/data")
 RUNS = os.path.join(DATA, "runs")
@@ -691,6 +691,15 @@ def run_og(run_id: str):
     thumbs = [os.path.join(out, r["thumb_png"]) for r in order[:8]]
     build = lambda: og.run(st.get("title") or run_id, summary, thumbs, state)
     return _og_response(build, os.path.join(out, f"og_run_v{og.VERSION}.jpg") if man and st.get("state") == "done" else None)
+
+
+@app.get("/cookies", response_class=HTMLResponse)
+def cookies_page(request: Request):
+    """Что стенд хранит в браузере: одна техническая cookie входа, настройки в localStorage, никакой аналитики."""
+    return templates.TemplateResponse(request, "cookies.html", dict(
+        version=__version__, trac_url=TRAC_URL, session_days=round(accounts.SESSION_TTL / 86400),
+        og_description="Какие cookie ставит стенд контроля качества денситометрии, зачем и на какой срок: "
+                       "одна техническая cookie входа, аналитики и сторонних трекеров нет."))
 
 
 @app.get("/og.jpg", include_in_schema=False)

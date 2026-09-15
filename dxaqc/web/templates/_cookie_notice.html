@@ -1,0 +1,24 @@
+{# Плашка о cookie: показывается один раз до согласия. Скрыта в разметке, JS снимает hidden, если согласия ещё нет,
+   поэтому при повторных заходах она не мелькает. Согласие храним в localStorage, лишних cookie не заводим. #}
+<div class="cookie-bar" id="cookieBar" role="region" aria-label="Уведомление об использовании cookie" hidden>
+  <div class="cookie-in">
+    <p><b>Cookie на этом стенде.</b> Ставим одну техническую cookie <code>dxaqc_sid</code> — она появляется только после
+      входа и помнит сессию. Аналитики, рекламы и сторонних трекеров нет, снимки остаются на сервере.
+      <a href="/cookies">Подробнее</a></p>
+    <button class="btn" type="button" id="cookieOk">Хорошо</button>
+  </div>
+</div>
+<script>
+(function () {
+  var KEY = 'dxaqc-cookie-ok', bar = document.getElementById('cookieBar'), btn = document.getElementById('cookieOk');
+  if (!bar || !btn) return;
+  var stored = null;
+  try { stored = localStorage.getItem(KEY); } catch (e) { stored = null; }   // приватный режим: просто покажем плашку
+  if (stored) return;
+  bar.hidden = false;
+  btn.addEventListener('click', function () {
+    try { localStorage.setItem(KEY, '1'); } catch (e) {}
+    bar.hidden = true;
+  });
+})();
+</script>

@@ -17,12 +17,13 @@ import urllib.request
 from urllib.parse import quote
 
 from fastapi import APIRouter, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 from markdown_it import MarkdownIt
 
 from dxaqc import __version__
 from dxaqc.web import accounts as A
 from dxaqc.web import contacts as C
+from dxaqc.web import sysmon
 
 COOKIE = "dxaqc_sid"
 COOKIE_SECURE = os.environ.get("DXAQC_COOKIE_SECURE", "1") != "0"
@@ -213,7 +214,8 @@ def _admin_page(request: Request, status_code: int = 200, error: str = "", new_i
                  journal=A.journal(100), broker=bool(ASK_URL), broker_ok=broker_alive(), error=error,
                  requests=A.pending_requests(), recent_requests=A.recent_requests(20),
                  request_kinds=A.REQUEST_KINDS, request_status=A.REQUEST_STATUS,
-                 invites=A.list_invites(), invite_roles=A.INVITE_ROLES, new_invite=new_invite, contacts=C.ALL)
+                 invites=A.list_invites(), invite_roles=A.INVITE_ROLES, new_invite=new_invite, contacts=C.ALL,
+                 server=sysmon.snapshot())
 
 
 @router.get("/admin", response_class=HTMLResponse)
@@ -224,6 +226,15 @@ def admin(request: Request):
     if not user["is_admin"]:
         raise HTTPException(403, "страница только для админов")
     return _admin_page(request)
+
+
+@router.get("/admin/api/system")
+def admin_system(request: Request):
+    """Память, диск и нагрузка сервера — только админам, для автообновления раздела «Сервер»."""
+    user = request.state.user
+    if not user or not user["is_admin"]:
+        raise HTTPException(403, "только для админов")
+    return JSONResponse(sysmon.snapshot(), headers={"Cache-Control": "no-store"})
 
 
 @router.post("/admin/users/{uid}")

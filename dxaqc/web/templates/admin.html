@@ -28,6 +28,26 @@
 .q-item:first-child{border-top:0}
 .q-text{white-space:pre-wrap;margin:4px 0 10px}
 .st-done{color:#0c7a53}.st-error, .st-rejected{color:#b3302f}.st-queued, .st-running, .st-awaiting_approval{color:#8a5b00}
+.srv-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:0 0 12px}
+.srv-tile{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--card);min-width:0}
+.srv-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.srv-title{font-size:13px;color:var(--ink2);font-weight:600}
+/* статус — значок и подпись; цвет только дублирует их, текст остаётся цветом текста */
+.srv-status{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--ink2);white-space:nowrap}
+.srv-ic{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;font-style:normal;
+  font-size:11px;font-weight:700;color:#fff;background:#0ca30c}
+[data-status=warning] .srv-ic{background:#fab219;color:#3d2a00}
+[data-status=serious] .srv-ic{background:#ec835a}
+[data-status=critical] .srv-ic{background:#d03b3b}
+.srv-value{font-size:22px;font-weight:700;line-height:1.2;margin-bottom:8px;font-variant-numeric:tabular-nums}
+.srv-meter{height:8px;border-radius:4px;background:var(--accent-soft);overflow:hidden;margin-bottom:6px}
+.srv-meter span{display:block;height:100%;border-radius:4px;background:var(--accent);transition:width .4s}
+.srv-detail{font-size:12.5px;color:var(--ink3);font-variant-numeric:tabular-nums}
+.srv-hint{margin:8px 0 0;font-size:12.5px;color:var(--ink2);background:var(--warn-soft);border-radius:8px;padding:6px 8px}
+.srv-hint[hidden]{display:none}
+.srv-sizes summary{cursor:pointer;font-size:13.5px;color:var(--accent)}
+.srv-sizes table{margin-top:8px;font-size:13.5px}
+.srv-sizes td.num{text-align:right;font-variant-numeric:tabular-nums}
 .cnt-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px;margin-bottom:16px}
 .cnt{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--card)}
 .cnt h3, .adm-card h3{margin:0 0 6px;font-size:15px}
@@ -44,6 +64,7 @@
 {% if error %}<p class="note" role="alert">{{ error }}</p>{% endif %}
 
 <nav class="adm-tabs" aria-label="разделы админки">
+  <a href="#server" data-status="{{ server.status }}">Сервер <i class="srv-ic" id="srvTabIc" aria-label="{{ server.status_label }}">{{ server.status_icon }}</i></a>
   <a href="#invites">Приглашения <span class="n">{{ invites|selectattr('status', 'equalto', 'active')|list|length }}</span></a>
   <a href="#requests">Запросы на анализ <span class="n">{{ requests|length }}</span></a>
   <a href="#approvals">Ждут одобрения <span class="n">{{ approvals|length }}</span></a>
@@ -55,6 +76,29 @@
 </nav>
 
 <div class="adm-grid">
+<section class="card adm-card" id="server">
+  <h2>Сервер</h2>
+  <p class="sub">Память и диск машины, память контейнера стенда и нагрузка. Обновляется каждые 15 секунд<span id="srvAt"></span>.</p>
+  <div class="srv-row">
+  {% for m in server.metrics %}
+    <div class="srv-tile" data-metric="{{ m.key }}" data-status="{{ m.status }}">
+      <div class="srv-head"><span class="srv-title">{{ m.title }}</span>
+        <span class="srv-status"><i class="srv-ic" aria-hidden="true">{{ m.status_icon }}</i><span class="srv-sl">{{ m.status_label }}</span></span></div>
+      <div class="srv-value">{{ m.value }}</div>
+      {% if m.percent is not none %}<div class="srv-meter" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ [m.percent, 100]|min }}"
+           aria-label="{{ m.title }}: {{ m.percent }}%"><span style="width:{{ [m.percent, 100]|min }}%"></span></div>{% endif %}
+      <div class="srv-detail">{{ m.detail }}{% if m.percent is not none %} · {{ m.percent }}%{% endif %}</div>
+      <p class="srv-hint"{% if not m.hint %} hidden{% endif %}>{{ m.hint }}</p>
+    </div>
+  {% endfor %}
+  </div>
+  <details class="srv-sizes"><summary>Данные стенда занимают <span id="srvData">{{ server.data_total }}</span></summary>
+    <div class="scroll-x"><table><tbody id="srvSizes">
+      {% for r in server.sizes %}<tr><td>{{ r.label }}</td><td class="faint">{{ r.name }}</td><td class="num">{{ r.text }}</td></tr>{% endfor %}
+    </tbody></table></div>
+  </details>
+</section>
+
 <section class="card adm-card" id="invites">
   <h2>Приглашения</h2>
   <p class="sub">Одноразовая ссылка со сроком действия. Кто перейдёт по ней, зарегистрируется или войдёт и получит выбранную роль.
@@ -259,6 +303,49 @@
     btn.textContent = 'Скопировано';
     setTimeout(() => { btn.textContent = 'Скопировать'; }, 1600);
   });
+})();
+
+(function () {
+  const box = document.getElementById('server');
+  if (!box) return;
+  const at = document.getElementById('srvAt');
+  const hhmm = () => new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
+  async function refresh() {
+    if (document.hidden) return;
+    try {
+      const r = await fetch('/admin/api/system', {cache: 'no-store'});
+      if (!r.ok) return;
+      const d = await r.json();
+      d.metrics.forEach(m => {
+        const t = box.querySelector('.srv-tile[data-metric="' + m.key + '"]');
+        if (!t) return;
+        t.dataset.status = m.status;
+        t.querySelector('.srv-ic').textContent = m.status_icon;
+        t.querySelector('.srv-sl').textContent = m.status_label;
+        t.querySelector('.srv-value').textContent = m.value;
+        t.querySelector('.srv-detail').textContent = m.detail + (m.percent != null ? ' · ' + m.percent + '%' : '');
+        const bar = t.querySelector('.srv-meter');
+        if (bar && m.percent != null) {
+          const w = Math.min(m.percent, 100);
+          bar.setAttribute('aria-valuenow', w); bar.setAttribute('aria-label', m.title + ': ' + m.percent + '%');
+          bar.querySelector('span').style.width = w + '%';
+        }
+        const hint = t.querySelector('.srv-hint');
+        hint.textContent = m.hint; hint.hidden = !m.hint;
+      });
+      const tab = document.querySelector('.adm-tabs a[href="#server"]');
+      if (tab) {
+        tab.dataset.status = d.status;
+        const ic = document.getElementById('srvTabIc');
+        ic.textContent = d.status_icon; ic.setAttribute('aria-label', d.status_label);
+      }
+      document.getElementById('srvData').textContent = d.data_total;
+      if (at) at.textContent = ' · обновлено ' + hhmm();
+    } catch (e) { /* сеть моргнула — попробуем в следующий раз */ }
+  }
+  if (at) at.textContent = ' · обновлено ' + hhmm();
+  setInterval(refresh, 15000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
 })();
 </script>
 {% endblock %}

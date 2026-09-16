@@ -712,7 +712,7 @@ def site_og():
 
 
 # страницы без собственной картинки: карточка с заголовком, счётчиками и мотивом — чтобы ссылка узнавалась в Telegram
-OG_PAGES = ("tz", "mindmap", "mlmap", "gantt", "control", "ask")
+OG_PAGES = ("tz", "mindmap", "mlmap", "gantt", "roadmap", "control", "ask")
 
 
 def _og_page(key: str):
@@ -746,6 +746,14 @@ def _og_page(key: str):
             "вехи со сроками и признаком достижения, линия сегодня",
         ], "gantt", [("задач закрыто", c["closed"], (70, 205, 100)), ("в работе", c["open"], og.ACCENT),
                      ("вех достигнуто", c["reached"], (232, 170, 60))])
+    if key == "roadmap":
+        from dxaqc.web import roadmap as RM
+        t = RM.build({})["totals"]
+        return og.page("Роудмап развития", [
+            "шесть направлений: качество анализа, ТЗ, защита, работа врача",
+            f"рекомендуемый путь: агент {t['path_agent']}, человек {t['path_human']}",
+        ], "roadmap", [("инициатив", t["items"], og.WHITE), ("шагов пути", t["path"], og.ACCENT),
+                       ("высокий эффект", t["high"], (70, 205, 100))])
     if key == "control":
         return og.page("Пульт анализа", [
             "пороги и параметры разбора меняются без пересборки сервиса",

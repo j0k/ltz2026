@@ -103,6 +103,30 @@ def tz_mindmap_short():
     return RedirectResponse("/tz/mindmap.html", status_code=301)
 
 
+@router.get("/tz/roadmap", include_in_schema=False)
+def tz_roadmap_short():
+    return RedirectResponse("/tz/roadmap.html", status_code=301)
+
+
+@router.get("/tz/roadmap.html", response_class=HTMLResponse)
+def tz_roadmap(request: Request):
+    """Роудмап развития: направления, инициативы с оценками в режиме вайбкодинга, зависимости и рекомендуемый путь."""
+    from dxaqc.web import gantt as G
+    from dxaqc.web import roadmap as RM
+    g = G.data()
+    status = {t["id"]: t["closed"] for e in g["epics"] for t in e["tasks"]}
+    closed = [t for e in g["epics"] for t in e["tasks"] if t["closed"]]
+    hours = (max(t["end"] for t in closed) - min(t["start"] for e in g["epics"] for t in e["tasks"])) / 3600 if closed else 0
+    d = RM.build(status if g["ok"] else {})
+    t = d["totals"]
+    calib = dict(closed=len(closed), hours=f"{hours:.1f} ч".replace(".", ",") if closed else "—")
+    return templates.TemplateResponse(request, "tz_roadmap.html", dict(
+        d=d, calib=calib, version=__version__, payload=dict(d, trac_url=g["trac_url"]),
+        og_title="Роудмап развития · DXA QC", og_image="/og/roadmap.jpg",
+        og_description=(f"Куда развивать контроль качества денситометрии: {t['items']} инициатив в шести направлениях, "
+                        f"рекомендуемый путь из {t['path']} шагов — агент {t['path_agent']}, человек {t['path_human']}.")))
+
+
 @router.get("/tz/gantt.html", response_class=HTMLResponse)
 def tz_gantt(request: Request, refresh: int = 0):
     """Диаграмма Ганта по данным трекера: задачи эпиков со сроками и вехи с признаком достижения."""

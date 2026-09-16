@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Роудмап развития{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="/static/roadmap.css?v={{ version }}">
+<script src="/static/roadmap.js?v={{ version }}" defer></script>
+{% endblock %}
+{% block fullbleed %}
+<div class="rm-page">
+<p class="faint"><a href="/tz/">← документы задачи</a> · <a href="/tz/ml-map.html">шпаргалка scikit-learn</a> ·
+  <a href="/tz/gantt.html">диаграмма Ганта</a> · <a href="/tz/mindmap.html">mind map ТЗ</a></p>
+<h1>Роудмап развития</h1>
+<p class="muted rm-lead">Куда можно двигаться дальше: шесть направлений, в каждом — инициативы с ёмкостью, оценкой времени и ожидаемым эффектом.
+  Время двух видов: <b>агент</b> — сколько работает Claude (код, тесты, деплой, проверка в браузерах), пока вы заняты своим;
+  <b>вы</b> — решения, просмотр результатов, разбор спорных случаев, репетиции. В вайбкодинге узкое место — второе число.
+  Нажмите на инициативу: справа подробности, стрелки — от чего она зависит и что открывает.</p>
+
+<details class="rm-calib">
+  <summary>Откуда оценки</summary>
+  <p>По трекеру закрыто <b>{{ calib.closed }}</b> задач за <b>{{ calib.hours }}</b> календарного времени. Это нижняя граница:
+    тикеты заводились прямо перед работой. Оценки ниже взяты с запасом по примерам из этой работы: Telegram-бот с привязкой,
+    прогрессом и одобрениями — около полутора часов агента, диаграмма Ганта — около часа, уведомление о cookie — полчаса.
+    Задачи качества анализа оценены медленнее: их тормозит не код, а эксперименты, данные и проверка гипотез глазами.</p>
+  <p>Ёмкость: {% for k, v in d.sizes.items() %}<b>{{ k }}</b> — {{ v }}{{ ', ' if not loop.last else '.' }}{% endfor %}
+    Статус инициативы — по фактам на стенде; статусы тикетов показаны отдельно и берутся из трекера вживую.</p>
+</details>
+
+<div class="rm-tiles" role="group" aria-label="итоги роудмапа">
+  <span class="rm-tile"><b>{{ d.totals['items'] }}</b> инициатив, <b>{{ d.totals.high }}</b> с высоким эффектом</span>
+  <span class="rm-tile accent"><b>{{ d.totals.path }}</b> шагов рекомендуемого пути</span>
+  <span class="rm-tile">путь: агент <b>{{ d.totals.path_agent }}</b></span>
+  <span class="rm-tile">путь: вы <b>{{ d.totals.path_human }}</b></span>
+</div>
+
+<div class="rm-bar" role="toolbar" aria-label="управление роудмапом">
+  <button type="button" class="rm-btn" id="rmPath" aria-pressed="true">Рекомендуемый путь</button>
+  <span class="rm-sep faint">Направление:</span>
+  {% for dir in d.directions %}<button type="button" class="rm-chip" data-dir="{{ dir.id }}" aria-pressed="false">{{ dir.title }}</button>{% endfor %}
+  <span class="rm-legend faint">эффект: {% for k, v in d.impact.items() %}<span class="imp-{{ k }}">{{ v.icon }}</span> {{ v.label }}{{ ' · ' if not loop.last }}{% endfor %}</span>
+</div>
+
+<div class="rm-body">
+  <div class="rm-scroll" id="rmScroll">
+    <div class="rm-board" id="rmBoard" style="--phases:{{ d.phases|length }}">
+      <div class="rm-corner">направление</div>
+      {% for ph in d.phases %}
+      <div class="rm-phase">
+        <b>{{ ph.title }}</b> <span class="faint">{{ ph.until }}</span>
+        <span class="rm-load">{% if ph.count %}агент {{ ph.agent_text }} · вы {{ ph.human_text }}{% if ph.human_per_day %} · до {{ ph.human_per_day|string|replace('.', ',') }} ч/день{% endif %}{% else %}всё сделано{% endif %}</span>
+      </div>
+      {% endfor %}
+      {% for dir in d.directions %}
+      <div class="rm-lane" data-dir="{{ dir.id }}"><b>{{ dir.title }}</b><span class="faint">{{ dir.sub }}</span></div>
+        {% for ph in d.phases %}
+        <div class="rm-cell" data-dir="{{ dir.id }}">
+          {% for it in d['items'] if it.dir == dir.id and it.phase == ph.id %}
+          <button type="button" class="rm-card s-{{ it.state }}{% if it.step %} on-path{% endif %}" id="rm-{{ it.id }}" data-id="{{ it.id }}"
+                  data-dir="{{ it.dir }}" aria-pressed="false">
+            {% if it.step %}<span class="rm-step" aria-label="шаг {{ it.step }} пути">{{ it.step }}</span>{% endif %}
+            <span class="rm-title">{{ it.title }}</span>
+            <span class="rm-meta">
+              <span class="rm-size" title="{{ d.sizes[it.size] }}">{{ it.size }}</span>
+              <span>агент {{ it.agent_text }}</span><span>вы {{ it.human_text }}</span>
+              <span class="imp-{{ it.impact }}" title="эффект: {{ d.impact[it.impact].label }}">{{ d.impact[it.impact].icon }}</span>
+              <span class="rm-state" title="{{ d.states[it.state] }}"></span>
+            </span>
+          </button>
+          {% endfor %}
+        </div>
+        {% endfor %}
+      {% endfor %}
+      <svg class="rm-arrows" id="rmArrows" aria-hidden="true"><defs>
+        <marker id="rm-ah" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M0,0 L10,5 L0,10 z"/></marker>
+        <marker id="rm-ah-dep" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M0,0 L10,5 L0,10 z"/></marker>
+      </defs></svg>
+    </div>
+  </div>
+
+  <aside class="rm-panel" id="rmPanel" aria-live="polite">
+    <p class="faint rm-empty">Выберите инициативу на доске — здесь появятся подробности: что делаем, какой эффект, риски, зависимости и тикеты.</p>
+  </aside>
+</div>
+<script type="application/json" id="rmData">{{ payload|tojson }}</script>
+</div>
+{% endblock %}

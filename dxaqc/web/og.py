@@ -290,7 +290,28 @@ def _art_gantt(d, box):
     d.regular_polygon((mx, (y0 + y1) / 2, 22), n_sides=4, rotation=45, fill=(232, 170, 60))
 
 
-ARTS = {"gantt": _art_gantt, "tree": _art_tree, "scatter": _art_scatter, "docs": _art_docs, "sliders": _art_sliders, "chat": _art_chat}
+def _art_roadmap(d, box):
+    """Дорожки направлений с карточками и путь через них — мотив роудмапа."""
+    x0, y0, x1, y1 = box
+    w, lanes = x1 - x0 - 40, 4
+    top = (y0 + y1) / 2 - (lanes * 86 - 26) / 2
+    cards = [(0, 0.02), (0, 0.5), (1, 0.26), (2, 0.08), (2, 0.62), (3, 0.4)]
+    centers = []
+    for lane in range(lanes):
+        ly = top + lane * 86
+        d.line([x0 + 20, ly + 30, x0 + 20 + w, ly + 30], fill=T._mix(PANEL, BG, 0.2), width=2)
+    for i, (lane, off) in enumerate(cards):
+        cx, cy = x0 + 20 + w * off, top + lane * 86
+        on = i in (0, 2, 4, 5)
+        d.rounded_rectangle([cx, cy + 10, cx + w * 0.34, cy + 50], radius=10,
+                            fill=T._mix(ACCENT, BG, 0.62) if on else PANEL, outline=ACCENT if on else None, width=2)
+        if on:
+            centers.append((cx + w * 0.17, cy + 30))
+    for (ax, ay), (bx, by) in zip(centers, centers[1:]):
+        d.line([ax, ay + 20, bx, by - 20], fill=ACCENT, width=4)
+
+
+ARTS = {"roadmap": _art_roadmap, "gantt": _art_gantt, "tree": _art_tree, "scatter": _art_scatter, "docs": _art_docs, "sliders": _art_sliders, "chat": _art_chat}
 
 
 def page(title: str, bullets: list[str], art: str = "", tiles: list | None = None) -> Image.Image:

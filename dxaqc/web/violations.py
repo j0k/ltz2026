@@ -100,7 +100,39 @@ def build(manifest: dict | None, run_id: str | None) -> dict:
                         and (r.get("expert") or {}).get("bad") == 0 and not (r.get("expert") or {}).get("comment")
                         and (key != "lumbar_spine" or r.get("quality_class") == 0)][:4]
     groups = [dict(id=rid, title=title, entries=[e for e in entries if e["region"] == rid]) for rid, title in REGIONS.items()]
-    return dict(groups=groups, entries=entries, rejects=REJECTS, attention=attention, normals=normals, run_id=run_id,
+    # сквозная нумерация для оглавления и заголовков карточек, с количеством по данным обучающего набора
+    toc, num = [], 0
+    for g in groups:
+        section = dict(title=g["title"], anchor=g["id"], items=[])
+        for e in g["entries"]:
+            num += 1
+            e["num"], e["anchor"] = num, f"v-{e['code']}"
+            if e["status"] in ("checked", "partial"):
+                facts = f"эксперты {e['expert_total']} · нашёл {len(e['caught'])} · ложных {len(e['false_alarm'])}"
+            elif e["status"] == "todo":
+                facts = f"эксперты {e['expert_total']}"
+            else:
+                facts = f"снимков {len(e['seen'])}" if e["seen"] else "в обучающем наборе нет"
+            section["items"].append(dict(num=num, title=e["title"], code=e["code"], anchor=e["anchor"], status=e["status"],
+                                         status_icon=e["status_icon"], facts=facts if rows else ""))
+        toc.append(section)
+    section = dict(title="Требует внимания", anchor="attention", items=[])
+    for i, a in enumerate(attention, 1):
+        num += 1
+        a["num"], a["anchor"] = num, f"a-{i}"
+        section["items"].append(dict(num=num, title=f"«{a['theme']}»", code="", anchor=a["anchor"], status="state",
+                                     status_icon="!", facts=f"снимков {len(a['examples'])}"))
+    if section["items"]:
+        toc.append(section)
+    section = dict(title="Отказы", anchor="rejects", items=[])
+    rejects = [dict(r) for r in REJECTS]
+    for r in rejects:
+        num += 1
+        r["num"], r["anchor"] = num, f"r-{r['code']}"
+        section["items"].append(dict(num=num, title=r["title"], code=r["code"], anchor=r["anchor"], status="state", status_icon="✕",
+                                     facts="файл не анализируется"))
+    toc.append(section)
+    return dict(groups=groups, entries=entries, rejects=rejects, attention=attention, normals=normals, run_id=run_id, toc=toc,
                 has_examples=bool(rows),
                 counts=dict(total=len(ENTRIES) + len(REJECTS),
                             checked=sum(1 for e in ENTRIES if e["status"] in ("checked", "partial")),

@@ -65,3 +65,20 @@ def test_page_with_examples(client):
     assert client.get("/tz/violations", follow_redirects=False).headers["location"] == "/tz/violations.html"
     assert client.get("/og/violations.jpg").status_code == 200
     assert "/tz/violations.html" in client.get("/tz/").text
+
+
+def test_toc_is_numbered_and_every_item_links_to_its_card(client):
+    import re
+    fake_run("20260919-120000-aaaaaa")
+    html = client.get("/tz/violations.html").text
+    toc = html[html.index('id="toc"'):html.index("</nav>", html.index('id="toc"'))]
+    nums = [int(n) for n in re.findall(r'class="no">(\d+)\.<', toc)]
+    assert nums == list(range(1, len(nums) + 1)) and len(nums) >= 11, "сквозная нумерация без пропусков"
+    anchors = re.findall(r'href="#([\w-]+)"', toc)
+    assert len(anchors) == len(nums)
+    for a in anchors:
+        assert f'id="{a}"' in html, f"пункт оглавления #{a} ведёт в никуда"
+    assert "эксперты 2 · нашёл 1 · ложных 0" in toc, "количество по данным у нарушения"
+    assert "«сколиоз»" in toc and "Не DICOM" in toc
+    body = html[html.index('id="v-coverage"'):]
+    assert '<span class="vc-num">1.</span>Неполный охват' in body and 'href="#toc"' in body, "номер в заголовке и путь назад"

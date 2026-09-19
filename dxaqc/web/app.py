@@ -26,7 +26,7 @@ from starlette.concurrency import run_in_threadpool
 from dxaqc import __version__, atlas, datasets, pipeline, voice
 from dxaqc import params as P
 from dxaqc.io import safe_extract
-from dxaqc.web import accounts, analysis, ask, control, datastats, mcp, og, progress, showcase, tgbot, tz
+from dxaqc.web import accounts, analysis, ask, control, datastats, mcp, og, progress, showcase, tgbot, tz, violations
 
 DATA = os.environ.get("DXAQC_DATA", "/data")
 RUNS = os.path.join(DATA, "runs")
@@ -694,6 +694,30 @@ def run_og(run_id: str):
     return _og_response(build, os.path.join(out, f"og_run_v{og.VERSION}.jpg") if man and st.get("state") == "done" else None)
 
 
+def _latest_train_run():
+    """Последний завершённый прогон всего обучающего набора: (id, манифест) или (None, None)."""
+    for r in _list_runs(300):
+        if r.get("dataset") == "train" and r.get("state") == "done" and (r.get("summary") or {}).get("studies", 0) >= 90:
+            return r["id"], _read(r["id"], os.path.join("out", "manifest.json")) or {}
+    return None, None
+
+
+@app.get("/tz/violations", include_in_schema=False)
+def violations_short():
+    return RedirectResponse("/tz/violations.html", status_code=301)
+
+
+@app.get("/tz/violations.html", response_class=HTMLResponse)
+def violations_page(request: Request):
+    """Каталог нарушений: определение, способ проверки, статус и примеры снимков из обучающего набора."""
+    run_id, man = _latest_train_run()
+    c = violations.build(man, run_id)
+    return templates.TemplateResponse(request, "tz_violations.html", dict(
+        c=c, region_ru=REGION_RU, version=__version__, og_title="Каталог нарушений · DXA QC", og_image="/og/violations.jpg",
+        og_description=(f"Все нарушения, которые знает сервис контроля качества денситометрии: {c['counts']['total']} видов, "
+                        f"определения по ТЗ, способ проверки и примеры снимков — где сервис прав, где ошибается.")))
+
+
 @app.get("/tz/data", include_in_schema=False)
 def data_short():
     return RedirectResponse("/tz/data.html", status_code=301)
@@ -703,12 +727,8 @@ def data_short():
 def data_page(request: Request):
     """Данные задачи: состав наборов, разметка экспертов, технические параметры — только агрегаты."""
     d = datastats.get()
-    ev, train_id = None, None
-    for r in _list_runs(300):
-        if r.get("dataset") == "train" and r.get("state") == "done" and (r.get("summary") or {}).get("studies", 0) >= 90:
-            man = _read(r["id"], os.path.join("out", "manifest.json")) or {}
-            ev, train_id = man.get("evaluation"), r["id"]
-            break
+    train_id, man = _latest_train_run()
+    ev = (man or {}).get("evaluation")
     example = _read(EXAMPLE_ID, os.path.join("out", "manifest.json")) or {}
     thumbs = [dict(key=r["key"], thumb=r.get("thumb_png") or r.get("overlay_png"), region=REGION_RU.get(r.get("anatomical_region"), ""),
                    name=os.path.basename(r.get("path_to_study") or ""))
@@ -741,7 +761,7 @@ def site_og():
 
 
 # страницы без собственной картинки: карточка с заголовком, счётчиками и мотивом — чтобы ссылка узнавалась в Telegram
-OG_PAGES = ("tz", "mindmap", "mlmap", "gantt", "roadmap", "data", "control", "ask")
+OG_PAGES = ("tz", "mindmap", "mlmap", "gantt", "roadmap", "data", "violations", "control", "ask")
 
 
 def _og_page(key: str):
@@ -775,6 +795,14 @@ def _og_page(key: str):
             "вехи со сроками и признаком достижения, линия сегодня",
         ], "gantt", [("задач закрыто", c["closed"], (70, 205, 100)), ("в работе", c["open"], og.ACCENT),
                      ("вех достигнуто", c["reached"], (232, 170, 60))])
+    if key == "violations":
+        run_id, man = _latest_train_run()
+        k = violations.build(man, run_id)["counts"]
+        return og.page("Каталог нарушений", [
+            "всё, что знает сервис: определения по ТЗ и способ проверки",
+            "примеры снимков: где сервис прав, где пропускает и где ошибается",
+        ], "tree", [("видов", k["total"], og.WHITE), ("проверяется", k["checked"], (70, 205, 100)),
+                    ("примеров", k["examples"], og.ACCENT)])
     if key == "data":
         d = datastats.get()
         t = d.get("train") or {}

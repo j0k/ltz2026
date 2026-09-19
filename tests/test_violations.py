@@ -1,0 +1,67 @@
+# -*- coding: utf-8 -*-
+"""Каталог нарушений: полнота списка, разбивка примеров и страница с прогоном и без."""
+from __future__ import annotations
+
+import importlib
+import json
+import os
+import sys
+import time
+
+
+def V():
+    return importlib.import_module("dxaqc.web.violations")
+
+
+def test_catalog_covers_every_known_code(client):
+    app = sys.modules["dxaqc.web.app"]
+    codes = {e["code"] for e in V().ENTRIES}
+    assert set(app.VIOLATION_RU) <= codes, set(app.VIOLATION_RU) - codes
+    for e in V().ENTRIES:
+        assert e["tz"] and e["method"] and e["status"] in V().STATUS, e["code"]
+    assert {r["code"] for r in V().REJECTS} == {"not_dicom", "not_dxa", "unreadable"}
+
+
+def fake_run(run_id):
+    app = sys.modules["dxaqc.web.app"]
+    out = os.path.join(app.RUNS, run_id, "out")
+    os.makedirs(out, exist_ok=True)
+    now = time.time()
+    with open(os.path.join(app.RUNS, run_id, "status.json"), "w") as f:
+        json.dump(dict(state="done", title="Весь обучающий набор", created=now, finished=now, dataset="train"), f)
+    ex = lambda **k: dict(dict(bad=0, types=[], comment=""), **k)
+    rows = [
+        dict(key="k1", thumb_png="k1.png", anatomical_region="lumbar_spine", violation_list=["artifact"], quality_class=1,
+             expert=ex(bad=1, types=["artifact"])),
+        dict(key="k2", thumb_png="k2.png", anatomical_region="lumbar_spine", violation_list=[], quality_class=0,
+             expert=ex(bad=1, types=["artifact"], comment="Требует внимание")),
+        dict(key="k3", thumb_png="k3.png", anatomical_region="lumbar_spine", violation_list=["axis_tilt"], quality_class=1,
+             expert=ex(comment="сколиоз")),
+        dict(key="k4", thumb_png="k4.png", anatomical_region="hip_left", violation_list=["hip_not_evaluated_v0"], quality_class=None,
+             expert=ex(bad=1, types=["hip_positioning"])),
+        dict(key="k5", thumb_png="k5.png", anatomical_region="lumbar_spine", violation_list=[], quality_class=0, expert=ex()),
+    ]
+    with open(os.path.join(out, "manifest.json"), "w") as f:
+        json.dump(dict(summary=dict(images=5, studies=100), rows=rows,
+                       evaluation=dict(spine_artifact=dict(f1=0.5, tp=1, fp=0, fn=1, tn=3, n=5))), f)
+
+
+def test_page_with_examples(client):
+    fake_run("20260919-120000-aaaaaa")
+    html = client.get("/tz/violations.html").text
+    assert "Каталог нарушений" in html
+    for code in ("coverage", "axis_tilt", "artifact", "hip_positioning", "hip_roi", "not_dicom"):
+        assert f"{code}<" in html or f'id="v-{code}"' in html, code
+    art = html[html.index('id="v-artifact"'):html.index('id="v-hip_positioning"')]
+    assert "Сервис нашёл <span class=\"n\">· 1" in art and "Сервис пропустил <span class=\"n\">· 1" in art
+    assert "/images/k1" in art and "/images/k2" in art and "F1 0,50" in art and "точность <b>средняя</b>" in art
+    axis = html[html.index('id="v-axis_tilt"'):html.index('id="v-artifact"')]
+    assert "Ложная тревога <span class=\"n\">· 1" in axis and "/images/k3" in axis
+    hip = html[html.index('id="v-hip_positioning"'):html.index('id="v-hip_roi"')]
+    assert "Отмечено экспертами" in hip and "пропустил" not in hip, "бедро не проверяется — «пропустил» нечестно"
+    att = html[html.index('id="attention"'):html.index('id="normal"')]
+    assert "«требует внимание»" in att and "«сколиоз»" in att
+    assert "/images/k5" in html[html.index('id="normal"'):], "норма для сравнения"
+    assert client.get("/tz/violations", follow_redirects=False).headers["location"] == "/tz/violations.html"
+    assert client.get("/og/violations.jpg").status_code == 200
+    assert "/tz/violations.html" in client.get("/tz/").text

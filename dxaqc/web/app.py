@@ -10,6 +10,7 @@ import asyncio
 import io
 import json
 import os
+import re
 import shutil
 import threading
 import time
@@ -26,7 +27,7 @@ from starlette.concurrency import run_in_threadpool
 from dxaqc import __version__, atlas, datasets, pipeline, voice
 from dxaqc import params as P
 from dxaqc.io import safe_extract
-from dxaqc.web import accounts, analysis, ask, control, datastats, mcp, og, progress, showcase, tgbot, tz, violations
+from dxaqc.web import accounts, analysis, ask, control, datastats, gallery, mcp, og, progress, showcase, tgbot, tz, violations
 
 DATA = os.environ.get("DXAQC_DATA", "/data")
 RUNS = os.path.join(DATA, "runs")
@@ -82,6 +83,7 @@ async def lifespan(_app):
     _seed_example()
     ask.start_worker()
     datastats.warm()                     # разбор ~500 файлов данных — заранее, а не на первом заходе
+    gallery.warm()
     if tgbot.start():
         print("[tg] Telegram-бот запущен")
     yield
@@ -702,6 +704,57 @@ def _latest_train_run():
     return None, None
 
 
+GALLERY_KEY = re.compile(r"^[0-9a-f]{12}$")
+
+
+def _gallery_key(key: str) -> str:
+    if not GALLERY_KEY.match(key or "") or not gallery.item(key):
+        raise HTTPException(404, "снимок не найден")
+    return key
+
+
+@app.get("/gallery", response_class=HTMLResponse)
+def gallery_page(request: Request):
+    """Галерея снимков наборов организатора: альбом на весь экран, заключение экспертов и наш анализ по кнопке."""
+    items = gallery.public_items()
+    run_id, man = _latest_train_run()
+    in_run = {r["key"] for r in (man or {}).get("rows", []) if r.get("key")}
+    example = {r["key"] for r in (_read(EXAMPLE_ID, os.path.join("out", "manifest.json")) or {}).get("rows", []) if r.get("key")}
+    data = [dict(i, card=(f"/runs/{run_id}/images/{i['key']}" if i["key"] in in_run else
+                          f"/runs/{EXAMPLE_ID}/images/{i['key']}" if i["key"] in example else None)) for i in items]
+    bad = sum(1 for i in items if i["expert"].get("bad"))
+    return templates.TemplateResponse(request, "gallery.html", dict(
+        items=data, total=len(items), bad=bad, version=__version__, og_title="Галерея снимков · DXA QC", og_image="/og/gallery.jpg",
+        og_description=(f"{len(items)} снимков наборов организатора: листать как фотоальбом, смотреть заключение экспертов "
+                        "и запускать наш анализ с атласом и сравнением.")))
+
+
+@app.get("/gallery/img/{key}.png", include_in_schema=False)
+def gallery_image(key: str):
+    return FileResponse(gallery.image_path(_gallery_key(key), "img"), media_type="image/png",
+                        headers={"Cache-Control": "public, max-age=86400"})
+
+
+@app.get("/gallery/thumb/{key}.jpg", include_in_schema=False)
+def gallery_thumb(key: str):
+    return FileResponse(gallery.image_path(_gallery_key(key), "thumb"), media_type="image/jpeg",
+                        headers={"Cache-Control": "public, max-age=86400"})
+
+
+@app.get("/gallery/atlas/{key}.png", include_in_schema=False)
+def gallery_atlas(key: str):
+    path = gallery.atlas_path(_gallery_key(key))
+    if not os.path.isfile(path):
+        raise HTTPException(404, "анализ этого снимка ещё не запускали")
+    return FileResponse(path, media_type="image/png", headers={"Cache-Control": "public, max-age=86400"})
+
+
+@app.post("/api/gallery/{key}/analyze")
+async def gallery_analyze(key: str):
+    """Наш анализ снимка галереи текущей версией: вердикт, нарушения, пояснения, атлас и сравнение с экспертами."""
+    return JSONResponse(await run_in_threadpool(gallery.run_analysis, _gallery_key(key)))
+
+
 @app.get("/tz/violations", include_in_schema=False)
 def violations_short():
     return RedirectResponse("/tz/violations.html", status_code=301)
@@ -761,7 +814,7 @@ def site_og():
 
 
 # страницы без собственной картинки: карточка с заголовком, счётчиками и мотивом — чтобы ссылка узнавалась в Telegram
-OG_PAGES = ("tz", "mindmap", "mlmap", "gantt", "roadmap", "data", "violations", "control", "ask")
+OG_PAGES = ("tz", "mindmap", "mlmap", "gantt", "roadmap", "data", "violations", "gallery", "control", "ask")
 
 
 def _og_page(key: str):
@@ -795,6 +848,12 @@ def _og_page(key: str):
             "вехи со сроками и признаком достижения, линия сегодня",
         ], "gantt", [("задач закрыто", c["closed"], (70, 205, 100)), ("в работе", c["open"], og.ACCENT),
                      ("вех достигнуто", c["reached"], (232, 170, 60))])
+    if key == "gallery":
+        items = gallery.public_items()
+        return og.page("Галерея снимков", [
+            "все снимки наборов организатора — листать как фотоальбом",
+            "заключение экспертов и наш анализ с атласом по кнопке",
+        ], "scatter", [("снимков", len(items), og.WHITE), ("с нарушением у экспертов", sum(1 for i in items if i["expert"].get("bad")), (232, 170, 60))])
     if key == "violations":
         run_id, man = _latest_train_run()
         k = violations.build(man, run_id)["counts"]

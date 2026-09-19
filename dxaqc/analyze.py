@@ -155,7 +155,7 @@ def analyze_spine(a: np.ndarray, params: dict | None = None) -> dict:
                     f"вероятно, выше гребней подвздошных костей.")
     else:
         expl.append("Верхние края подвздошных костей видны в обоих нижних углах кадра.")
-    expl.append("Уровень Th12 в верхней границе кадра в версии 0.1 не проверяется.")
+    expl.append("Уровень Th12 в верхней границе кадра пока не проверяется.")
 
     if art_boxes:
         violations.append("artifact")

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Галерея снимков{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="/static/gallery.css?v={{ version }}">
+<script src="/static/gallery.js?v={{ version }}" defer></script>
+{% endblock %}
+{% block content %}
+<h1>Галерея снимков</h1>
+<p class="muted" style="max-width:860px">Все {{ total }} снимков наборов организатора. Нажмите на снимок — откроется на весь экран, листайте стрелками,
+  клавишами ← → или свайпом. Рядом — из какого набора снимок, заключение экспертов по разметке и кнопка «Запустить наш анализ»:
+  текущая версия сервиса разберёт снимок за секунду и покажет вердикт, атлас и сравнение с экспертами.</p>
+
+<div class="gl-bar" role="toolbar" aria-label="фильтры галереи">
+  <div class="gl-seg" role="group" aria-label="набор">
+    <button type="button" data-f="ds" data-v="" aria-pressed="true">все наборы</button>
+    <button type="button" data-f="ds" data-v="train" aria-pressed="false">обучающий</button>
+    <button type="button" data-f="ds" data-v="test" aria-pressed="false">«Для теста»</button>
+  </div>
+  <div class="gl-seg" role="group" aria-label="заключение экспертов">
+    <button type="button" data-f="ex" data-v="" aria-pressed="true">любое заключение</button>
+    <button type="button" data-f="ex" data-v="bad" aria-pressed="false">✕ нарушение</button>
+    <button type="button" data-f="ex" data-v="ok" aria-pressed="false">✓ норма</button>
+    <button type="button" data-f="ex" data-v="none" aria-pressed="false">— нет разметки</button>
+  </div>
+  <label class="gl-sel">область <select id="glRegion"><option value="">все</option><option value="lumbar_spine">поясничный отдел</option>
+    <option value="hip_right">правое бедро</option><option value="hip_left">левое бедро</option></select></label>
+  <label class="gl-sel">нарушение <select id="glType"><option value="">любое</option><option value="coverage">неполный охват</option>
+    <option value="axis_tilt">наклон оси</option><option value="artifact">посторонние предметы</option>
+    <option value="hip_positioning">укладка и ротация бедра</option><option value="hip_roi">поля вокруг зоны интереса</option></select></label>
+  <span class="gl-count faint" id="glCount" aria-live="polite"></span>
+</div>
+
+<div class="gl-grid" id="glGrid"></div>
+<noscript><p class="note">Галерее нужен JavaScript.</p></noscript>
+
+<div class="gl-box" id="glBox" role="dialog" aria-modal="true" aria-label="просмотр снимка" hidden>
+  <div class="gl-stage" id="glStage">
+    <div class="gl-top"><span id="glCounter"></span><span id="glWhat"></span>
+      <button type="button" class="gl-x" id="glClose" aria-label="закрыть">✕</button></div>
+    <button type="button" class="gl-nav prev" id="glPrev" aria-label="предыдущий снимок">‹</button>
+    <img id="glImg" alt="">
+    <button type="button" class="gl-nav next" id="glNext" aria-label="следующий снимок">›</button>
+    <div class="gl-mode" id="glMode" hidden>
+      <button type="button" data-mode="image" aria-pressed="true">снимок</button>
+      <button type="button" data-mode="atlas" aria-pressed="false">наш атлас</button>
+    </div>
+  </div>
+  <aside class="gl-panel" id="glPanel" aria-live="polite"></aside>
+</div>
+<script type="application/json" id="glData">{{ items|tojson }}</script>
+{% endblock %}

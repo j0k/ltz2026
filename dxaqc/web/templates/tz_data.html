@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+{% block title %}Данные задачи 04{% endblock %}
+{% macro bars(rows, unit='', note='') -%}
+{# горизонтальные полосы одного тона: величина, прямые подписи, подсказка при наведении #}
+{% set mx = rows|map(attribute='n')|max %}
+<div class="dv-bars">
+{% for r in rows %}
+  <div class="dv-row" tabindex="0" data-tip="{{ r.label }}: {{ r.n }}{{ unit }}{% if r.tip %} · {{ r.tip }}{% endif %}">
+    <span class="dv-lab">{{ r.label }}</span>
+    <span class="dv-track"><span class="dv-bar" style="width:{{ (r.n / mx * 100) if mx else 0 }}%"></span></span>
+    <span class="dv-val">{{ r.n }}</span>
+  </div>
+{% endfor %}
+</div>
+{%- endmacro %}
+{% block head %}
+<style>
+.dv{--series-1:#2a78d6;--critical:#d03b3b;--rest:#e7e4de;--surface:#fcfcfb}
+.dv-kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:14px 0 18px}
+.dv-tile{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;min-width:0}
+.dv-tile b{display:block;font-size:30px;line-height:1.1;font-variant-numeric:tabular-nums}
+.dv-tile span{color:var(--ink2);font-size:13.5px}
+.dv-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.dv-grid>.card,.dv-full{min-width:0}
+.dv-full{grid-column:1 / -1}
+.dv h2{margin:0 0 4px;font-size:18px}
+.dv .sub{margin:0 0 14px;color:var(--ink3);font-size:13.5px}
+.dv-bars{display:grid;gap:2px}
+.dv-row{display:grid;grid-template-columns:minmax(90px,170px) minmax(0,1fr) 44px;align-items:center;gap:10px;padding:3px 4px;border-radius:6px;font-size:13.5px}
+.dv-row:hover,.dv-row:focus{background:#f4f2ee;outline:none}
+.dv-lab{color:var(--ink2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dv-track{height:14px;display:block}
+.dv-bar{display:block;height:100%;background:var(--series-1);border-radius:0 4px 4px 0;min-width:2px}
+.dv-val{text-align:right;font-variant-numeric:tabular-nums;color:var(--ink)}
+.dv-crit{display:grid;gap:4px}
+.dv-group{margin:10px 0 2px;font-size:13px;font-weight:700;color:var(--ink2)}
+.dv-crow{display:grid;grid-template-columns:minmax(110px,190px) minmax(0,1fr) 116px;align-items:center;gap:10px;padding:3px 4px;border-radius:6px;font-size:13.5px}
+.dv-crow:hover,.dv-crow:focus{background:#f4f2ee;outline:none}
+.dv-stack{display:flex;height:16px;gap:2px}
+.dv-seg{display:block;height:100%}
+.dv-seg.bad{background:var(--critical);border-radius:4px 0 0 4px}
+.dv-seg.ok{background:var(--rest)}
+.dv-seg.na{border:1.5px dashed #c9c6bf;border-radius:0 4px 4px 0;box-sizing:border-box}
+.dv-seg:last-child{border-radius:0 4px 4px 0}
+.dv-seg.bad:last-child{border-radius:4px}
+.dv-cval{font-variant-numeric:tabular-nums;color:var(--ink2);font-size:12.5px;text-align:right}
+.dv-cval b{color:var(--ink)}
+.dv-legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--ink2);margin:0 0 6px}
+.dv-legend i{display:inline-block;width:18px;height:10px;border-radius:3px;margin-right:6px;vertical-align:middle}
+.dv-legend .bad{background:var(--critical)}.dv-legend .ok{background:var(--rest)}.dv-legend .na{border:1.5px dashed #c9c6bf}
+.dv-miss{list-style:none;padding:0;margin:0;display:grid;gap:10px}
+.dv-miss li{display:grid;grid-template-columns:22px 1fr;gap:10px;align-items:start;font-size:14px}
+.dv-miss .ic{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:12px}
+.dv-miss .ic.no{background:#d03b3b}.dv-miss .ic.yes{background:#0ca30c}
+.dv-thumbs{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.dv-thumbs a{display:block;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#000;color:inherit;text-decoration:none}
+.dv-thumbs img{display:block;width:100%;height:190px;object-fit:contain}
+.dv-thumbs span{display:block;background:var(--card);padding:8px 10px;font-size:13px}
+/* широкие таблицы прокручиваются внутри карточки, а не растягивают страницу; правило .scroll-x есть только в админке */
+.dv .scroll-x{overflow-x:auto;min-width:0;max-width:100%}
+.dv-table{margin-top:10px;font-size:13px}
+.dv-table summary{cursor:pointer;color:var(--accent)}
+.dv-table table{margin-top:6px}
+.dv-tip{position:fixed;z-index:50;pointer-events:none;background:#1a1a19;color:#fff;font-size:12.5px;padding:6px 9px;border-radius:6px;max-width:280px;
+  box-shadow:0 4px 14px rgba(0,0,0,.18)}
+.dv-tip[hidden]{display:none}
+@media (max-width:860px){.dv-grid{grid-template-columns:minmax(0,1fr)}.dv-crow{grid-template-columns:minmax(90px,130px) minmax(0,1fr) 96px}}
+</style>
+{% endblock %}
+{% block content %}
+<div class="dv">
+<p class="faint"><a href="/tz/">← документы задачи</a> · <a href="/tz/mindmap.html">mind map ТЗ</a> · <a href="/tz/roadmap.html">роудмап</a></p>
+<h1>Данные задачи 04</h1>
+<p class="muted" style="max-width:820px">Что организатор дал для работы: фрагмент «Для теста» и обучающий набор с экспертной разметкой.
+  Все цифры посчитаны по тем же файлам, что видит сервис, и тем же кодом определения области. Здесь только агрегаты —
+  персональные теги DICOM и идентификаторы исследований не показываются.</p>
+
+{% if not d.ok %}
+<p class="note" role="alert">Обучающий набор на этом стенде не подключён, поэтому статистику построить не из чего.</p>
+{% else %}
+{% set t = d.train %}{% set L = d.labels %}
+<div class="dv-kpi" role="group" aria-label="главное о данных">
+  <div class="dv-tile"><b>{{ t.studies }}</b><span>исследований в обучающем наборе</span></div>
+  <div class="dv-tile"><b>{{ t.unique }}</b><span>уникальных снимков из {{ t.files }} файлов</span></div>
+  <div class="dv-tile"><b>{{ t.extra }}</b><span>лишних копий — {{ (t.extra / t.files * 100)|round|int }}% файлов</span></div>
+  <div class="dv-tile"><b>{{ d.test.files }}</b><span>снимка во фрагменте «Для теста»</span></div>
+</div>
+
+<div class="dv-grid">
+<section class="card">
+  <h2>Снимки по областям</h2>
+  <p class="sub">Уникальные снимки обучающего набора; область определена кодом сервиса.</p>
+  {% set reg = [] %}{% for r in t.regions %}{% set _ = reg.append(dict(label=r.ru, n=r.n, tip=((r.n / t.unique * 100)|round|int ~ '% снимков'))) %}{% endfor %}
+  {{ bars(reg, ' снимков') }}
+  <details class="dv-table"><summary>Таблица</summary><table><thead><tr><th>область</th><th>снимков</th></tr></thead>
+    <tbody>{% for r in t.regions %}<tr><td>{{ r.ru }}</td><td>{{ r.n }}</td></tr>{% endfor %}</tbody></table></details>
+</section>
+
+<section class="card">
+  <h2>Снимков в исследовании</h2>
+  <p class="sub">Типичное исследование — позвоночник и оба бедра.</p>
+  {% set per = [] %}{% for k, n in t.per_study %}{% set _ = per.append(dict(label=(k ~ ' снимок' if k == 1 else k ~ ' снимка'), n=n, tip=((n / t.studies * 100)|round|int ~ '% исследований'))) %}{% endfor %}
+  {{ bars(per, ' исследований') }}
+  <details class="dv-table"><summary>Таблица</summary><table><thead><tr><th>уникальных снимков</th><th>исследований</th></tr></thead>
+    <tbody>{% for k, n in t.per_study %}<tr><td>{{ k }}</td><td>{{ n }}</td></tr>{% endfor %}</tbody></table></details>
+</section>
+
+<section class="card dv-full">
+  <h2>Разметка экспертов по критериям</h2>
+  <p class="sub">Доля исследований с нарушением среди размеченных. Пунктир — нет разметки: у исследования нет снимка этой области.</p>
+  <div class="dv-legend"><span><i class="bad"></i>✕ нарушение</span><span><i class="ok"></i>норма</span><span><i class="na"></i>нет разметки</span></div>
+  <div class="dv-crit">
+  {% for c in L.criteria %}
+    {% if loop.first or c.group != L.criteria[loop.index0 - 1].group %}<div class="dv-group">{{ c.group }}</div>{% endif %}
+    <div class="dv-crow" tabindex="0" data-tip="{{ c.group }}, {{ c.title }}: нарушение {{ c.bad }}, норма {{ c.ok }}, нет разметки {{ c.na }}">
+      <span class="dv-lab">{{ c.title }}</span>
+      <span class="dv-stack" aria-hidden="true">
+        {% if c.bad %}<span class="dv-seg bad" style="flex:{{ c.bad }}"></span>{% endif %}
+        {% if c.ok %}<span class="dv-seg ok" style="flex:{{ c.ok }}"></span>{% endif %}
+        {% if c.na %}<span class="dv-seg na" style="flex:{{ c.na }}"></span>{% endif %}
+      </span>
+      <span class="dv-cval"><b>{{ c.bad }}</b> из {{ c.labeled }} · {{ c.share }}%</span>
+    </div>
+  {% endfor %}
+  </div>
+  <details class="dv-table"><summary>Таблица</summary><div class="scroll-x"><table>
+    <thead><tr><th>область</th><th>критерий</th><th>нарушение</th><th>норма</th><th>нет разметки</th><th>доля нарушений</th></tr></thead>
+    <tbody>{% for c in L.criteria %}<tr><td>{{ c.group }}</td><td>{{ c.title }}</td><td>{{ c.bad }}</td><td>{{ c.ok }}</td><td>{{ c.na }}</td><td>{{ c.share }}%</td></tr>{% endfor %}</tbody>
+  </table></div></details>
+</section>
+
+<section class="card">
+  <h2>Какие нарушения у позвоночника</h2>
+  <p class="sub">{{ L.spine_combos|sum(attribute=1) }} исследований с нарушением: подкритерии почти не сочетаются.</p>
+  {% set sp = [] %}{% for k, n in L.spine_combos %}{% set _ = sp.append(dict(label=k, n=n)) %}{% endfor %}
+  {{ bars(sp, ' исследований') }}
+  <details class="dv-table"><summary>Таблица</summary><table><thead><tr><th>сочетание</th><th>исследований</th></tr></thead>
+    <tbody>{% for k, n in L.spine_combos %}<tr><td>{{ k }}</td><td>{{ n }}</td></tr>{% endfor %}</tbody></table></details>
+  {% for k, n in L.spine_combos if k == 'без отметки подкритерия' %}<p class="note" style="margin-top:10px">{{ n }} исследования помечены
+    плохими без единого подкритерия — это несогласованность самой разметки, учитываем при оценке.</p>{% endfor %}
+</section>
+
+<section class="card">
+  <h2>Какие нарушения у бёдер</h2>
+  <p class="sub">Оба бедра вместе, {{ L.hip_combos|sum(attribute=1) }} снимков с нарушением: почти всегда — укладка.</p>
+  {% set hp = [] %}{% for k, n in L.hip_combos %}{% set _ = hp.append(dict(label=k, n=n)) %}{% endfor %}
+  {{ bars(hp, ' снимков') }}
+  <details class="dv-table"><summary>Таблица</summary><table><thead><tr><th>сочетание</th><th>снимков</th></tr></thead>
+    <tbody>{% for k, n in L.hip_combos %}<tr><td>{{ k }}</td><td>{{ n }}</td></tr>{% endfor %}</tbody></table></details>
+</section>
+
+<section class="card">
+  <h2>Дубли файлов</h2>
+  <p class="sub">Сколько раз один и тот же снимок (по совпадению пикселей) лежит в наборе. До обучения и проверки дубли убираются, иначе метрики завышаются.</p>
+  {% set cp = [] %}{% for k, n in t.copies %}{% set _ = cp.append(dict(label=(k ~ (' копия' if k == 1 else ' копии' if k < 5 else ' копий')), n=n, tip=((k * n) ~ ' файлов'))) %}{% endfor %}
+  {{ bars(cp, ' снимков') }}
+  <details class="dv-table"><summary>Таблица</summary><table><thead><tr><th>копий у снимка</th><th>снимков</th><th>файлов</th></tr></thead>
+    <tbody>{% for k, n in t.copies %}<tr><td>{{ k }}</td><td>{{ n }}</td><td>{{ k * n }}</td></tr>{% endfor %}</tbody></table></details>
+</section>
+
+<section class="card">
+  <h2>Комментарии экспертов</h2>
+  <p class="sub">{{ L.commented }} исследований с комментарием; повторяющиеся темы.</p>
+  {% set cm = [] %}{% for k, n in L.comments if n > 1 %}{% set _ = cm.append(dict(label=k, n=n)) %}{% endfor %}
+  {% if cm %}{{ bars(cm, ' исследований') }}{% endif %}
+  <p class="faint" style="margin:8px 0 0;font-size:13px">Остальные комментарии единичные. Чаще всего эксперты отмечали сколиоз — на нём сервис путает изгиб с наклоном оси.</p>
+</section>
+
+<section class="card dv-full">
+  <h2>Что есть в DICOM и чего нет</h2>
+  <p class="sub">Технические параметры {{ t.files }} файлов обучающего набора.</p>
+  <ul class="dv-miss">
+    <li><span class="ic yes" aria-hidden="true">✓</span><span><b>Один аппарат:</b> {{ t.tech.manufacturer[0][0] }} {{ t.tech.model[0][0] }}, модальность
+      {{ t.tech.modality[0][0] }}, {{ t.tech.bits[0][0] }} бит, {{ t.tech.photometric[0][0] }}. Сервис настроен под этот протокол.</span></li>
+    <li><span class="ic yes" aria-hidden="true">✓</span><span><b>Ширина кадра задаёт область:</b>
+      {% for w in t.tech.widths %}{{ w.width }} px — {{ w.n }} файлов (высота {{ w.h_min }}–{{ w.h_max }}, медиана {{ w.h_med }}){{ '; ' if not loop.last }}{% endfor %}.
+      300 px — протокол позвоночника, 280 px — бедра.</span></li>
+    <li><span class="ic no" aria-hidden="true">✕</span><span><b>Нет масштаба:</b> ни PixelSpacing, ни ImagerPixelSpacing — ни в одном из
+      {{ t.tech.no_scale }} файлов. Поля вокруг зоны интереса в сантиметрах (3 и 2 см по ТЗ) без масштаба от организатора не посчитать.</span></li>
+    <li><span class="ic no" aria-hidden="true">✕</span><span><b>Нет области в тегах:</b> BodyPartExamined пуст во всех {{ t.tech.no_part }} файлах —
+      область сервис определяет по самому изображению.</span></li>
+  </ul>
+  <details class="dv-table"><summary>Таблица</summary><div class="scroll-x"><table>
+    <thead><tr><th>параметр</th><th>значения</th></tr></thead>
+    <tbody>
+      {% for key, title in [('manufacturer', 'производитель'), ('model', 'модель'), ('modality', 'модальность'), ('bits', 'разрядность, бит'), ('photometric', 'фотометрия'), ('series', 'описание серии')] %}
+      <tr><td>{{ title }}</td><td>{% for v, n in t.tech[key] %}{{ v }} — {{ n }}{{ ', ' if not loop.last }}{% endfor %}</td></tr>
+      {% endfor %}
+      <tr><td>ширина кадра</td><td>{% for w in t.tech.widths %}{{ w.width }} px — {{ w.n }}{{ ', ' if not loop.last }}{% endfor %}</td></tr>
+      <tr><td>без масштаба</td><td>{{ t.tech.no_scale }} из {{ t.files }}</td></tr>
+      <tr><td>без BodyPartExamined</td><td>{{ t.tech.no_part }} из {{ t.files }}</td></tr>
+    </tbody></table></div></details>
+</section>
+
+<section class="card dv-full">
+  <h2>Фрагмент «Для теста»</h2>
+  <p class="sub">{{ d.test.files }} снимка без разметки, по одному на область — на них проверяется, что сервис запускается и выдаёт таблицу.
+    {% if thumbs %}Разбор — в <a href="/runs/{{ example_id }}">прогоне примера</a>.{% endif %}</p>
+  {% if thumbs %}
+  <div class="dv-thumbs">{% for th in thumbs %}
+    <a href="/runs/{{ example_id }}/images/{{ th.key }}"><img src="/runs/{{ example_id }}/files/{{ th.thumb }}" alt="атлас: {{ th.region }}" loading="lazy">
+      <span><b>{{ th.region }}</b><br><span class="faint">{{ th.name }}</span></span></a>
+  {% endfor %}</div>
+  {% else %}
+  <ul>{% for i in d.test.images %}<li>{{ i.name }} — {{ i.ru }}, {{ i.width }}×{{ i.height }}</li>{% endfor %}</ul>
+  {% endif %}
+</section>
+
+{% if ev %}
+<section class="card dv-full">
+  <h2>Как сервис видит обучающий набор</h2>
+  <p class="sub">Сравнение с экспертами на уровне исследования, <a href="/runs/{{ train_id }}">последний прогон всего набора</a>.
+    Пороги подбирались на этих же данных, поэтому цифры оптимистичны — честная оценка кросс-валидацией в <a href="/tz/roadmap.html#q_cv">роудмапе</a>.</p>
+  <div class="scroll-x"><table>
+    <thead><tr><th>критерий</th><th>исследований</th><th>F1</th><th>чувствительность</th><th>специфичность</th></tr></thead>
+    <tbody>
+    {% for key, title in [('spine_overall', 'позвоночник, итог'), ('spine_coverage', 'охват'), ('spine_axis_tilt', 'наклон оси'), ('spine_artifact', 'посторонние предметы')] %}
+      {% set e = ev.get(key) %}{% if e %}
+      <tr><td>{{ title }}</td><td>{{ e.n }}</td><td>{{ '%.2f'|format(e.f1 or 0)|replace('.', ',') }}</td>
+        <td>{{ '%.2f'|format(e.sensitivity)|replace('.', ',') if e.sensitivity is not none else '—' }}</td>
+        <td>{{ '%.2f'|format(e.specificity)|replace('.', ',') if e.specificity is not none else '—' }}</td></tr>
+      {% endif %}
+    {% endfor %}
+      <tr><td>бёдра</td><td colspan="4" class="faint">пока не оцениваются — {{ ev.get('hip_expert_bad', '') }} нарушений у экспертов из {{ ev.get('hip_expert_total', '') }}</td></tr>
+    </tbody></table></div>
+</section>
+{% endif %}
+</div>
+<div class="dv-tip" id="dvTip" role="tooltip" hidden></div>
+<script>
+(function () {
+  const tip = document.getElementById('dvTip');
+  const show = (el, x, y) => { tip.textContent = el.dataset.tip; tip.hidden = false;
+    const r = tip.getBoundingClientRect(); tip.style.left = Math.min(x + 14, innerWidth - r.width - 8) + 'px';
+    tip.style.top = Math.max(8, y - r.height - 10) + 'px'; };
+  document.querySelectorAll('[data-tip]').forEach(el => {
+    el.addEventListener('mousemove', e => show(el, e.clientX, e.clientY));
+    el.addEventListener('mouseleave', () => { tip.hidden = true; });
+    el.addEventListener('focus', () => { const r = el.getBoundingClientRect(); show(el, r.left + r.width / 3, r.top); });
+    el.addEventListener('blur', () => { tip.hidden = true; });
+  });
+})();
+</script>
+{% endif %}
+</div>
+{% endblock %}

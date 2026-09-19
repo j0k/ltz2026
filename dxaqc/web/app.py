@@ -26,7 +26,7 @@ from starlette.concurrency import run_in_threadpool
 from dxaqc import __version__, atlas, datasets, pipeline, voice
 from dxaqc import params as P
 from dxaqc.io import safe_extract
-from dxaqc.web import accounts, analysis, ask, control, mcp, og, progress, showcase, tgbot, tz
+from dxaqc.web import accounts, analysis, ask, control, datastats, mcp, og, progress, showcase, tgbot, tz
 
 DATA = os.environ.get("DXAQC_DATA", "/data")
 RUNS = os.path.join(DATA, "runs")
@@ -81,6 +81,7 @@ async def lifespan(_app):
     _recover_interrupted()
     _seed_example()
     ask.start_worker()
+    datastats.warm()                     # разбор ~500 файлов данных — заранее, а не на первом заходе
     if tgbot.start():
         print("[tg] Telegram-бот запущен")
     yield
@@ -693,6 +694,34 @@ def run_og(run_id: str):
     return _og_response(build, os.path.join(out, f"og_run_v{og.VERSION}.jpg") if man and st.get("state") == "done" else None)
 
 
+@app.get("/tz/data", include_in_schema=False)
+def data_short():
+    return RedirectResponse("/tz/data.html", status_code=301)
+
+
+@app.get("/tz/data.html", response_class=HTMLResponse)
+def data_page(request: Request):
+    """Данные задачи: состав наборов, разметка экспертов, технические параметры — только агрегаты."""
+    d = datastats.get()
+    ev, train_id = None, None
+    for r in _list_runs(300):
+        if r.get("dataset") == "train" and r.get("state") == "done" and (r.get("summary") or {}).get("studies", 0) >= 90:
+            man = _read(r["id"], os.path.join("out", "manifest.json")) or {}
+            ev, train_id = man.get("evaluation"), r["id"]
+            break
+    example = _read(EXAMPLE_ID, os.path.join("out", "manifest.json")) or {}
+    thumbs = [dict(key=r["key"], thumb=r.get("thumb_png") or r.get("overlay_png"), region=REGION_RU.get(r.get("anatomical_region"), ""),
+                   name=os.path.basename(r.get("path_to_study") or ""))
+              for r in example.get("rows", []) if r.get("key") and (r.get("thumb_png") or r.get("overlay_png"))]
+    t = (d.get("train") or {})
+    return templates.TemplateResponse(request, "tz_data.html", dict(
+        d=d, ev=ev, train_id=train_id, thumbs=thumbs, example_id=EXAMPLE_ID, version=__version__,
+        og_title="Данные задачи 04 · DXA QC", og_image="/og/data.jpg",
+        og_description=(f"Данные организатора: {t.get('studies', 0)} исследований, {t.get('unique', 0)} уникальных снимков "
+                        f"из {t.get('files', 0)} файлов, экспертная разметка по 10 критериям и технические параметры."
+                        if d.get("ok") else "Данные организатора задачи 04: состав, разметка экспертов, технические параметры.")))
+
+
 @app.get("/cookies", response_class=HTMLResponse)
 def cookies_page(request: Request):
     """Что стенд хранит в браузере: одна техническая cookie входа, настройки в localStorage, никакой аналитики."""
@@ -712,7 +741,7 @@ def site_og():
 
 
 # страницы без собственной картинки: карточка с заголовком, счётчиками и мотивом — чтобы ссылка узнавалась в Telegram
-OG_PAGES = ("tz", "mindmap", "mlmap", "gantt", "roadmap", "control", "ask")
+OG_PAGES = ("tz", "mindmap", "mlmap", "gantt", "roadmap", "data", "control", "ask")
 
 
 def _og_page(key: str):
@@ -746,6 +775,14 @@ def _og_page(key: str):
             "вехи со сроками и признаком достижения, линия сегодня",
         ], "gantt", [("задач закрыто", c["closed"], (70, 205, 100)), ("в работе", c["open"], og.ACCENT),
                      ("вех достигнуто", c["reached"], (232, 170, 60))])
+    if key == "data":
+        d = datastats.get()
+        t = d.get("train") or {}
+        return og.page("Данные задачи 04", [
+            "обучающий набор организатора и фрагмент «Для теста»",
+            "разметка экспертов, дубли, технические параметры снимков",
+        ], "gantt", [("исследований", t.get("studies", 0), og.WHITE), ("уникальных снимков", t.get("unique", 0), og.ACCENT),
+                     ("лишних копий", t.get("extra", 0), (232, 170, 60))])
     if key == "roadmap":
         from dxaqc.web import roadmap as RM
         t = RM.build({})["totals"]

@@ -8,7 +8,7 @@
 {% macro thumb(x) -%}
 <a class="vc-th" href="{{ x.card }}" title="открыть карточку снимка">
   <img src="{{ x.thumb }}" alt="снимок: {{ region_ru.get(x.region, '') }}" loading="lazy">
-  <span>{{ region_ru.get(x.region, '') }}{% if x.comment %}<i>«{{ x.comment }}»</i>{% endif %}</span>
+  <span>{{ region_ru.get(x.region, '') }}</span>
 </a>
 {%- endmacro %}
 {% block head %}
@@ -59,6 +59,9 @@
 .vc-th span{display:block;background:var(--card);padding:6px 8px;font-size:12px;color:var(--ink2);line-height:1.35}
 .vc-th i{display:block;font-style:normal;color:var(--ink3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .vc-more summary{cursor:pointer;color:var(--accent);font-size:13px;margin:4px 0}
+.vc-study{border-top:1px dashed var(--line);padding-top:6px;margin-top:6px}
+.vc-study:first-of-type{border-top:0}
+.vc-sh{margin:0 0 2px;font-size:13px;color:var(--ink2)}
 .vc-rej{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
 .vc-rej div{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:14px}
 .vc-rej b{display:block;margin-bottom:4px}
@@ -132,9 +135,25 @@
 <p class="muted" style="max-width:840px">Не отдельные нарушения ТЗ, а темы из комментариев экспертов: на такие снимки стоит посмотреть человеку.
   Сколиоз — главный источник ложных тревог по наклону оси: изгиб столба сервис принимает за наклон.</p>
 {% for a in c.attention %}
-<article class="vc-card" id="{{ a.anchor }}"><div class="vc-head"><h3><span class="vc-num">{{ a.num }}.</span>«{{ a.theme }}»</h3><span class="vc-st"><i aria-hidden="true">!</i>{{ a.examples|length }} снимков</span>
+<article class="vc-card" id="{{ a.anchor }}"><div class="vc-head"><h3><span class="vc-num">{{ a.num }}.</span>«{{ a.theme }}»</h3>
+  <span class="vc-st"><i aria-hidden="true">!</i>{{ a.studies|length }} {{ 'исследование' if a.studies|length == 1 else 'исследования' if a.studies|length < 5 else 'исследований' }}</span>
   <a class="vc-up" href="#toc">↑ оглавление</a></div>
-  {{ thumbs(a.examples) }}</article>
+  <p class="faint" style="margin:0 0 6px;font-size:13px">Комментарий эксперт написал на исследование целиком: к какому именно снимку он относится,
+    в разметке не указано. Поэтому снимки показаны по исследованиям.</p>
+  {% if a.studies|map(attribute='images')|map('length')|max == 1 %}
+    {# по одному снимку на исследование — группы не нужны, отличающиеся комментарии одной строкой #}
+    {{ thumbs(a.examples) }}
+    {% set other = a.studies|map(attribute='comment')|reject('equalto', a.theme)|select|list %}
+    {% set other = other|reject('equalto', a.theme|capitalize)|list %}
+    {% if other %}<p class="vc-sh" style="margin-top:6px">Другие формулировки: {% for o in other|unique %}«{{ o }}»{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}
+  {% else %}
+  {% for st in a.studies %}
+  <div class="vc-study"><p class="vc-sh">Исследование {{ loop.index }} · {{ st.images|length }} {{ 'снимок' if st.images|length == 1 else 'снимка' if st.images|length < 5 else 'снимков' }}
+    {% if st.comment|lower != a.theme %}· комментарий: «{{ st.comment }}»{% endif %}</p>
+    {{ thumbs(st.images, 6) }}</div>
+  {% endfor %}
+  {% endif %}
+</article>
 {% else %}<p class="faint">Комментариев экспертов в прогоне нет.</p>{% endfor %}
 
 <h2 class="vc-group" id="normal">Норма для сравнения</h2>

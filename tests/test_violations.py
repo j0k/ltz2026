@@ -82,3 +82,17 @@ def test_toc_is_numbered_and_every_item_links_to_its_card(client):
     assert "«сколиоз»" in toc and "Не DICOM" in toc
     body = html[html.index('id="v-coverage"'):]
     assert '<span class="vc-num">1.</span>Неполный охват' in body and 'href="#toc"' in body, "номер в заголовке и путь назад"
+
+
+def test_study_comment_is_shown_once_per_study_not_per_image(client):
+    """«Перелом» написан на исследование: три его снимка — одна группа, а не три «перелома»."""
+    rows = [dict(key=f"s{i}", thumb_png=f"s{i}.png", anatomical_region=reg, study_key="study-A", violation_list=[],
+                 quality_class=None, expert=dict(bad=1, types=[], comment="перелом"))
+            for i, reg in enumerate(("hip_left", "hip_right", "lumbar_spine"))]
+    rows.append(dict(key="z", thumb_png="z.png", anatomical_region="lumbar_spine", study_key="study-B", violation_list=[],
+                     quality_class=0, expert=dict(bad=0, types=[], comment="перелом L2")))
+    c = V().build(dict(rows=rows), "run-x")
+    frac = next(a for a in c["attention"] if a["theme"] == "перелом")
+    assert len(frac["studies"]) == 2 and [len(s["images"]) for s in frac["studies"]] == [3, 1]
+    item = next(i for sec in c["toc"] for i in sec["items"] if i["title"] == "«перелом»")
+    assert item["facts"] == "исследований 2 · снимков 4"

@@ -90,10 +90,16 @@ def build(manifest: dict | None, run_id: str | None) -> dict:
                             seen=seen, expert_total=len(caught) + len(missed), metric_values=m))
     attention = []
     for theme, region in ATTENTION:
-        found = [_example(r, run_id) for r in rows if theme in ((r.get("expert") or {}).get("comment") or "").lower()
-                 and (region is None or r.get("anatomical_region") == region)]
-        if found:
-            attention.append(dict(theme=theme, examples=found))
+        # комментарий эксперт пишет на исследование целиком: группируем снимки по исследованию и показываем его один раз
+        studies: OrderedDict = OrderedDict()
+        for r in rows:
+            comment = ((r.get("expert") or {}).get("comment") or "").strip()
+            if theme in comment.lower() and (region is None or r.get("anatomical_region") == region):
+                st = studies.setdefault(r.get("study_key") or r["key"], dict(comment=comment, images=[]))
+                st["images"].append(_example(r, run_id))
+        if studies:
+            groups_ = list(studies.values())
+            attention.append(dict(theme=theme, studies=groups_, examples=[x for g in groups_ for x in g["images"]]))
     normals = {}
     for key in ("lumbar_spine", "hip"):
         normals[key] = [_example(r, run_id) for r in rows if _region_ok(key, r.get("anatomical_region"))
@@ -121,7 +127,7 @@ def build(manifest: dict | None, run_id: str | None) -> dict:
         num += 1
         a["num"], a["anchor"] = num, f"a-{i}"
         section["items"].append(dict(num=num, title=f"«{a['theme']}»", code="", anchor=a["anchor"], status="state",
-                                     status_icon="!", facts=f"снимков {len(a['examples'])}"))
+                                     status_icon="!", facts=f"исследований {len(a['studies'])} · снимков {len(a['examples'])}"))
     if section["items"]:
         toc.append(section)
     section = dict(title="Отказы", anchor="rejects", items=[])

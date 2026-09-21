@@ -22,6 +22,7 @@ from markdown_it import MarkdownIt
 
 from dxaqc import __version__
 from dxaqc.web import accounts as A
+from dxaqc.web import activity
 from dxaqc.web import contacts as C
 from dxaqc.web import sysmon
 
@@ -68,7 +69,7 @@ def _check_csrf(request: Request, token: str):
 
 
 def _safe_next(dest: str) -> str:
-    return dest if isinstance(dest, str) and dest.startswith("/") and not dest.startswith("//") and "\\" not in dest else "/ask"
+    return dest if isinstance(dest, str) and dest.startswith("/") and not dest.startswith("//") and "\\" not in dest else "/cabinet"
 
 
 def _to_login(request: Request):
@@ -89,16 +90,18 @@ def _ip(request: Request) -> str:
 # ------------------------------------------------------------------ вход, регистрация, кабинет
 
 @router.get("/login", response_class=HTMLResponse)
-def login_page(request: Request, next: str = "/ask"):
+def login_page(request: Request, next: str = "/cabinet"):
     return _page(request, "login.html", next=_safe_next(next), error="", login="")
 
 
 @router.post("/login")
-def login(request: Request, login: str = Form(""), password: str = Form(""), next: str = Form("/ask")):
+def login(request: Request, login: str = Form(""), password: str = Form(""), next: str = Form("/cabinet")):
     try:
         user = A.authenticate(login, password, _ip(request))
     except A.AccountError as exc:
+        activity.event(request, "auth", "неудачная попытка входа", user={}, login=login[:40], detail=str(exc)[:120], status=400)
         return _page(request, "login.html", 400, next=_safe_next(next), error=str(exc), login=login)
+    activity.event(request, "auth", "вошёл", user=user)
     return _signed_in(user["id"], _safe_next(next))
 
 
@@ -114,14 +117,17 @@ def register(request: Request, login: str = Form(""), password: str = Form(""), 
             raise A.AccountError("пароли не совпадают")
         user = A.create_user(login, password)
     except A.AccountError as exc:
+        activity.event(request, "auth", "регистрация не удалась", user={}, login=login[:40], detail=str(exc)[:120], status=400)
         return _page(request, "register.html", 400, error=str(exc), login=login)
-    return _signed_in(user["id"], "/ask")
+    activity.event(request, "auth", "зарегистрировался", user=user)
+    return _signed_in(user["id"], "/cabinet")
 
 
 @router.post("/logout")
 def logout(request: Request, csrf: str = Form("")):
     if request.state.user:
         _check_csrf(request, csrf)
+        activity.event(request, "auth", "вышел")
         A.drop_session(request.cookies.get(COOKIE))
     r = RedirectResponse("/", status_code=303)
     r.delete_cookie(COOKIE, path="/")

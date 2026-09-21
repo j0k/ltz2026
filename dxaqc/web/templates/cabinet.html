@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Личный кабинет{% endblock %}
+{% block head %}<link rel="stylesheet" href="/static/v2.css?v={{ version }}">
+<style>
+.cb-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:18px;align-items:start}
+.cb-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px;min-width:0;margin-bottom:18px}
+.cb-card h2{margin:0 0 10px;font-size:18px}
+.cb-runs{list-style:none;margin:0;padding:0}
+.cb-runs li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:10px 0;border-top:1px solid var(--line)}
+.cb-runs li:first-child{border-top:0}
+.cb-runs .t{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cb-runs .m{grid-column:1 / -1;display:flex;flex-wrap:wrap;gap:6px 12px;font-size:13px;color:var(--ink2)}
+.cb-st{font-size:12.5px;padding:2px 9px;border-radius:999px;background:#f1efea;color:var(--ink2);white-space:nowrap}
+.cb-st.done{background:#e8f6ee;color:#0c7a53}.cb-st.error{background:#fdeceb;color:#b3302f}.cb-st.running,.cb-st.queued{background:#fdf4e0;color:#8a5b00}
+.cb-dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0;font-size:14px}.cb-dl dt{color:var(--ink3)}.cb-dl dd{margin:0}
+.cb-form{display:grid;gap:8px}.cb-form input{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:9px}
+.cb-form button,.cb-btn{font:inherit;font-weight:600;padding:9px 14px;border-radius:10px;border:0;background:var(--accent);color:#fff;cursor:pointer}
+.cb-btn.ghost{background:var(--accent-soft);color:var(--accent)}
+.cb-ok{background:#e8f6ee;border-radius:9px;padding:8px 10px;font-size:14px}.cb-err{background:#fdeceb;border-radius:9px;padding:8px 10px;font-size:14px}
+@media (max-width:860px){.cb-grid{grid-template-columns:minmax(0,1fr)}}
+</style>{% endblock %}
+{% block header %}{% include "_v2_header.html" %}{% endblock %}
+{% block content %}
+<h1 style="margin-bottom:4px">Личный кабинет</h1>
+<p class="muted" style="margin-top:0">{{ user.login }}{% if user.is_admin %} · админ{% endif %}{% if since %} · с нами с {{ since }}{% endif %}</p>
+<div class="cb-grid">
+  <section class="cb-card" id="runs">
+    <h2>Мои проверки <span class="faint" style="font-weight:400">· {{ runs|length }}</span></h2>
+    {% if runs %}
+    <ul class="cb-runs">
+      {% for r in runs %}{% set s = r.summary or {} %}
+      <li><a class="t" href="/check/{{ r.id }}">{{ r.title or r.id }}</a>
+        <span class="cb-st {{ r.state }}">{{ {'done': 'готово', 'running': 'идёт', 'queued': 'в очереди', 'error': 'ошибка', 'cancelled': 'отменено'}.get(r.state, r.state) }}</span>
+        <span class="m"><span>{{ r.created_str }}</span>
+          {% if s %}<span>снимков {{ s.images }}</span><span>✓ {{ s.good }}</span><span>✕ {{ s.bad }}</span>{% if s.not_evaluated %}<span>— {{ s.not_evaluated }}</span>{% endif %}{% endif %}
+          {% if (r.started_by or '').startswith('tg:') %}<span>из Telegram</span>{% endif %}</span></li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="muted">Здесь появятся ваши проверки. <a href="/">Загрузите снимок</a> — он сохранится в кабинете.</p>
+    {% endif %}
+  </section>
+  <div>
+    <section class="cb-card">
+      <h2>Профиль</h2>
+      <dl class="cb-dl"><dt>логин</dt><dd>{{ user.login }}</dd><dt>роль</dt><dd>{{ 'админ' if user.is_admin else 'пользователь' }}</dd>
+        <dt>Telegram</dt><dd>{% if tg %}подключён{% if tg.username %} · @{{ tg.username }}{% endif %}{% else %}не подключён{% endif %}</dd></dl>
+      {% if not tg %}<form method="post" action="/account/telegram" style="margin-top:10px"><input type="hidden" name="csrf" value="{{ csrf }}">
+        <button class="cb-btn ghost" type="submit">Подключить Telegram-бота</button></form>{% endif %}
+      {% if user.is_admin %}<p style="margin:12px 0 0;font-size:14px"><a href="/admin/activity">Активность в реальном времени →</a> · <a href="/admin">админка</a></p>{% endif %}
+    </section>
+    <section class="cb-card" id="password">
+      <h2>Пароль</h2>
+      {% if message %}<p class="cb-ok" role="status">{{ message }}</p>{% endif %}
+      {% if error %}<p class="cb-err" role="alert">{{ error }}</p>{% endif %}
+      <form class="cb-form" method="post" action="/cabinet/password">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <input type="password" name="old" placeholder="текущий пароль" autocomplete="current-password" required aria-label="текущий пароль">
+        <input type="password" name="new" placeholder="новый, не короче 10 символов" minlength="10" autocomplete="new-password" required aria-label="новый пароль">
+        <input type="password" name="new2" placeholder="новый ещё раз" minlength="10" autocomplete="new-password" required aria-label="новый пароль ещё раз">
+        <button type="submit">Сменить пароль</button>
+      </form>
+    </section>
+    <section class="cb-card"><form method="post" action="/logout"><input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="cb-btn ghost" type="submit" style="width:100%">Выйти</button></form></section>
+  </div>
+</div>
+{% endblock %}

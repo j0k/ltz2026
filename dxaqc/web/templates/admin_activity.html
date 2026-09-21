@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Активность на стенде{% endblock %}
+{% block head %}
+<style>
+.ac-head{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin:0 0 14px}
+.ac-live{display:inline-flex;align-items:center;gap:7px;font-size:13.5px;color:var(--ink2)}
+.ac-live i{width:10px;height:10px;border-radius:50%;background:#0ca30c;box-shadow:0 0 0 0 rgba(12,163,12,.5);animation:acp 1.8s infinite}
+.ac-live.off i{background:#8a8983;animation:none}
+@keyframes acp{0%{box-shadow:0 0 0 0 rgba(12,163,12,.45)}70%{box-shadow:0 0 0 9px rgba(12,163,12,0)}100%{box-shadow:0 0 0 0 rgba(12,163,12,0)}}
+.ac-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:0 0 14px}
+.ac-tiles div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+.ac-tiles b{display:block;font-size:26px;font-variant-numeric:tabular-nums}.ac-tiles span{color:var(--ink2);font-size:13px}
+.ac-online{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin:0 0 14px;font-size:13.5px}
+.ac-online span{display:inline-block;margin:3px 10px 3px 0;padding:2px 9px;border-radius:999px;background:#f1efea}
+.ac-online span.u{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.ac-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 10px}
+.ac-bar button{font:inherit;font-size:13px;padding:5px 11px;border:1px solid var(--line);border-radius:999px;background:var(--card);cursor:pointer}
+.ac-bar button[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
+.ac-wrap{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow-x:auto;min-width:0}
+.ac-table{width:100%;border-collapse:collapse;font-size:13.5px}
+.ac-table th{text-align:left;font-weight:600;color:var(--ink3);font-size:12px;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+.ac-table td{padding:7px 10px;border-bottom:1px solid #f1efea;vertical-align:top}
+.ac-table td.t{white-space:nowrap;color:var(--ink3);font-variant-numeric:tabular-nums}
+.ac-table td.w b{font-weight:600}.ac-table td.w small{display:block;color:var(--ink3)}
+.ac-k{font-size:11.5px;padding:1px 7px;border-radius:999px;background:#f1efea;color:var(--ink2);white-space:nowrap}
+.ac-k.action{background:var(--accent-soft);color:var(--accent)}.ac-k.auth{background:#fdf4e0;color:#8a5b00}.ac-k.system{background:#e8f6ee;color:#0c7a53}
+.ac-k.bot,.ac-k.mcp{background:#efeafd;color:#5b3fc4}.ac-k.admin{background:#fdeceb;color:#b3302f}
+.ac-table tr.new{animation:acn 2.4s ease-out}
+@keyframes acn{from{background:#fff6cc}to{background:transparent}}
+.ac-table tr.hide{display:none}
+.ac-detail{color:var(--ink2)}
+@media (max-width:760px){.ac-table td.d,.ac-table th.d{display:none}}
+</style>
+{% endblock %}
+{% block content %}
+<p class="faint"><a href="/admin">← админка</a></p>
+<div class="ac-head"><h1 style="margin:0">Активность на стенде</h1>
+  <span class="ac-live" id="acLive"><i aria-hidden="true"></i><span id="acLiveText">подключаюсь…</span></span>
+  <button type="button" class="btn ghost small" id="acPause" aria-pressed="false">Пауза</button></div>
+<p class="muted" style="margin:0 0 14px;max-width:860px">Все действия в реальном времени: входы и регистрации, загрузки и итоги проверок, анализ в галерее,
+  скачивания, вопросы Claude, пульт и админка, команды Telegram-бота, вызовы MCP и просмотры страниц. IP — только начало адреса,
+  журнал хранится 30 дней и виден только админам.</p>
+<div class="ac-tiles">
+  <div><b id="acOnlineN">{{ online|length }}</b><span>на сайте за 5 минут</span></div>
+  <div><b id="acToday">{{ stats.today }}</b><span>событий за сегодня</span></div>
+  <div><b id="acActions">{{ stats.actions }}</b><span>действий за сегодня</span></div>
+  <div><b id="acAuth">{{ stats.auth }}</b><span>входов и регистраций</span></div>
+</div>
+<div class="ac-online" id="acOnline">{% for o in online %}<span class="{{ 'u' if o.user }}">{{ o.who }} · {{ o.device }}</span>{% else %}<span>никого</span>{% endfor %}</div>
+<div class="ac-bar" role="toolbar" aria-label="фильтр ленты">
+  <button type="button" data-k="" aria-pressed="true">всё</button>
+  <button type="button" data-k="action" aria-pressed="false">действия</button>
+  <button type="button" data-k="auth" aria-pressed="false">входы</button>
+  <button type="button" data-k="system" aria-pressed="false">проверки</button>
+  <button type="button" data-k="view" aria-pressed="false">просмотры</button>
+  <button type="button" data-k="bot mcp" aria-pressed="false">Telegram и MCP</button>
+  <button type="button" data-k="admin" aria-pressed="false">админка</button>
+</div>
+<div class="ac-wrap"><table class="ac-table"><thead><tr><th>время</th><th>кто</th><th>что</th><th>подробности</th><th class="d">устройство</th></tr></thead>
+<tbody id="acRows">
+{% for r in rows %}<tr data-k="{{ r.kind }}"><td class="t">{{ r.time }}<br><small>{{ r.date }}</small></td>
+  <td class="w"><b>{{ r.who }}</b><small>{{ r.ip }}</small></td>
+  <td><span class="ac-k {{ r.kind }}">{{ r.kind_ru }}</span> {{ r.action }}</td>
+  <td class="ac-detail">{{ r.detail }}{% if r.link %} <a href="{{ r.link }}">открыть</a>{% endif %}</td>
+  <td class="d faint">{{ r.device }}</td></tr>{% endfor %}
+</tbody></table></div>
+<script>
+(function () {
+  const rows = document.getElementById('acRows'), live = document.getElementById('acLive'), liveText = document.getElementById('acLiveText');
+  let last = {{ last_id }}, paused = false, filter = '', queue = [], es = null;
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+  function row(e) {
+    const tr = document.createElement('tr');
+    tr.dataset.k = e.kind; tr.className = 'new' + (filter && !filter.split(' ').includes(e.kind) ? ' hide' : '');
+    tr.innerHTML = `<td class="t">${esc(e.time)}<br><small>${esc(e.date)}</small></td><td class="w"><b>${esc(e.who)}</b><small>${esc(e.ip)}</small></td>`
+      + `<td><span class="ac-k ${esc(e.kind)}">${esc(e.kind_ru)}</span> ${esc(e.action)}</td>`
+      + `<td class="ac-detail">${esc(e.detail)}${e.link ? ` <a href="${esc(e.link)}">открыть</a>` : ''}</td><td class="d faint">${esc(e.device)}</td>`;
+    return tr;
+  }
+  function add(e) {
+    if (e.id <= last) return;
+    last = e.id;
+    if (paused) { queue.push(e); liveText.textContent = 'пауза · новых ' + queue.length; return; }
+    rows.insertBefore(row(e), rows.firstChild);
+    while (rows.children.length > 400) rows.removeChild(rows.lastChild);
+  }
+  function online(d) {
+    document.getElementById('acOnlineN').textContent = d.online.length;
+    document.getElementById('acOnline').innerHTML = d.online.length ? d.online.map(o => `<span class="${o.user ? 'u' : ''}">${esc(o.who)} · ${esc(o.device)}</span>`).join('') : '<span>никого</span>';
+    if (d.stats) { acToday.textContent = d.stats.today; acActions.textContent = d.stats.actions; acAuth.textContent = d.stats.auth; }
+  }
+  function state(on, text) { live.classList.toggle('off', !on); liveText.textContent = text; }
+  function connect() {
+    if (!window.EventSource) return poll();
+    es = new EventSource('/admin/api/activity/stream?after=' + last);
+    es.addEventListener('open', () => state(true, paused ? 'пауза' : 'в реальном времени'));
+    es.addEventListener('activity', ev => add(JSON.parse(ev.data)));
+    es.addEventListener('online', ev => online(JSON.parse(ev.data)));
+    es.addEventListener('error', () => state(false, 'переподключаюсь…'));   // EventSource переподключается сам
+  }
+  async function poll() {                    // запасной путь без EventSource
+    try { const d = await (await fetch('/admin/api/activity?after=' + last, {cache: 'no-store'})).json(); d.events.forEach(add); online(d); state(true, 'обновляется'); }
+    catch (e) { state(false, 'нет связи'); }
+    setTimeout(poll, 3000);
+  }
+  document.getElementById('acPause').addEventListener('click', e => {
+    paused = !paused; e.currentTarget.setAttribute('aria-pressed', String(paused)); e.currentTarget.textContent = paused ? 'Продолжить' : 'Пауза';
+    if (!paused) { queue.forEach(x => { rows.insertBefore(row(x), rows.firstChild); }); queue = []; state(true, 'в реальном времени'); }
+    else state(true, 'пауза');
+  });
+  document.querySelectorAll('.ac-bar button').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('.ac-bar button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    filter = b.dataset.k;
+    [...rows.children].forEach(tr => tr.classList.toggle('hide', !!filter && !filter.split(' ').includes(tr.dataset.k)));
+  }));
+  connect();
+})();
+</script>
+{% endblock %}

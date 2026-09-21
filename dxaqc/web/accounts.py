@@ -80,6 +80,11 @@ CREATE INDEX IF NOT EXISTS au_token_ts ON api_usage(token_id, ts);
 CREATE INDEX IF NOT EXISTS au_ts ON api_usage(ts);
 CREATE TABLE IF NOT EXISTS api_sessions (
   id TEXT PRIMARY KEY, token_id INTEGER, client TEXT NOT NULL DEFAULT '', protocol TEXT NOT NULL DEFAULT '', created REAL NOT NULL);
+CREATE TABLE IF NOT EXISTS events (
+  id INTEGER PRIMARY KEY, ts REAL NOT NULL, user_id INTEGER, login TEXT NOT NULL DEFAULT '', ip TEXT NOT NULL DEFAULT '',
+  kind TEXT NOT NULL, action TEXT NOT NULL, detail TEXT NOT NULL DEFAULT '', path TEXT NOT NULL DEFAULT '',
+  run_id TEXT NOT NULL DEFAULT '', status INTEGER, device TEXT NOT NULL DEFAULT '');
+CREATE INDEX IF NOT EXISTS ev_ts ON events(ts);
 CREATE TABLE IF NOT EXISTS invites (
   id INTEGER PRIMARY KEY, token_hash TEXT NOT NULL UNIQUE, role TEXT NOT NULL DEFAULT 'admin', note TEXT NOT NULL DEFAULT '',
   created_by TEXT NOT NULL, created REAL NOT NULL, expires REAL NOT NULL, used_by INTEGER, used_at REAL,
@@ -503,6 +508,44 @@ def usage_recent(token_id: int | None = None, limit: int = 50) -> list[dict]:
     where, args = ("WHERE u.token_id=?", (token_id,)) if token_id is not None else ("", ())
     return _q(f"SELECT u.*, t.name AS token_name FROM api_usage u LEFT JOIN api_tokens t ON t.id=u.token_id {where} "
               "ORDER BY u.id DESC LIMIT ?", (*args, limit))
+
+
+# ------------------------------------------------------------------ журнал действий для админов
+
+EVENT_TTL = 30 * 24 * 3600
+
+
+def log_event(kind: str, action: str, *, user: dict | None = None, login: str = "", ip: str = "", detail: str = "",
+              path: str = "", run_id: str = "", status: int | None = None, device: str = "") -> int:
+    """Событие в ленту админов. IP сюда приходит уже обрезанным, хранится 30 дней."""
+    eid = _x("INSERT INTO events (ts, user_id, login, ip, kind, action, detail, path, run_id, status, device) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+             (time.time(), (user or {}).get("id"), (user or {}).get("login") or login or "", ip[:40], kind, action[:200],
+              (detail or "")[:400], (path or "")[:300], run_id or "", status, device[:60]))
+    if eid % 500 == 0:
+        _x("DELETE FROM events WHERE ts<?", (time.time() - EVENT_TTL,))
+    return eid
+
+
+def events_after(after_id: int = 0, limit: int = 200) -> list[dict]:
+    return _q("SELECT * FROM events WHERE id>? ORDER BY id LIMIT ?", (after_id, limit))
+
+
+def events_recent(limit: int = 200) -> list[dict]:
+    return _q("SELECT * FROM events ORDER BY id DESC LIMIT ?", (limit,))
+
+
+def events_stats() -> dict:
+    day = _day_start()
+    row = _q("SELECT COUNT(*) n, SUM(kind='auth') auth, SUM(kind='action') act FROM events WHERE ts>=?", (day,), one=True)
+    return dict(today=row["n"] or 0, auth=row["auth"] or 0, actions=row["act"] or 0)
+
+
+def online(minutes: int = 5) -> list[dict]:
+    """Кто был на сайте за последние минуты: вошедшие по логину, гости по началу IP и устройству."""
+    since = time.time() - minutes * 60
+    rows = _q("SELECT login, ip, device, MAX(ts) last, COUNT(*) n FROM events WHERE ts>=? AND kind!='system' "
+              "GROUP BY CASE WHEN login!='' THEN login ELSE ip || device END ORDER BY last DESC", (since,))
+    return rows
 
 
 # ------------------------------------------------------------------ Telegram-бот

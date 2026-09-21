@@ -215,6 +215,7 @@ class Bot:
         self.local.chat = chat.get("id")
         self.local.thread = msg.get("message_thread_id") if msg.get("is_topic_message") else None
         try:
+            self._log_update(msg, chat)
             if "my_chat_member" in update:
                 return self.on_member(update["my_chat_member"])
             if cq:
@@ -242,6 +243,22 @@ class Bot:
             return None
         finally:
             self.local.chat = self.local.thread = None
+
+    @staticmethod
+    def _log_update(msg: dict, chat: dict):
+        """Команды боту и присланные файлы — в ленту админов стенда; обычная переписка в группе не пишется."""
+        text = (msg.get("text") or "").strip()
+        if not (text.startswith("/") or msg.get("document")):
+            return
+        try:
+            frm = msg.get("from") or {}
+            linked = A.tg_user(frm.get("id")) or {}
+            action = "Telegram: " + (text.split()[0].split("@")[0] if text else "прислал файл")
+            where = f"группа «{chat.get('title')}»" if chat.get("type") in ("group", "supergroup") else "личка"
+            A.log_event("bot", action, login=linked.get("login") or ("@" + frm["username"] if frm.get("username") else "Telegram"),
+                        detail=(where + (" · " + " ".join(text.split()[1:])[:80] if len(text.split()) > 1 else "")), device="Telegram")
+        except Exception as exc:  # noqa: BLE001
+            print(f"[activity] telegram: {exc}", flush=True)
 
     def _need_link(self, cid: int):
         return self.send(cid, "Проверки запускают привязанные аккаунты стенда. Войдите на стенде, откройте кабинет и нажмите "

@@ -1,4 +1,11 @@
+{% set me = request.state.user if request is defined and request.state.user is defined else None %}
+<style>.v2-head .bar nav a.v2-full{padding:5px 12px;border:1px solid var(--line);border-radius:999px}
+.v2-head .bar nav a.v2-cta{padding:5px 12px;border-radius:999px;background:var(--accent);color:#fff}
+.v2-head .bar nav a.v2-cta:hover{text-decoration:none;filter:brightness(1.05)}</style>
 <header class="v2-head"><div class="bar">
   <a class="logo" href="/">DXA QC<small>контроль качества денситометрии</small></a>
-  <nav><a href="/tz/">Документы</a><a href="/v1" class="v2-full">Полная версия · v1</a></nav>
+  <nav><a href="/tz/">Документы</a>
+    {% if me %}<a href="/cabinet">Кабинет · {{ me.login }}</a>{% if me.is_admin %}<a href="/admin/activity">Активность</a>{% endif %}
+    {% else %}<a href="/login">Войти</a><a href="/register" class="v2-cta">Регистрация</a>{% endif %}
+    <a href="/v1" class="v2-full">Полная версия · v1</a></nav>
 </div></header>

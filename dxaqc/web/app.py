@@ -27,7 +27,7 @@ from starlette.concurrency import run_in_threadpool
 from dxaqc import __version__, atlas, datasets, pipeline, voice
 from dxaqc import params as P
 from dxaqc.io import safe_extract
-from dxaqc.web import accounts, analysis, ask, control, datastats, gallery, mcp, og, progress, showcase, tgbot, tz, violations
+from dxaqc.web import accounts, activity, analysis, ask, cabinet, control, datastats, gallery, mcp, og, progress, showcase, tgbot, tz, violations
 
 DATA = os.environ.get("DXAQC_DATA", "/data")
 RUNS = os.path.join(DATA, "runs")
@@ -104,10 +104,17 @@ async def attach_user(request: Request, call_next):
     ctype = response.headers.get("content-type", "")
     if ctype.split(";")[0].strip() in ("application/json", "text/csv") and "charset" not in ctype.lower():
         response.headers["content-type"] = ctype.split(";")[0].strip() + "; charset=utf-8"
+    try:                                  # лента действий для админов: просмотры и действия, служебное отсекается внутри
+        await run_in_threadpool(activity.record, request, response.status_code, response.headers.get("content-type", ""),
+                                response.headers.get("location", ""))
+    except Exception as exc:  # noqa: BLE001 — журнал не должен ронять ответ
+        print(f"[activity] {type(exc).__name__}: {exc}", flush=True)
     return response
 
 
 app.include_router(ask.router)
+app.include_router(activity.router)
+app.include_router(cabinet.router)
 tz.setup(templates)
 app.include_router(tz.router)
 
@@ -181,12 +188,36 @@ def _process(run_id, stop: threading.Event | None = None):
                            progress=tracker, should_stop=stop.is_set if stop is not None else None)
         tracker.finish()
         _write_status(run_id, state="done", finished=time.time())
+        _run_event(run_id, "проверка завершена")
     except pipeline.Cancelled:
         _write_status(run_id, state="cancelled", finished=time.time())
+        _run_event(run_id, "проверка отменена")
     except Exception as exc:
         _write_status(run_id, state="error", error=f"{type(exc).__name__}: {exc}"[:500], finished=time.time())
+        _run_event(run_id, "проверка завершилась ошибкой")
     finally:
         _jobs.pop(run_id, None)
+
+
+def _msk_now() -> str:
+    """Время для названий проверок — московское: в контейнере часы в UTC, и «Загрузка 17:57» путала с лентой в 20:57."""
+    return time.strftime("%d.%m %H:%M", time.gmtime(time.time() + 3 * 3600))
+
+
+def _run_event(run_id: str, action: str):
+    """Итог прогона в ленту админов: кто запускал и что получилось."""
+    try:
+        st = _read(run_id, "status.json") or {}
+        s = (_read(run_id, os.path.join("out", "manifest.json")) or {}).get("summary") or {}
+        detail = st.get("title") or run_id
+        if s:
+            detail += f": снимков {s.get('images', 0)}, качественных {s.get('good', 0)}, с нарушением {s.get('bad', 0)}"
+        elif st.get("error"):
+            detail += f": {st['error'][:120]}"
+        who = st.get("owner") or (st.get("started_by") or "").replace("tg:", "")
+        accounts.log_event("system", action, login=who, detail=detail, run_id=run_id)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[activity] итог прогона: {exc}", flush=True)
 
 
 def _submit(run_id):
@@ -389,12 +420,14 @@ def _facts(train_run):
 
 
 @app.post("/runs/dataset")
-def create_dataset_run(dataset: str = Form(...), mode: str = Form("all"), n: int = Form(10), study: str = Form("")):
+def create_dataset_run(request: Request, dataset: str = Form(...), mode: str = Form("all"), n: int = Form(10), study: str = Form("")):
     meta = datasets.REGISTRY.get(dataset)
     if not meta:
         raise HTTPException(400, "неизвестный набор данных")
     what = {"all": "весь набор", "sample": f"случайные {n}", "study": "одно исследование"}.get(mode, mode)
     run_id = _new_run(f"{meta['title']}: {what}")
+    if request.state.user:
+        _write_status(run_id, owner_id=request.state.user["id"], owner=request.state.user["login"])
     try:
         chosen = datasets.link_selection(dataset, mode, os.path.join(RUNS, run_id, "input"), n=n, study=study)
     except Exception as exc:
@@ -443,8 +476,10 @@ def check_page(request: Request, run_id: str):
 
 
 @app.post("/runs")
-async def create_run(files: list[UploadFile] = File(...), ui: str = Form("")):
-    run_id = _new_run("Загрузка " + time.strftime("%d.%m %H:%M"))
+async def create_run(request: Request, files: list[UploadFile] = File(...), ui: str = Form("")):
+    run_id = _new_run("Загрузка " + _msk_now())
+    if request.state.user:                # для «Моих проверок» в личном кабинете
+        _write_status(run_id, owner_id=request.state.user["id"], owner=request.state.user["login"])
     try:
         n = await _save_uploads(files, os.path.join(RUNS, run_id, "input"))
     except Exception as exc:
@@ -600,7 +635,7 @@ async def api_stt(file: UploadFile = File(...)):
 @app.post("/api/batch")
 async def api_batch(files: list[UploadFile] = File(...), wait: bool = True):
     """Пакетная обработка: zip или набор DICOM. При wait=true ответ приходит после обработки."""
-    run_id = _new_run("API " + time.strftime("%d.%m %H:%M"))
+    run_id = _new_run("API " + _msk_now())
     n = await _save_uploads(files, os.path.join(RUNS, run_id, "input"))
     if n == 0:
         raise HTTPException(400, "файлы не переданы")
@@ -1006,4 +1041,6 @@ tgbot.setup(read=_read, new_run=_new_run, write_status=_write_status, submit=_su
             has_archives=_has_archives, progress_payload=_progress_payload, datasets=datasets, region_ru=REGION_RU,
             violation_ru=VIOLATION_RU, public_url=PUBLIC_URL, templates=templates)
 analysis.ctx["notify"] = tgbot.notify_request
+activity.ctx.update(templates=templates, version=__version__)
+cabinet.ctx.update(templates=templates, version=__version__, list_runs=_list_runs)
 app.include_router(tgbot.router)

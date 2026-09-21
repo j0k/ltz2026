@@ -41,7 +41,7 @@ def new_client(client):
 
 def register(c: TestClient, login: str, password: str = PASSWORD) -> TestClient:
     r = c.post("/register", data={"login": login, "password": password, "password2": password}, follow_redirects=False)
-    assert r.status_code == 303 and r.headers["location"] == "/ask", r.text[:300]
+    assert r.status_code == 303 and r.headers["location"] == "/cabinet", r.text[:300]   # с 21.09 после регистрации — кабинет
     return c
 
 
@@ -96,11 +96,11 @@ def test_pages_require_login(new_client):
 
 def test_login_next_cannot_redirect_away(new_client):
     c = new_client()
-    assert 'name="next" value="/ask"' in c.get("/login", params={"next": "//evil.example/x"}).text
+    assert 'name="next" value="/cabinet"' in c.get("/login", params={"next": "//evil.example/x"}).text
     register(c, "nexttest")
     c.cookies.clear()
     r = c.post("/login", data={"login": "nexttest", "password": PASSWORD, "next": "https://evil.example"}, follow_redirects=False)
-    assert r.headers["location"] == "/ask"
+    assert r.headers["location"] == "/cabinet"   # вход без next — в кабинет
 
 
 # ------------------------------------------------------------------ регистрация и вход

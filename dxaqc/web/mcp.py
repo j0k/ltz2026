@@ -26,6 +26,7 @@ from starlette.concurrency import run_in_threadpool
 
 from dxaqc import __version__
 from dxaqc.web import accounts as A
+from dxaqc.web import activity
 from dxaqc.web import analysis, ask
 
 router = APIRouter(include_in_schema=False)
@@ -419,6 +420,12 @@ async def _handle(msg, token: dict, request: Request, bytes_in: int, session: di
     log["bytes_out"] = len(json.dumps(response, ensure_ascii=False).encode())
     log["duration_ms"] = (time.perf_counter() - t0) * 1000
     A.log_usage(**log)
+    if log.get("tool"):                   # вызов инструмента — в ленту админов
+        try:
+            A.log_event("mcp", f"MCP: {log['tool']}", login=f"MCP · {(token or {}).get('name', '')}", ip=activity.mask_ip(log.get("ip", "")),
+                        detail=log.get("status", ""), run_id=log.get("run_id", ""), device=(log.get("client") or "")[:60])
+        except Exception as exc:  # noqa: BLE001
+            print(f"[activity] mcp: {exc}", flush=True)
     return response, headers
 
 

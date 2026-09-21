@@ -80,7 +80,7 @@ def test_clean_atlas_route_and_component_on_home(client):
     if not had:   # в тестах пример не засевается: главная берёт снимок из прогона примера
         shutil.copytree(runs / rid, example)
     try:
-        home = client.get("/").text
+        home = client.get("/v1").text
         assert 'class="hero"' in home and "data-atlas-callouts" in home and "/static/atlas-callouts.js" in home
         assert re.search(r'/runs/example/images/[0-9a-f]+/clean\.png', home) and 'data-title="off"' in home
         payload = json.loads(re.search(r'<script type="application/json" class="acall-data">(.*?)</script>', home, re.S).group(1))

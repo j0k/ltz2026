@@ -103,7 +103,7 @@ def test_run_page_shows_live_panel_then_results_and_queue_position(client):
 @needs_data
 def test_home_design_switch(client):
     classic = client.get("/", params={"design": "classic"}).text
-    bio = client.get("/").text   # с 16.09 biotech — главная по умолчанию
+    bio = client.get("/v1").text   # с 16.09 biotech — главная v1 по умолчанию, с 21.09 она на /v1
     assert 'class="hero"' in client.get("/", params={"design": "bio"}).text
     assert 'class="hero"' not in classic and 'id="upload"' in classic
     assert 'class="hero"' in bio and 'id="upload"' in bio

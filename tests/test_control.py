@@ -175,7 +175,7 @@ def test_cancel_queued_and_running_then_delete(client, browsers):
     assert admin.get(f"/runs/{running}/files/manifest.json").status_code == 404
     again = admin.post(f"/control/runs/{running}/cancel", data={"csrf": token(admin)})
     assert again.status_code == 400 and "не в очереди" in again.text
-    assert "отменён" in admin.get("/").text
+    assert "отменён" in admin.get("/v1").text
 
     assert admin.post(f"/control/runs/{running}/delete", data={"csrf": token(admin)}, follow_redirects=False).status_code == 303
     assert admin.get(f"/api/runs/{running}").status_code == 404

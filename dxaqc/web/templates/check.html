@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}{{ st.title or 'Проверка' }}{% endblock %}
+{% block head %}<link rel="stylesheet" href="/static/v2.css?v={{ version }}">{% endblock %}
+{% block header %}{% include "_v2_header.html" %}{% endblock %}
+{% block content %}
+<p class="faint"><a href="/">← новая проверка</a></p>
+<h1 style="margin-bottom:4px">{{ 'Демо: пример организатора' if run_id == example_id else 'Результат проверки' }}</h1>
+
+{% if running %}
+<div class="v2-wait" id="v2Wait" data-run="{{ run_id }}">
+  <p style="margin:0 0 10px;font-weight:600" id="v2Stage">В очереди…</p>
+  <div class="v2-prog"><div class="track"><span id="v2Bar" style="width:4%"></span></div><p id="v2Msg">Обычно это занимает несколько секунд на снимок.</p></div>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('v2Wait'), run = box.dataset.run;
+  const bar = document.getElementById('v2Bar'), stage = document.getElementById('v2Stage'), msg = document.getElementById('v2Msg');
+  async function tick() {
+    try {
+      const p = await (await fetch('/api/runs/' + run + '/progress', {cache: 'no-store'})).json();
+      if (['done', 'error', 'cancelled'].includes(p.state)) { location.reload(); return; }
+      const s = (p.stage_list || []).find(x => x.key === p.stage);
+      stage.textContent = p.state === 'queued' ? 'В очереди' + (p.queue_position ? ', впереди ' + p.queue_position : '') + '…' : (s ? s.label : 'Обработка') + '…';
+      if (p.step && p.step.total) { bar.style.width = Math.max(4, Math.round(p.step.done / p.step.total * 100)) + '%'; msg.textContent = p.step.done + ' из ' + p.step.total; }
+    } catch (e) { /* сеть моргнула — следующий опрос */ }
+    setTimeout(tick, 1200);
+  }
+  tick();
+})();
+</script>
+{% elif st.state == 'error' %}
+<p class="note" role="alert">Проверка не удалась: {{ st.error }}. <a href="/">Попробовать снова</a>.</p>
+{% elif st.state == 'cancelled' %}
+<p class="note">Проверка отменена. <a href="/">Начать новую</a>.</p>
+{% else %}
+{% set s = man.summary %}
+<div class="v2-sum">
+  <span class="pill">снимков <b>{{ s.images }}</b></span>
+  <span class="pill"><i class="v2-ic ok" aria-hidden="true">✓</i>качественных <b>{{ s.good }}</b></span>
+  <span class="pill"><i class="v2-ic bad" aria-hidden="true">✕</i>с нарушением <b>{{ s.bad }}</b></span>
+  {% if s.not_evaluated %}<span class="pill"><i class="v2-ic" aria-hidden="true">—</i>не оценено <b>{{ s.not_evaluated }}</b></span>{% endif %}
+  <span class="links"><a href="/runs/{{ run_id }}/files/results.csv">таблица CSV</a><a href="/runs/{{ run_id }}">подробно в v1 →</a></span>
+</div>
+{% for r in rows %}
+  {% if r.processing_status == 'Success' %}
+  {% set kind = 'bad' if r.quality_class == 1 else 'ok' if r.quality_class == 0 else 'none' %}
+  <article class="v2-res" id="{{ r.key }}">
+    <div class="pic"><img src="/runs/{{ run_id }}/files/{{ r.overlay_png }}" alt="атлас: {{ region_ru.get(r.anatomical_region, '') }}" loading="lazy"></div>
+    <div>
+      <h2>{{ (region_ru.get(r.anatomical_region, '') or 'снимок')|capitalize }}</h2>
+      <p class="v2-verdict"><i class="v2-ic {{ kind }}" aria-hidden="true">{{ '✕' if kind == 'bad' else '✓' if kind == 'ok' else '—' }}</i>
+        {{ 'Есть нарушение' if kind == 'bad' else 'Снимок качественный' if kind == 'ok' else 'Не оценено' }}</p>
+      {% set viol = r.violation_list|reject('equalto', 'hip_not_evaluated_v0')|list %}
+      {% if viol %}<ul>{% for v in viol %}<li><b>{{ violation_ru.get(v, v) }}</b></li>{% endfor %}</ul>{% endif %}
+      {% if kind == 'none' %}<p class="expl">Бедро в этой версии сервиса не оценивается: сторона определена, вердикт появится в следующей версии.</p>{% endif %}
+      <ul class="expl">{% for e in (r.explanations or [])[:4] %}<li>{{ e }}</li>{% endfor %}</ul>
+      <p class="more"><a href="/runs/{{ run_id }}/images/{{ r.key }}">Подробнее: слои атласа, лупа, озвучка →</a></p>
+    </div>
+  </article>
+  {% else %}
+  <div class="v2-fail"><b>{{ r.path_to_study.split('/')[-1] }}</b> — не проверен: {{ (r.explanations or ['файл не подошёл'])[0] }}
+    <a href="/runs/{{ run_id }}">что можно сделать →</a></div>
+  {% endif %}
+{% else %}
+  <p class="note">В загрузке не нашлось снимков денситометрии. <a href="/runs/{{ run_id }}">Подробности</a> · <a href="/">загрузить другие файлы</a></p>
+{% endfor %}
+<p style="text-align:center;margin-top:22px"><a class="v2-btn" href="/">Проверить ещё снимок</a></p>
+{% endif %}
+{% endblock %}

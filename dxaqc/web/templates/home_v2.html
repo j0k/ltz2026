@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Проверка качества снимка денситометрии{% endblock %}
+{% block head %}<link rel="stylesheet" href="/static/v2.css?v={{ version }}">{% endblock %}
+{% block header %}{% include "_v2_header.html" %}{% endblock %}
+{% block content %}
+<section class="v2-hero">
+  <h1>Проверка качества снимка денситометрии</h1>
+  <p>Сервис определит область, найдёт нарушения укладки и объяснит их на атласе. Снимки остаются на сервере стенда.</p>
+</section>
+
+<div class="v2-choices">
+  <form class="v2-card" id="v2Upload" action="/runs" method="post" enctype="multipart/form-data">
+    <span class="v2-num" aria-hidden="true">1</span>
+    <h2>Загрузить снимок</h2>
+    <p>DICOM денситометрии — поясничный отдел или бедро. Можно несколько файлов или zip с папками исследований, до 64 МБ.</p>
+    <input type="hidden" name="ui" value="v2">
+    <label class="v2-drop" id="v2Drop">
+      <input type="file" name="files" id="v2Files" multiple>
+      <span class="ic" aria-hidden="true">⤒</span>
+      <b>Перетащите файлы сюда</b>
+      <span>или нажмите, чтобы выбрать</span>
+    </label>
+    <div class="v2-prog" id="v2Prog" hidden><div class="track"><span id="v2Bar"></span></div><p id="v2Msg"></p></div>
+    <noscript><button class="v2-btn" type="submit">Проверить</button></noscript>
+    <p class="faint" style="margin:0;font-size:12.5px">Загружайте только обезличенные исследования.</p>
+  </form>
+
+  <section class="v2-card">
+    <span class="v2-num" aria-hidden="true">2</span>
+    <h2>Демо</h2>
+    <p>Пример из фрагмента «Для теста» организатора: поясничный отдел и оба бедра. Результат уже готов — можно сразу посмотреть, как выглядит ответ сервиса.</p>
+    {% if demo %}
+    <div class="v2-demo-thumbs">
+      {% for d in demo %}<a href="/check/{{ example_id }}#{{ d.key }}"><img src="/runs/{{ example_id }}/files/{{ d.thumb }}" alt="пример: {{ d.region }}" loading="lazy">
+        <span>{{ d.region }}</span></a>{% endfor %}
+    </div>
+    <a class="v2-btn" href="/check/{{ example_id }}">Смотреть демо →</a>
+    {% else %}
+    <p class="note">Демо появится, как только сервис разберёт пример организатора — обычно через минуту после запуска.</p>
+    {% endif %}
+  </section>
+</div>
+
+<p class="v2-foot faint">Всё остальное — прогоны наборов организатора, пульт анализа, галерея, каталог нарушений, API —
+  в <a href="/v1">полной версии (v1)</a>.</p>
+
+<script>
+(function () {
+  const form = document.getElementById('v2Upload'), input = document.getElementById('v2Files'), drop = document.getElementById('v2Drop');
+  const prog = document.getElementById('v2Prog'), bar = document.getElementById('v2Bar'), msg = document.getElementById('v2Msg');
+  function send(files) {
+    if (!files || !files.length) return;
+    const data = new FormData();
+    data.append('ui', 'v2');
+    for (const f of files) data.append('files', f, f.name);
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/runs');
+    prog.hidden = false; drop.style.pointerEvents = 'none';
+    msg.textContent = 'Отправляю ' + files.length + ' ' + (files.length === 1 ? 'файл' : 'файла(ов)') + '…';
+    xhr.upload.onprogress = e => { if (e.lengthComputable) { const p = Math.round(e.loaded / e.total * 100); bar.style.width = p + '%'; msg.textContent = 'Отправлено ' + p + '%'; } };
+    xhr.onload = () => {
+      if (xhr.status < 400 && xhr.responseURL) { bar.style.width = '100%'; msg.textContent = 'Файлы получены, открываю результат…'; location.href = xhr.responseURL; }
+      else { msg.textContent = 'Не получилось отправить: ' + xhr.status + '. Попробуйте ещё раз.'; drop.style.pointerEvents = ''; }
+    };
+    xhr.onerror = () => { msg.textContent = 'Связь прервалась — попробуйте ещё раз.'; drop.style.pointerEvents = ''; };
+    xhr.send(data);
+  }
+  input.addEventListener('change', () => send(input.files));
+  ['dragenter', 'dragover'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', e => send(e.dataTransfer.files));
+  form.addEventListener('submit', e => { e.preventDefault(); send(input.files); });
+})();
+</script>
+{% endblock %}

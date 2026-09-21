@@ -70,11 +70,11 @@ footer{max-width:1180px;margin:0 auto;padding:0 20px 30px;color:var(--ink3);font
 {% block head %}{% endblock %}
 </head>
 <body>
-<header><div class="bar">
+{% block header %}<header><div class="bar">
   <a class="logo" href="/">DXA QC<small>контроль качества денситометрии</small></a>
   {% set me = request.state.user if request is defined and request.state.user is defined else None %}
-  <nav><a href="/">Прогоны</a><a href="/gallery">Галерея</a><a href="/control">Пульт</a><a href="/tz/">Доки</a><a href="/ask">Спросить Claude</a>{% if me and me.is_admin %}<a href="/admin">Админка</a>{% endif %}<a href="/docs">API</a><a href="{{ trac_url }}">Трекер</a>{% if me %}<a href="/account">{{ me.login }}</a>{% else %}<a href="/login">Войти</a>{% endif %}</nav>
-</div></header>
+  <nav><a href="/v1">Прогоны</a><a href="/gallery">Галерея</a><a href="/control">Пульт</a><a href="/tz/">Доки</a><a href="/ask">Спросить Claude</a>{% if me and me.is_admin %}<a href="/admin">Админка</a>{% endif %}<a href="/docs">API</a><a href="{{ trac_url }}">Трекер</a>{% if me %}<a href="/account">{{ me.login }}</a>{% else %}<a href="/login">Войти</a>{% endif %}</nav>
+</div></header>{% endblock %}
 {% block fullbleed %}{% endblock %}
 <main>{% block content %}{% endblock %}</main>
 <footer>ЛЦТ 2026 · задача Департамента здравоохранения · команда «Квантовый Скачок»: Юрий Коноплёв, Алексей Чуркин · версия {{ version }} · только обезличенные данные организатора · <a href="/cookies">cookie</a></footer>

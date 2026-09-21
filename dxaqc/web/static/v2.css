@@ -1,0 +1,58 @@
+/* Новый интерфейс: два действия на главной и простая страница результата. */
+.v2-head .bar nav a.v2-full{padding:5px 12px;border:1px solid var(--line);border-radius:999px}
+.v2-hero{text-align:center;margin:28px auto 26px;max-width:760px}
+.v2-hero h1{font-size:34px;line-height:1.15;margin:0 0 10px}
+.v2-hero p{color:var(--ink2);font-size:16px;margin:0}
+.v2-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;max-width:1000px;margin:0 auto}
+.v2-card{position:relative;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px 22px 20px;min-width:0;
+  display:flex;flex-direction:column;gap:12px;box-shadow:0 2px 14px rgba(16,24,40,.04)}
+.v2-card h2{margin:0;font-size:21px}
+.v2-card > p{margin:0;color:var(--ink2);font-size:14.5px}
+.v2-num{position:absolute;top:18px;right:20px;width:30px;height:30px;border-radius:50%;background:var(--accent-soft);color:var(--accent);
+  display:flex;align-items:center;justify-content:center;font-weight:700}
+.v2-drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:190px;border:2px dashed #c9d6e8;
+  border-radius:14px;background:#f7faff;cursor:pointer;text-align:center;padding:18px;transition:border-color .15s,background .15s}
+.v2-drop:hover,.v2-drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.v2-drop input{position:absolute;width:1px;height:1px;opacity:0}
+.v2-drop .ic{font-size:34px;line-height:1}
+.v2-drop b{font-size:16px}
+.v2-drop span{color:var(--ink3);font-size:13px}
+.v2-prog[hidden]{display:none}
+.v2-prog .track{height:8px;border-radius:4px;background:var(--accent-soft);overflow:hidden}
+.v2-prog .track span{display:block;height:100%;width:0;background:var(--accent);border-radius:4px;transition:width .2s}
+.v2-prog p{margin:6px 0 0;font-size:13px;color:var(--ink2)}
+.v2-demo-thumbs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.v2-demo-thumbs a{display:block;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#000;color:inherit;text-decoration:none}
+.v2-demo-thumbs a:hover{border-color:var(--accent);text-decoration:none}
+.v2-demo-thumbs img{display:block;width:100%;height:150px;object-fit:contain}
+.v2-demo-thumbs span{display:block;background:var(--card);padding:6px 8px;font-size:12.5px;color:var(--ink2)}
+.v2-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--accent);color:#fff;border:0;border-radius:12px;
+  padding:12px 18px;font:inherit;font-weight:600;cursor:pointer;text-decoration:none;margin-top:auto}
+.v2-btn:hover{text-decoration:none;filter:brightness(1.05)}
+.v2-btn.ghost{background:var(--accent-soft);color:var(--accent)}
+.v2-foot{text-align:center;margin:26px 0 0;font-size:14px}
+.v2-ic{flex:none;width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;
+  color:#fff;background:#8a8983;font-style:normal}
+.v2-ic.bad{background:#d03b3b}.v2-ic.ok{background:#0ca30c}
+/* результат */
+.v2-sum{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:8px 0 18px}
+.v2-sum .pill{display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border:1px solid var(--line);border-radius:999px;background:var(--card);font-size:14px}
+.v2-sum .links{margin-left:auto;display:flex;gap:12px;flex-wrap:wrap;font-size:14px}
+.v2-res{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:20px;background:var(--card);border:1px solid var(--line);
+  border-radius:16px;padding:16px;margin:0 0 16px;scroll-margin-top:12px}
+.v2-res:target{outline:2px solid var(--accent);outline-offset:2px}
+.v2-res .pic{background:#000;border-radius:12px;overflow:hidden;display:flex;align-items:center;justify-content:center;min-height:260px}
+.v2-res .pic img{display:block;max-width:100%;max-height:560px;object-fit:contain}
+.v2-res h2{margin:0 0 6px;font-size:20px}
+.v2-verdict{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:16px;margin:0 0 10px}
+.v2-res ul{margin:0 0 10px;padding-left:18px}
+.v2-res li{margin-bottom:5px}
+.v2-res .expl{color:var(--ink2);font-size:14px}
+.v2-res .more{font-size:14px}
+.v2-wait{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px;max-width:640px}
+.v2-fail{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:0 0 10px;font-size:14px}
+@media (max-width:820px){
+  .v2-choices,.v2-res{grid-template-columns:minmax(0,1fr)}
+  .v2-hero h1{font-size:26px}
+  .v2-sum .links{margin-left:0}
+}

@@ -59,7 +59,7 @@ def embedded_manifest(html: str) -> dict:
 # ------------------------------------------------------------------ главная
 
 def test_index_has_all_blocks(client):
-    r = client.get("/")
+    r = client.get("/v1")
     assert r.status_code == 200
     html = r.text
     for block in ("upload", "about", "runs", "accuracy"):
@@ -73,14 +73,14 @@ def test_index_has_all_blocks(client):
 
 
 def test_index_without_runs_says_so(client):
-    if client.get("/api/health").status_code == 200 and "Прогонов пока нет" not in client.get("/").text:
+    if client.get("/api/health").status_code == 200 and "Прогонов пока нет" not in client.get("/v1").text:
         pytest.skip("прогоны уже созданы другими тестами")
-    assert "Прогонов пока нет" in client.get("/").text
+    assert "Прогонов пока нет" in client.get("/v1").text
 
 
 @needs_data
 def test_index_dataset_forms_have_all_modes(client):
-    html = client.get("/").text
+    html = client.get("/v1").text
     assert 'id="check"' in html
     forms = re.findall(r'<form[^>]*action="/runs/dataset"[^>]*>(.*?)</form>', html, re.S)
     by_id = {re.search(r'name="dataset" value="([^"]+)"', f).group(1): f for f in forms}
@@ -115,7 +115,7 @@ def test_health_and_datasets_api(client):
 def test_favicons_are_served_and_linked(client, path, mime):
     r = client.get(path)
     assert r.status_code == 200 and r.headers["content-type"].startswith(mime) and len(r.content) > 100
-    assert f'href="{path}"' in client.get("/").text
+    assert f'href="{path}"' in client.get("/v1").text
 
 
 def test_json_and_csv_declare_utf8(client):
@@ -207,7 +207,7 @@ def test_upload_zip_full_flow(client):
     for bad in (f"/runs/{rid}/files/..%2Fstatus.json", f"/runs/{rid}/files/.hidden", f"/runs/{rid}/images/nope"):
         assert client.get(bad).status_code == 404
 
-    index = client.get("/").text
+    index = client.get("/v1").text
     item = re.search(rf'<tr>\s*<td><a href="/runs/{rid}">.*?</tr>', index, re.S)
     assert item, "прогон должен появиться в таблице на главной"
     row = item.group(0)
@@ -262,4 +262,4 @@ def test_full_train_run_is_linked_from_index(client):
     assert data["state"] == "done" and data["summary"]["studies"] == 100 and data["summary"]["images"] == 252
     man = embedded_manifest(client.get(f"/runs/{rid}").text)
     assert round(man["evaluation"]["spine_overall"]["f1"], 2) == 0.45
-    assert f'<a href="/runs/{rid}">в прогоне обучающего набора</a>' in client.get("/").text
+    assert f'<a href="/runs/{rid}">в прогоне обучающего набора</a>' in client.get("/v1").text

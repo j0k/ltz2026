@@ -90,7 +90,7 @@ def test_pages_require_login(new_client):
         assert r.status_code == 303 and r.headers["location"] == "/login?next=" + path
     assert c.get("/api/ask/1").status_code == 404
     assert c.post("/ask", data={"text": "x"}, follow_redirects=False).status_code == 303
-    header = c.get("/").text
+    header = c.get("/v1").text
     assert 'href="/login">Войти</a>' in header and 'href="/admin"' not in header
 
 
@@ -280,4 +280,4 @@ def test_admin_safety_and_blocking(new_client):
 
     admin_action(admin, "henry", "make_admin")
     assert accounts().get_user_by_login("henry")["role"] == "admin"
-    assert 'href="/admin">Админка</a>' in admin.get("/").text
+    assert 'href="/admin">Админка</a>' in admin.get("/v1").text

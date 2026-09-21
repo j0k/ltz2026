@@ -312,6 +312,19 @@ async def _save_uploads(files: list[UploadFile], dest: str):
 # ------------------------------------------------------------------ страницы
 
 @app.get("/", response_class=HTMLResponse)
+def home(request: Request):
+    """Новый интерфейс: загрузить снимок или посмотреть демо. Старые ссылки с ?design= открывают v1 как раньше."""
+    if request.query_params.get("design"):
+        return index(request)
+    example = _read(EXAMPLE_ID, os.path.join("out", "manifest.json")) or {}
+    demo = [dict(key=r["key"], thumb=r.get("thumb_png") or r.get("overlay_png"), region=REGION_RU.get(r.get("anatomical_region"), ""),
+                 quality_class=r.get("quality_class"))
+            for r in example.get("rows", []) if r.get("key") and (r.get("thumb_png") or r.get("overlay_png"))]
+    return templates.TemplateResponse(request, "home_v2.html", dict(demo=demo, example_id=EXAMPLE_ID, version=__version__))
+
+
+@app.get("/v1", response_class=HTMLResponse)
+@app.get("/v1/", response_class=HTMLResponse, include_in_schema=False)
 def index(request: Request):
     runs = _list_runs()
     # самый свежий готовый прогон всего обучающего набора: на нём интервалы и графики точности
@@ -404,8 +417,33 @@ def api_dataset_studies(ds_id: str):
     return datasets.studies(ds_id)
 
 
+@app.get("/v1/{path:path}", include_in_schema=False)
+def v1_alias(request: Request, path: str):
+    """Весь прежний интерфейс по ссылке v1: /v1/<путь> ведёт на ту же страницу, внутренние адреса не меняются."""
+    query = ("?" + request.url.query) if request.url.query else ""
+    return RedirectResponse("/" + path + query, status_code=307)
+
+
+@app.get("/check/{run_id}", response_class=HTMLResponse)
+def check_page(request: Request, run_id: str):
+    """Результат в новом интерфейсе: прогресс, затем по каждому снимку атлас, вердикт, нарушения и пояснения."""
+    st = _read(run_id, "status.json")
+    if not st:
+        raise HTTPException(404, "проверка не найдена")
+    man = _read(run_id, os.path.join("out", "manifest.json"))
+    rows = []
+    if man:
+        ok = [r for r in man["rows"] if r.get("processing_status") == "Success"]
+        ok.sort(key=lambda r: ({1: 0, 0: 1}.get(r.get("quality_class"), 2), r.get("anatomical_region") or ""))
+        rows = ok + [r for r in man["rows"] if r.get("processing_status") != "Success"]
+    return templates.TemplateResponse(request, "check.html", dict(
+        run_id=run_id, st=st, man=man, rows=rows, region_ru=REGION_RU, violation_ru=VIOLATION_RU, example_id=EXAMPLE_ID,
+        running=st.get("state") in ("queued", "running"), version=__version__,
+        og_title=f"{st.get('title') or 'Проверка'} · DXA QC", og_image=f"/runs/{run_id}/og.jpg"))
+
+
 @app.post("/runs")
-async def create_run(files: list[UploadFile] = File(...)):
+async def create_run(files: list[UploadFile] = File(...), ui: str = Form("")):
     run_id = _new_run("Загрузка " + time.strftime("%d.%m %H:%M"))
     try:
         n = await _save_uploads(files, os.path.join(RUNS, run_id, "input"))
@@ -417,7 +455,8 @@ async def create_run(files: list[UploadFile] = File(...)):
     else:
         _write_status(run_id, has_archives=_has_archives(run_id))
         _submit(run_id)
-    return RedirectResponse(f"/runs/{run_id}", status_code=303)
+    # новый интерфейс ведёт на свою страницу результата, прежний — на страницу прогона
+    return RedirectResponse(f"/check/{run_id}" if ui == "v2" else f"/runs/{run_id}", status_code=303)
 
 
 @app.get("/runs/{run_id}", response_class=HTMLResponse)

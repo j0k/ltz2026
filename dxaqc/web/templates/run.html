@@ -57,7 +57,7 @@ details.twin th, details.twin td{padding:5px 8px;font-size:12.5px;font-variant-n
 </style>
 {% endblock %}
 {% block content %}
-<p class="faint"><a href="/">← все прогоны</a></p>
+<p class="faint"><a href="/v1">← все прогоны</a></p>
 <h1>{{ st.title or run_id }}</h1>
 {% if st.force %}<p class="note forced-note">Принудительный анализ файла, который не прошёл проверку в прогоне <a href="/runs/{{ st.parent }}">{{ st.parent }}</a>:
   сервис рассчитан на DICOM денситометрии DXA, поэтому результат не гарантирован и в метрики не входит.</p>{% endif %}

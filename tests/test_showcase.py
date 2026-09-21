@@ -75,7 +75,7 @@ def test_home_carousel_and_frames(client):
         assert (Path(os.environ["DXAQC_DATA"]) / "showcase" / f"v{showcase.VERSION}" / f"example_{key}.jpg").exists()
         assert client.get(srcs[0]).status_code == 200
 
-        bio = client.get("/").text
+        bio = client.get("/v1").text
         assert "shots shots--compact" in bio and len(re.findall(r'src="/showcase/example/', bio)) == 3
 
         for bad in ("/showcase/example/nope.jpg", "/showcase/..%2Fexample/abc.jpg", "/showcase/missing/abc.jpg"):

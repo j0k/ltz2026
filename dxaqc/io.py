@@ -161,10 +161,22 @@ def load_image(path: str, root: str, force: bool = False) -> DicomImage | LoadFa
         return LoadFailure(rel, f"файл {ext.lstrip('.').upper()} — это картинка, а не DICOM. Сервис проверяет DICOM денситометрии DXA: "
                                 "поясничный отдел и бедро", code="not_dicom", forceable=True)
     try:
+        # сначала только заголовок: модальность видно сразу, и чужое исследование отсекается без распаковки пикселей
+        head = pydicom.dcmread(path, force=True, stop_before_pixels=True)
+        early = dxa_problem(head, (int(head.get("Rows", 0) or 0), int(head.get("Columns", 0) or 0)))
+        if early and not force:
+            return LoadFailure(rel, f"DICOM не похож на денситометрию DXA: {early}", code="not_dxa", forceable=True)
         ds = pydicom.dcmread(path, force=True)
         if "PixelData" not in ds:
             return LoadFailure(rel, "в файле нет изображения")
-        pixels = _to_uint8(ds, ds.pixel_array)
+        try:
+            raw = ds.pixel_array
+        except Exception as exc:                      # сжатый DICOM, который нечем разжать
+            syntax = getattr(getattr(ds, "file_meta", None), "TransferSyntaxUID", None)
+            how = getattr(syntax, "name", None) or (str(syntax) if syntax else "неизвестный метод")
+            return LoadFailure(rel, f"файл сжат ({how}) и не разжимается этим сервисом: {type(exc).__name__}. "
+                                    "Пришлите тот же снимок без сжатия", code="unreadable")
+        pixels = _to_uint8(ds, raw)
         if pixels.ndim != 2 or min(pixels.shape) < 32:
             return LoadFailure(rel, f"неподдерживаемая форма изображения {pixels.shape}")
         problem = dxa_problem(ds, pixels.shape)

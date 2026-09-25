@@ -4,6 +4,10 @@ uvicorn==0.53.0
 Jinja2==3.1.6
 python-multipart==0.0.32
 pydicom==3.0.2
+# декодеры сжатых DICOM: JPEG Lossless и JPEG-LS (libjpeg), JPEG 2000 (openjpeg)
+pylibjpeg==2.1.0
+pylibjpeg-libjpeg==2.4.0
+pylibjpeg-openjpeg==2.6.0
 numpy==2.5.3
 pillow==12.3.0
 openpyxl==3.1.5

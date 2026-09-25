@@ -174,3 +174,42 @@ def test_organizer_images_are_not_sent_to_claude(client, browsers):
     assert request_on(user, rid, "force", row["path_to_study"]).status_code == 400, "успешный снимок не принуждают"
     card = user.get(f"/runs/{rid}/images/{row['key']}").text
     assert "Спросить Claude про этот снимок" not in card
+
+
+def mr_dicom(path, compressed=False):
+    """Синтетическая МРТ: модальность MR, без пикселей DXA — такие файлы сервис принимать не должен."""
+    from pydicom.dataset import FileDataset, FileMetaDataset
+    from pydicom.uid import ExplicitVRLittleEndian, JPEGLosslessSV1, generate_uid
+    mr = "1.2.840.10008.5.1.4.1.1.4"
+    meta = FileMetaDataset()
+    meta.MediaStorageSOPClassUID, meta.MediaStorageSOPInstanceUID = mr, generate_uid()
+    meta.TransferSyntaxUID = JPEGLosslessSV1 if compressed else ExplicitVRLittleEndian
+    ds = FileDataset(str(path), {}, file_meta=meta, preamble=b"\0" * 128)
+    ds.Modality, ds.SOPClassUID, ds.SOPInstanceUID, ds.StudyInstanceUID = "MR", mr, meta.MediaStorageSOPInstanceUID, generate_uid()
+    ds.SeriesDescription = "AX. FSE PD"
+    ds.Rows = ds.Columns = 512
+    ds.BitsAllocated, ds.BitsStored, ds.HighBit, ds.PixelRepresentation, ds.SamplesPerPixel = 8, 8, 7, 0, 1
+    ds.PhotometricInterpretation = "MONOCHROME2"
+    if compressed:
+        from pydicom.encaps import encapsulate
+        ds.PixelData = encapsulate([b"\xff\xd8\xff\xee not really jpeg"])   # заголовок есть, данных нет
+        ds["PixelData"].is_undefined_length = True
+    else:
+        ds.PixelData = np.zeros((512, 512), dtype=np.uint8).tobytes()
+    ds.save_as(str(path), enforce_file_format=True)
+
+
+def test_mri_is_rejected_by_header_before_decoding(tmp_path):
+    from dxaqc.io import load_image
+    mr_dicom(tmp_path / "mri.dcm")
+    fail = load_image(str(tmp_path / "mri.dcm"), str(tmp_path))
+    assert fail.code == "not_dxa" and "MR" in fail.error and "МРТ" in fail.error, fail.error
+    assert fail.forceable, "принудительный анализ остаётся возможным"
+
+
+def test_unreadable_compression_is_explained(tmp_path):
+    from dxaqc.io import load_image
+    mr_dicom(tmp_path / "packed.dcm", compressed=True)
+    fail = load_image(str(tmp_path / "packed.dcm"), str(tmp_path), force=True)   # force, чтобы дойти до распаковки
+    assert fail.code == "unreadable" and "сжат" in fail.error and "без сжатия" in fail.error, fail.error
+    assert "JPEG" in fail.error.upper()

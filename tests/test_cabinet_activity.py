@@ -82,9 +82,11 @@ def test_activity_feed_records_and_is_admin_only(client):
     carol = register(client.app, "act-carol")
     r = carol.post("/runs", files=[("files", ("photo.jpg", jpg(), "image/jpeg"))], data={"ui": "v2"}, follow_redirects=False)
     rid = r.headers["location"].rsplit("/", 1)[1]
-    t0 = time.time()
-    while time.time() - t0 < 60 and carol.get(f"/api/runs/{rid}/progress").json()["state"] not in ("done", "error"):
+    t0 = time.time()                       # под нагрузкой всего набора проверка идёт дольше
+    while time.time() - t0 < 240 and carol.get(f"/api/runs/{rid}/progress").json()["state"] not in ("done", "error"):
         time.sleep(0.3)
+    assert carol.get(f"/api/runs/{rid}/progress").json()["state"] in ("done", "error"), "проверка не завершилась"
+
     new = [e for e in A().events_after(before, 500)]
     actions = [(e["kind"], e["action"], e["login"]) for e in new]
     assert ("view", "открыл главную", "") in actions

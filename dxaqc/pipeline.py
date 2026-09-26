@@ -13,6 +13,7 @@ from __future__ import annotations
 import csv
 import json
 import os
+import shutil
 import sys
 import time
 import zipfile
@@ -271,16 +272,44 @@ def apply_overrides(out_dir: str, overrides: dict) -> dict:
     return man
 
 
+def _unpack_inputs(src: str, work: str) -> str:
+    """Вход — папка или zip. Архивы (сам вход и zip внутри папки) распаковываются во временную папку,
+    исходные данные не меняются — их можно смонтировать только на чтение."""
+    from dxaqc.io import safe_extract
+    if os.path.isfile(src) and src.lower().endswith(".zip"):
+        safe_extract(src, os.path.join(work, "input"))
+        return os.path.join(work, "input")
+    zips = [os.path.join(d, f) for d, _, fs in os.walk(src) for f in fs if f.lower().endswith(".zip")]
+    if not zips:
+        return src
+    shutil.copytree(src, os.path.join(work, "input"), ignore=shutil.ignore_patterns("*.zip", "*.ZIP"))
+    for z in zips:
+        rel = os.path.splitext(os.path.relpath(z, src))[0]
+        safe_extract(z, os.path.join(work, "input", rel))
+    return os.path.join(work, "input")
+
+
 def main(argv=None):
     import argparse
-    ap = argparse.ArgumentParser(description="Пакетная проверка качества DXA: папка с DICOM -> results.csv")
-    ap.add_argument("input_dir")
-    ap.add_argument("out_dir")
+    import tempfile
+    ap = argparse.ArgumentParser(description="Пакетная проверка качества DXA: папка или zip с DICOM -> results.csv, "
+                                             "results.xlsx, overlays.zip")
+    ap.add_argument("input", help="папка с исследованиями DICOM (любая вложенность) или zip-архив")
+    ap.add_argument("out_dir", help="папка для результатов, создаётся при необходимости")
+    ap.add_argument("--force", action="store_true", help="проверять и файлы, не похожие на DXA (результат не гарантирован)")
     for s in P.SPEC:
         ap.add_argument("--" + s["name"].replace("_", "-"), dest=s["name"], default=None, help=s["help"])
     a = ap.parse_args(argv)
-    m = run_batch(a.input_dir, a.out_dir, params={s["name"]: getattr(a, s["name"]) for s in P.SPEC})
-    print(json.dumps(m["summary"], ensure_ascii=False))
+    if not os.path.exists(a.input):
+        ap.error(f"нет такого входа: {a.input}")
+    started = time.time()
+    with tempfile.TemporaryDirectory(prefix="dxaqc-") as work:
+        src = _unpack_inputs(a.input, work)
+        m = run_batch(src, a.out_dir, params={s["name"]: getattr(a, s["name"]) for s in P.SPEC}, force=a.force,
+                      progress=lambda stage, done, total, *_x, **_k: print(f"\r{stage}: {done}/{total}", end="", file=sys.stderr))
+    print(file=sys.stderr)
+    s = m["summary"]
+    print(json.dumps(dict(s, seconds=round(time.time() - started, 1), out_dir=os.path.abspath(a.out_dir)), ensure_ascii=False))
 
 
 if __name__ == "__main__":

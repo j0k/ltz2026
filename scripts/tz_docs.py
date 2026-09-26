@@ -24,7 +24,9 @@ def main():
     OUT.mkdir(parents=True, exist_ok=True)
     meta = {}
     for doc in CATALOG:
-        src = ROOT / doc["source_path"]
+        # исходники в корне репозитория — симлинки на файлы рядом с ним: жёсткая ссылка на симлинк была бы
+        # симлинком с путём хоста, которого нет в контейнере стенда, поэтому берём настоящий файл
+        src = (ROOT / doc["source_path"]).resolve()
         if not src.exists():
             print(f"нет файла: {src}")
             continue

@@ -26,37 +26,36 @@ CARD = HexColor("#ffffff")
 
 INST = {i["cwd"]: i for i in json.load(open("/home/jk/.codellake/instances.json"))["instances"]}
 LTZ = INST["/home/jk/exp/LTZ2026"]
-FLEET = [i["cwd"].rstrip("/").split("/")[-1] for i in INST.values() if i["cwd"] != "/home/jk/exp/LTZ2026"]
 
 CREW = [
     dict(ang=135, name="Юрий Коноплёв", tag="@bimodaling · капитан",
          role="курс", helm=False,
-         lines=["ставит курс: какую задачу берём",
-                "и что показываем на защите",
+         lines=["ставит курс и принимает решения",
+                "презентация и защита проекта",
                 "владелец репозитория j0k/ltz2026"]),
-    dict(ang=45, name="Алексей", tag="второй на поле", role="борт", helm=False,
-         lines=["роль впишем, как скажете:",
-                "модель, бэкенд или демо",
-                "пока свободная рукоять"]),
-    dict(ang=270, name="Claude", tag="codellake · инстанс LTZ · " + LTZ["model"],
+    dict(ang=45, name="Алексей Чуркин", tag="@lesha_cfc · участник команды", role="борт", helm=False,
+         lines=["админ стенда и Telegram-бота",
+                "проверяет сервис на своих сценариях",
+                "обратная связь по качеству"]),
+    dict(ang=270, name="Claude", tag="ИИ-разработчик · Codellake · " + LTZ["model"],
          role="у руля", helm=True,
-         lines=["разбор задач, инфографика, репозиторий",
-                "и план на две недели",
-                "на вахте с " + LTZ["started"][8:10] + "." + LTZ["started"][5:7] + " · рядом " + " и ".join(f.split(".")[0] for f in FLEET)]),
+         lines=["код, стенд, тесты и документы",
+                "по задачам из трекера команды",
+                "в работе с начала проекта, 10.09"]),
 ]
 
 c = canvas.Canvas("/home/jk/exp/LTZ2026/codellake_crew.pdf", pagesize=(W, H))
-c.setTitle("Codellake — команда у штурвала")
+c.setTitle("Квантовый Скачок — команда ЛЦТ 2026")
 
 c.setFillColor(BG)
 c.rect(0, 0, W, H, stroke=0, fill=1)
 
 c.setFont("ND-B", 34)
 c.setFillColor(INK)
-c.drawCentredString(W / 2, H - 58, "CODELLAKE")
+c.drawCentredString(W / 2, H - 58, "КВАНТОВЫЙ СКАЧОК")
 c.setFont("NS", 11)
 c.setFillColor(INK2)
-c.drawCentredString(W / 2, H - 78, "трое на поле · ЛЦТ 2026 · стендап 10 сентября")
+c.drawCentredString(W / 2, H - 78, "команда · ЛЦТ 2026 · задача 04 Департамента здравоохранения")
 
 CX, CY, R = W / 2, 398.0, 150.0
 
@@ -94,10 +93,10 @@ c.setFont("ND-B", 15)
 c.drawCentredString(CX, CY + 8, "ЛЦТ")
 c.setFont("NS", 8)
 c.setFillColor(INK2)
-c.drawCentredString(CX, CY - 7, "до заявки")
+c.drawCentredString(CX, CY - 7, "задача")
 c.setFillColor(ACCENT)
 c.setFont("NS-B", 11)
-c.drawCentredString(CX, CY - 24, "4 дня")
+c.drawCentredString(CX, CY - 24, "04")
 
 CW_, CH_ = 252.0, 104.0
 for m in CREW:
@@ -148,7 +147,7 @@ for m in CREW:
 
 c.setFont("NS", 8.4)
 c.setFillColor(INK3)
-c.drawCentredString(W / 2, 30, "заявки до 14 сентября · разработка 15–29 сентября · защита 23 октября")
+c.drawCentredString(W / 2, 30, "разработка 15–29 сентября · финальная версия 29 сентября · защита 23 октября")
 c.showPage()
 c.save()
 print("ok")

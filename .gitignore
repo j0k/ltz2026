@@ -28,3 +28,6 @@ models/
 /.pytest_cache
 /*.pdf
 /*.png
+
+# кеш признаков оценки качества: в нём идентификаторы исследований организатора
+results/features_cache.json

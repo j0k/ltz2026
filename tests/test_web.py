@@ -261,5 +261,5 @@ def test_full_train_run_is_linked_from_index(client):
     data = wait_done(client, rid, timeout=400)
     assert data["state"] == "done" and data["summary"]["studies"] == 100 and data["summary"]["images"] == 252
     man = embedded_manifest(client.get(f"/runs/{rid}").text)
-    assert round(man["evaluation"]["spine_overall"]["f1"], 2) == 0.45
+    assert round(man["evaluation"]["spine_overall"]["f1"], 2) == 0.62   # 0.5.3: детектор посторонних предметов по контрасту
     assert f'<a href="/runs/{rid}">в прогоне обучающего набора</a>' in client.get("/v1").text

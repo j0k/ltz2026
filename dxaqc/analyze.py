@@ -19,7 +19,6 @@ from dxaqc import params as P
 
 AXIS_LIMIT_DEG = P.DEFAULTS["axis_limit_deg"]
 ILIAC_MIN_BRIGHTNESS = P.DEFAULTS["iliac_min_brightness"]
-ARTIFACT_MIN_PIXELS = P.DEFAULTS["artifact_min_pixels"]
 SPINE_BAND_HALF = P.DEFAULTS["spine_band_half"]
 
 
@@ -135,9 +134,12 @@ def analyze_spine(a: np.ndarray, params: dict | None = None) -> dict:
     br = float(bb[h - corner_h:, w - corner_w:].mean())
 
     out_band = np.abs(np.arange(w)[None, :] - axis_x[:, None]) > p["spine_band_half"]
-    bright = (af >= p["artifact_brightness"]) & out_band
-    n_bright = int(bright.sum())
-    art_boxes = _grid_boxes(bright) if n_bright > p["artifact_min_pixels"] else []
+    # посторонний предмет — пятно, заметно ярче своего окружения, а не просто очень яркий пиксель: на этих снимках
+    # пуговицы и застёжки не белые, а резко светлее фона вокруг (ROC-AUC 0,85 против 0,55 у порога яркости 240)
+    local = af - _blur(af, 21)
+    contrast = float(np.percentile(local[out_band], 99.9)) if out_band.any() else 0.0
+    spot = (local > p["artifact_contrast"]) & out_band
+    art_boxes = _grid_boxes(spot) if contrast >= p["artifact_contrast"] else []
 
     violations, expl = [], []
     if abs(angle) > axis_limit:
@@ -159,24 +161,25 @@ def analyze_spine(a: np.ndarray, params: dict | None = None) -> dict:
 
     if art_boxes:
         violations.append("artifact")
-        expl.append(f"Вне позвоночного столба найдено {n_bright} очень ярких пикселей в {len(art_boxes)} "
-                    f"областях: похоже на металл или посторонний предмет.")
+        expl.append(f"Вне позвоночного столба есть пятно, заметно ярче своего окружения (контраст {contrast:.0f} "
+                    f"при пороге {p['artifact_contrast']:g}), в {len(art_boxes)} областях: похоже на посторонний предмет.")
     else:
-        expl.append("Ярких посторонних объектов вне позвоночного столба не найдено.")
+        expl.append(f"Пятен, заметно ярче окружения, вне позвоночного столба не найдено (контраст {contrast:.0f} "
+                    f"при пороге {p['artifact_contrast']:g}).")
 
     return dict(
         quality_class=1 if violations else 0,
         violations=violations,
         explanations=expl,
         metrics=dict(angle_deg=round(angle, 2), abs_angle=round(abs(angle), 2), iliac_left=round(bl, 2),
-                     iliac_right=round(br, 2), bright_px=n_bright),
+                     iliac_right=round(br, 2), artifact_contrast=round(contrast, 1)),
         measurements={
             "угол оси, °": f"{angle:+.1f}",
             "допуск оси, °": f"±{axis_limit:g}",
             "подвздошные кости слева / справа": f"{bl:.1f} / {br:.1f}",
-            "яркие пиксели вне столба": str(n_bright),
+            "контраст пятна вне столба": f"{contrast:.0f} (порог {p['artifact_contrast']:g})",
         },
-        limits=dict(axis_limit_deg=axis_limit, iliac_min_brightness=iliac_min, artifact_min_pixels=p["artifact_min_pixels"]),
+        limits=dict(axis_limit_deg=axis_limit, iliac_min_brightness=iliac_min, artifact_contrast=p["artifact_contrast"]),
         geometry=dict(
             centerline=[[float(x), float(y)] for x, y in zip(xs[::3], ys[::3])],
             axis=[[float(axis_x[0]), 0.0], [float(axis_x[-1]), float(h - 1)]],

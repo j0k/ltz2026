@@ -621,12 +621,12 @@ details.twin th, details.twin td{padding:5px 8px;font-size:12.5px;font-variant-n
       sub: 'меньшая из яркостей слева и справа; ниже порога сервис считает, что кость не видна',
       legend: [['эксперт: охват в норме', GRAY], ['эксперт: неполный охват', RED]],
       groups: byExpert('coverage', r => Math.min(r.metrics.iliac_left, r.metrics.iliac_right), 'эксперт: норма', 'эксперт: охват'),
-      digits: 1, threshold: {v: man.iliac_min || 4, label: `порог ${man.iliac_min || 4}`}});
-    boxChart(boxGrid, {title: 'Яркие пиксели вне позвоночного столба', short: 'яркие пиксели',
-      sub: 'число пикселей, логарифмическая шкала; выше порога сервис видит посторонний предмет',
+      digits: 1, threshold: {v: (man.params || {}).iliac_min_brightness || 4, label: `порог ${(man.params || {}).iliac_min_brightness || 4}`}});
+    boxChart(boxGrid, {title: 'Контраст пятна вне позвоночного столба', short: 'контраст пятна',
+      sub: 'насколько самое яркое пятно вне столба светлее своего окружения, из 255; выше порога сервис видит посторонний предмет',
       legend: [['эксперт: без предметов', GRAY], ['эксперт: посторонний предмет', RED]],
-      groups: byExpert('artifact', r => r.metrics.bright_px || 0, 'эксперт: норма', 'эксперт: предмет'),
-      digits: 0, log: true, threshold: {v: man.artifact_min || 50, label: `порог ${man.artifact_min || 50}`}});
+      groups: byExpert('artifact', r => r.metrics.artifact_contrast ?? 0, 'эксперт: норма', 'эксперт: предмет'),
+      digits: 0, threshold: {v: (man.params || {}).artifact_contrast || 55, label: `порог ${(man.params || {}).artifact_contrast || 55}`}});
     boxChart(boxGrid, {title: 'Время обработки снимка', short: 'время', sub: 'секунды, по областям',
       groups: ['lumbar_spine', 'hip_right', 'hip_left', 'unknown'].map(k => ({label: REGION[k], color: C('--series-1'),
         items: rows.filter(r => r.anatomical_region === k).map(r => ({v: r.time_of_processing, key: r.key}))})),

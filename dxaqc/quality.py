@@ -37,7 +37,7 @@ def spine_scores(metrics: dict, p: dict) -> dict:
     worst_iliac = min(metrics["iliac_left"], metrics["iliac_right"])
     s = dict(axis_tilt=metrics["abs_angle"] / p["axis_limit_deg"],
              coverage=p["iliac_min_brightness"] / max(worst_iliac, 0.05),
-             artifact=metrics["bright_px"] / max(p["artifact_min_pixels"], 1))
+             artifact=metrics["artifact_contrast"] / max(p["artifact_contrast"], 1))
     s["overall"] = max(s.values())
     return s
 

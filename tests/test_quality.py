@@ -38,7 +38,7 @@ def test_groups_merge_studies_sharing_an_image():
 def test_spine_scores_cross_one_exactly_where_rules_fire():
     q = Q(); P = importlib.import_module("dxaqc.params")
     p = P.normalize(None)
-    s = q.spine_scores(dict(abs_angle=p["axis_limit_deg"] * 1.2, iliac_left=50, iliac_right=50, bright_px=0), p)
+    s = q.spine_scores(dict(abs_angle=p["axis_limit_deg"] * 1.2, iliac_left=50, iliac_right=50, artifact_contrast=0), p)
     assert s["axis_tilt"] > 1 and s["coverage"] < 1 and s["artifact"] == 0 and s["overall"] == s["axis_tilt"]
 
 
@@ -51,4 +51,5 @@ def test_report_on_training_set(client):
     for r in crit.values():
         assert 0 <= r["cv"]["f1"] <= 1 and r["roc_auc"] is not None and r["as_is"]["f1_ci"][0] <= r["as_is"]["f1"] <= r["as_is"]["f1_ci"][1]
     assert crit["overall"]["positives"] == 32 and rep["hips"]["labeled"] == 150
-    assert crit["overall"]["as_is"]["f1"] == pytest.approx(0.45, abs=0.01), "«как есть» совпадает с прогоном набора"
+    assert crit["overall"]["as_is"]["f1"] == pytest.approx(0.62, abs=0.01), "«как есть» совпадает с прогоном набора"
+    assert crit["artifact"]["roc_auc"] > 0.8, "детектор посторонних предметов не должен откатиться к старому (AUC 0,55)"

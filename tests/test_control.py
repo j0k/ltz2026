@@ -89,10 +89,10 @@ def test_params_normalize_and_describe():
     from dxaqc import params as P
     assert P.normalize(None) == P.DEFAULTS
     assert P.normalize({"axis_limit_deg": "4,5"})["axis_limit_deg"] == 4.5
-    assert P.describe({"axis_limit_deg": 4, "artifact_min_pixels": "80"}) == "ось 4°, пикселей предмета 80px"
+    assert P.describe({"axis_limit_deg": 4, "artifact_contrast": "80"}) == "ось 4°, контраст предмета 80"
     assert P.describe({}) == "по умолчанию"
     for bad, msg in [({"axis_limit_deg": "много"}, "нужно число"), ({"axis_limit_deg": 99}, "от 1 до 15"),
-                     ({"artifact_min_pixels": 10.5}, "целое")]:
+                     ({"artifact_contrast": 10.5}, "целое")]:
         with pytest.raises(P.ParamError, match=msg):
             P.normalize(bad)
 
@@ -237,7 +237,7 @@ def test_preview_does_not_change_run(client, browsers):
     r = admin.post(url, data={"csrf": token(admin), "axis_limit_deg": "1"})
     assert r.status_code == 200
     j = r.json()
-    assert j["quality_class"] == 1 and "axis_tilt" in j["violations"] and j["run_quality_class"] == 0
+    assert j["quality_class"] == 1 and "axis_tilt" in j["violations"] and j["run_quality_class"] == spine["quality_class"]
     assert j["atlas_png"].startswith("data:image/png;base64,") and len(j["atlas_png"]) > 5000
     assert j["params_desc"] == "ось 1°"
     assert admin.post(url, data={"csrf": token(admin), "axis_limit_deg": "0"}).status_code == 400

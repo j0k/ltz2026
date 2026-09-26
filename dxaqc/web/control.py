@@ -109,7 +109,7 @@ def _calibration(run_id: str) -> list:
                 or not r.get("expert") or "abs_angle" not in m):
             continue
         rows.append([r["study_key"], m["abs_angle"], min(m.get("iliac_left", 0), m.get("iliac_right", 0)),
-                     m.get("bright_px", 0), r["expert"]["types"], r["expert"]["bad"]])
+                     m.get("artifact_contrast", 0), r["expert"]["types"], r["expert"]["bad"]])
     return rows
 
 

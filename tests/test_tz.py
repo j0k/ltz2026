@@ -27,7 +27,7 @@ def test_page_lists_documents(client, tz_dir):
     page = client.get("/tz/")
     assert page.status_code == 200
     html = page.text
-    for title in ("ТЗ задачи 04", "выбор задачи и разбор задачи 04", "Команда у штурвала"):
+    for title in ("ТЗ задачи 04", "выбор задачи и разбор задачи 04", "Команда «Квантовый Скачок»"):
         assert title in html
     assert "12 стр." in html and 'src="/tz/tz-04.png"' in html
     assert 'href="/tz/razbor/download"' in html

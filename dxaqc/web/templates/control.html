@@ -207,7 +207,7 @@ select.src{max-width:100%;font:inherit;font-size:14px;padding:4px}
       const se = tp + fn ? tp / (tp + fn) : null, sp = tn + fp ? tn / (tn + fp) : null, pr = tp + fp ? tp / (tp + fp) : null;
       return {se, sp, f1: se && pr ? 2 * se * pr / (se + pr) : 0};
     };
-    const ax = o => o.ang > p.axis_limit_deg, cov = o => o.il < p.iliac_min_brightness, art = o => o.bp > p.artifact_min_pixels;
+    const ax = o => o.ang > p.axis_limit_deg, cov = o => o.il < p.iliac_min_brightness, art = o => o.bp >= p.artifact_contrast;
     return [['итоговый вердикт', conf(o => ax(o) || cov(o) || art(o), o => o.bad === 1)],
             ['охват', conf(cov, o => o.types.includes('coverage'))],
             ['наклон оси', conf(ax, o => o.types.includes('axis_tilt'))],

@@ -13,20 +13,18 @@ SPEC = [
     dict(name="iliac_min_brightness", label="Яркость подвздошных костей в нижних углах", unit="", default=4.0, min=0.0, max=60.0,
          step=0.5, kind=float, recompute=True, metric="coverage",
          help="Средняя яркость нижнего угла кадра ниже порога — подвздошная кость не попала в кадр, нарушение охвата."),
-    dict(name="artifact_min_pixels", label="Ярких пикселей для постороннего предмета", unit="px", default=50, min=1, max=2000,
-         step=1, kind=int, recompute=True, metric="artifact",
-         help="Больше стольких очень ярких пикселей вне столба — нарушение «посторонний предмет»."),
-    dict(name="artifact_brightness", label="Яркость «металла»", unit="из 255", default=240, min=180, max=255, step=1, kind=int,
-         recompute=False, metric="artifact",
-         help="Пиксель ярче порога считается очень ярким. Эффект виден только после перезапуска анализа."),
+    dict(name="artifact_contrast", label="Контраст постороннего предмета", unit="", default=55, min=20, max=150, step=1, kind=int,
+         recompute=True, metric="artifact",
+         help="Насколько пятно вне столба ярче своего окружения (из 255). Выше порога — нарушение «посторонний предмет». "
+              "Порог подобран честной кросс-валидацией на обучающем наборе, 26.09."),
     dict(name="spine_band_half", label="Полуширина полосы столба", unit="px", default=45, min=20, max=100, step=1, kind=int,
          recompute=False, metric="artifact",
-         help="Яркие пиксели ближе к оси считаются самим позвоночником. Эффект виден только после перезапуска анализа."),
+         help="Всё ближе к оси считается самим позвоночником, посторонние предметы ищутся дальше. Эффект виден только после перезапуска анализа."),
 ]
 BY_NAME = {s["name"]: s for s in SPEC}
 DEFAULTS = {s["name"]: s["default"] for s in SPEC}
-SHORT = {"axis_limit_deg": "ось", "iliac_min_brightness": "подвздошные", "artifact_min_pixels": "пикселей предмета",
-         "artifact_brightness": "яркость металла", "spine_band_half": "полоса столба"}
+SHORT = {"axis_limit_deg": "ось", "iliac_min_brightness": "подвздошные", "artifact_contrast": "контраст предмета",
+         "spine_band_half": "полоса столба"}
 
 
 class ParamError(ValueError):

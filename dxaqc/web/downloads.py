@@ -41,7 +41,18 @@ def latest() -> dict | None:
         ext = os.path.splitext(f["name"])[1].lower()
         f.update(KINDS.get(ext, dict(os="other", title=f["name"], hint="")))
         f["url"] = f"/downloads/{data['version']}/{f['name']}"
+    data["models"] = models()
     return data
+
+
+def models() -> list[dict]:
+    """Файлы моделей для страницы загрузки: имя, размер, CRC32, SHA-256."""
+    try:
+        with open(os.path.join(root(), "models", "manifest.json"), encoding="utf-8") as f:
+            man = json.load(f)
+    except (OSError, ValueError):
+        return []
+    return [dict(f, model=m.get("title", ""), url=f"/downloads/models/{f['name']}") for m in man.get("models", []) for f in m.get("files", [])]
 
 
 @router.get("/download", response_class=HTMLResponse)
@@ -59,5 +70,5 @@ def download_file(path: str):
     full = os.path.join(root(), path)
     if not os.path.isfile(full):
         raise HTTPException(404, "файла нет")
-    media = "application/json" if path.endswith(".json") else "text/plain; charset=utf-8" if path.endswith("SHA256SUMS") else "application/octet-stream"
+    media = "application/json" if path.endswith(".json") else "text/plain; charset=utf-8" if path.endswith("SUMS") else "application/octet-stream"
     return FileResponse(full, media_type=media, filename=os.path.basename(full) if media == "application/octet-stream" else None)

@@ -19,15 +19,21 @@
   </div>
   <a class="dk-btn dl-main" href="{{ main.url }}">⤓ Скачать · {{ '%.0f'|format(main.size / 1048576) }} МБ</a>
 </div>
-<h2 class="d-h2">Все варианты</h2>
-<table class="dk-table">
-  <tr><th>система</th><th>файл</th><th>размер</th><th>SHA-256</th></tr>
-  {% for f in rel.files %}<tr><td><b>{{ f.title }}</b><br><span class="faint">{{ f.hint }}</span></td>
-    <td><a href="{{ f.url }}">{{ f.name }}</a></td><td>{{ '%.0f'|format(f.size / 1048576) }} МБ</td>
-    <td><code class="dl-sha">{{ f.sha256 }}</code></td></tr>{% endfor %}
+<h2 class="d-h2">Файлы</h2>
+<div class="d-table">
+<table class="dk-table dl-files">
+  <tr><th>файл</th><th>для чего</th><th>размер</th><th>CRC32</th><th>SHA-256</th></tr>
+  {% for f in rel.files %}<tr><td><a href="{{ f.url }}"><b>{{ f.name }}</b></a></td><td>{{ f.title }}</td>
+    <td class="num">{{ '%.1f'|format(f.size / 1048576)|replace('.', ',') }} МБ<br><span class="faint">{{ '{:,}'.format(f.size)|replace(',', ' ') }} байт</span></td>
+    <td><code class="dl-crc">{{ f.crc32 or '—' }}</code></td><td><code class="dl-sha">{{ f.sha256 }}</code></td></tr>{% endfor %}
+  {% for f in rel.models %}<tr><td><a href="{{ f.url }}"><b>{{ f.name }}</b></a></td><td>модель: {{ f.model|lower }}</td>
+    <td class="num">{{ '%.1f'|format(f.size / 1048576)|replace('.', ',') }} МБ<br><span class="faint">{{ '{:,}'.format(f.size)|replace(',', ' ') }} байт</span></td>
+    <td><code class="dl-crc">{{ f.crc32 or '—' }}</code></td><td><code class="dl-sha">{{ f.sha256 }}</code></td></tr>{% endfor %}
 </table>
-<p class="faint">Все суммы одним файлом: <a href="/downloads/{{ rel.version }}/SHA256SUMS">SHA256SUMS</a>. Проверка: <code>sha256sum -c SHA256SUMS</code>
-  в Linux или <code>Get-FileHash файл</code> в PowerShell.</p>
+</div>
+<p class="faint">Все суммы файлами: <a href="/downloads/{{ rel.version }}/CRC32SUMS">CRC32SUMS</a> · <a href="/downloads/{{ rel.version }}/SHA256SUMS">SHA256SUMS</a>.
+  Проверка CRC32: 7-Zip — правая кнопка → CRC SHA → CRC-32; Linux — <code>crc32 файл</code> (пакет libarchive-zip-perl) или <code>7z h файл</code>.
+  SHA-256: <code>sha256sum -c SHA256SUMS</code> в Linux, <code>Get-FileHash файл</code> в PowerShell.</p>
 
 <div class="dl-grid">
   <section class="dk-card">

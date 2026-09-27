@@ -164,3 +164,6 @@
 .k-app{display:inline-flex;align-items:center;gap:6px;margin:4px auto 0;align-self:center;padding:6px 10px;border-radius:8px;color:var(--ink3);font-size:14px}
 .k-app:hover{background:var(--accent-soft);color:var(--accent);text-decoration:none}
 @media (max-width:760px){.dl-grid{grid-template-columns:1fr}}
+.dl-files td{vertical-align:top}
+.dl-files .num{white-space:nowrap}
+.dl-crc{font-size:13px;font-weight:700;letter-spacing:.04em}

@@ -52,7 +52,7 @@ def download_page(request: Request):
                                                                             og_title="Скачать приложение DXA QC"))
 
 
-@router.get("/downloads/{path:path}")
+@router.api_route("/downloads/{path:path}", methods=["GET", "HEAD"])
 def download_file(path: str):
     if not re.fullmatch(r"[A-Za-z0-9._/+-]{1,200}", path) or ".." in path.split("/"):
         raise HTTPException(404)

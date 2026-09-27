@@ -18,6 +18,8 @@ def test_download_page_and_files(client):
     assert "Linux — пакет .deb" in lin.split("Все варианты")[0] and "Claude" not in lin
     r = client.get("/downloads/9.9.9/dxaqc_9.9.9_amd64.deb", headers={"Range": "bytes=100-199"})
     assert r.status_code == 206 and len(r.content) == 100, "докачка"
+    assert client.head("/downloads/9.9.9/DXAQC-9.9.9.msi").headers["content-length"] == "2048", "HEAD для менеджеров загрузок"
+    assert "github.com/j0k/ltz2026" in win
     assert client.get("/downloads/../app.db").status_code == 404
     assert client.get("/downloads/latest.json").json()["version"] == "9.9.9"
     assert 'href="/download"' in client.get("/").text, "тихая ссылка на главной"

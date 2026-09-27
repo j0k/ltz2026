@@ -93,6 +93,28 @@ python3 -m venv .venv && .venv/bin/pip install -r infra/app/requirements.txt pyt
 .venv/bin/python -m pytest -q tests
 ```
 
+## Приложение для компьютера
+
+Та же проверка локально, без интернета: окно приложения, дашборд, 3D, пояснения графом, офлайн-справка, пульт порогов,
+локальный MCP-сервер для ИИ-ассистентов. Скачать — https://ltz2026.ru/download:
+
+| система | файл |
+|---|---|
+| Windows 10/11, для пользователя | `DXAQC-<версия>-setup.exe` |
+| Windows, на компьютер (тихо: `msiexec /i … /qn`) | `DXAQC-<версия>.msi` |
+| Ubuntu 22.04/24.04, Debian 12 | `dxaqc_<версия>_amd64.deb` |
+
+Код приложения — `dxaqc/desktop/` и `dxaqc/web/desktop.py` (режим `DXAQC_MODE=desktop`). Сборка на Linux:
+
+```bash
+packaging/build_windows.sh     # .exe (NSIS) и .msi (wixl): переносимый Python 3.12 + библиотеки win_amd64
+packaging/build_deb.sh         # .deb: библиотеки под Python 3.10–3.12, окно WebKitGTK
+packaging/publish.sh           # SHA256SUMS, latest.json, каталог моделей для сайта
+python -m dxaqc.desktop --selftest   # самопроверка: анализ фантома, сервер, страницы, MCP
+```
+
+Проверка на настоящей Windows — `.github/workflows/desktop.yml` (вручную или по тегу `v*`).
+
 ## Данные
 
 Данные организатора — медицинские, **в репозиторий не входят**: `data/`, архивы, модели и собранные документы

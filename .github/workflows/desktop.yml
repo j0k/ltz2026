@@ -1,0 +1,45 @@
+# Настольное приложение (#159, #166): сборка .exe/.msi на Linux и проверка на настоящей Windows —
+# тихая установка, самопроверка (анализ фантома, сервер, MCP), удаление. Запуск вручную или по тегу v*.
+name: desktop
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+jobs:
+  build-windows:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: sudo apt-get update && sudo apt-get install -y nsis msitools wixl
+      - run: python -m venv .venv && .venv/bin/pip install -q pip
+      - run: packaging/build_windows.sh "$RUNNER_TEMP/build" "$RUNNER_TEMP/dist"
+      - uses: actions/upload-artifact@v4
+        with: {name: windows, path: "${{ runner.temp }}/dist/*"}
+  test-windows:
+    needs: build-windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: {name: windows, path: dist}
+      - name: .exe — установка, самопроверка, удаление
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem dist\*-setup.exe | Select-Object -First 1
+          Start-Process -Wait $setup.FullName -ArgumentList "/S"
+          $app = "$env:LOCALAPPDATA\Programs\DXA QC"
+          & "$app\python\python.exe" -X utf8 -m dxaqc.desktop --selftest
+          if ($LASTEXITCODE -ne 0) { throw "самопроверка .exe не прошла" }
+          Start-Process -Wait "$app\Удалить DXA QC.exe" -ArgumentList "/S"
+          Start-Sleep 10
+          if (Test-Path "$app\python") { throw "после удаления остались файлы" }
+      - name: .msi — установка, самопроверка, удаление
+        shell: pwsh
+        run: |
+          $msi = Get-ChildItem dist\*.msi | Select-Object -First 1
+          Start-Process -Wait msiexec -ArgumentList "/i `"$($msi.FullName)`" /qn /l*v msi-install.log"
+          & "$env:ProgramFiles\DXA QC\python\python.exe" -X utf8 -m dxaqc.desktop --selftest
+          if ($LASTEXITCODE -ne 0) { throw "самопроверка .msi не прошла" }
+          Start-Process -Wait msiexec -ArgumentList "/x `"$($msi.FullName)`" /qn"
+          if (Test-Path "$env:ProgramFiles\DXA QC\python") { throw "после удаления остались файлы" }

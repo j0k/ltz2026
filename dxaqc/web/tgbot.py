@@ -700,7 +700,8 @@ class Bot:
         lines = [f"<b>Нарушения: {len(bad)}</b>"]
         for r in bad[:10]:
             name = esc(os.path.basename(r.get("path_to_study") or ""))
-            link = f'<a href="{_url(f"/runs/{run_id}/images/{r["key"]}")}">{name}</a>' if r.get("key") else name
+            href = _url(f"/runs/{run_id}/images/{r['key']}") if r.get("key") else ""
+            link = f'<a href="{href}">{name}</a>' if href else name
             viol = "; ".join(esc(ctx["violation_ru"].get(v, v)) for v in r.get("violation_list") or [])
             lines.append(f"• {link} — {esc(ctx['region_ru'].get(r.get('anatomical_region'), ''))}: {viol}")
         if len(bad) > 10:

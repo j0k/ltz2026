@@ -30,6 +30,8 @@ services:
       - "/home/jk/exp/LTZ2026/data/labels_clean.csv:/datasets/train_labels.csv:ro"
       # документы для /tz/: собирает scripts/tz_docs.py, в образ и git не попадают
       - "/home/jk/exp/LTZ2026/docs/tz:/tz:ro"
+      # установщики настольного приложения и модели: собирают packaging/build_*.sh и publish.sh, в git не попадают
+      - "/home/jk/exp/LTZ2026/dist-desktop:/data/downloads:ro"
       # копия токена брокера, доступная только пользователю контейнера (uid 10001), см. infra/app/README.md
       - "/etc/ltz2026/ask_token:/run/ask/broker_token:ro"
       # токен Telegram-бота @QuJump_bot, тоже только для uid 10001

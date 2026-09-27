@@ -156,3 +156,11 @@
 .k-native{gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap}
 .k-welcome{width:min(620px,94vw)}
 .k-welcome p{font-size:15.5px;line-height:1.55}
+.dl-hero{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:14px;background:linear-gradient(180deg,#f3f8ff,#eaf2fc)}
+.dl-main{font-size:17px;padding:12px 20px}
+.dl-sha{font-size:11px;overflow-wrap:anywhere;display:block;max-width:260px}
+.dl-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.dl-grid ol{padding-left:20px;margin:6px 0}.dl-grid li{margin:4px 0}
+.k-app{display:inline-flex;align-items:center;gap:6px;margin:4px auto 0;align-self:center;padding:6px 10px;border-radius:8px;color:var(--ink3);font-size:14px}
+.k-app:hover{background:var(--accent-soft);color:var(--accent);text-decoration:none}
+@media (max-width:760px){.dl-grid{grid-template-columns:1fr}}

@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Скачать приложение DXA QC{% endblock %}
+{% block head %}<link rel="stylesheet" href="/static/v2.css?v={{ version }}"><link rel="stylesheet" href="/static/dash.css?v={{ version }}"><link rel="stylesheet" href="/static/desk.css?v={{ version }}">{% endblock %}
+{% block header %}{% include "_kiosk_header.html" %}{% endblock %}
+{% block content %}
+<div class="dk-page" style="max-width:1000px">
+<h1>DXA QC для компьютера</h1>
+<p class="dk-muted" style="font-size:16px">Та же проверка качества снимков денситометрии, что на сайте, — у вас на компьютере. Работает без интернета:
+  снимки никуда не отправляются. Внутри — дашборд, 3D-модель, пояснения графом, справка, пульт порогов и MCP-сервер для ИИ-ассистентов.</p>
+{% if not rel %}
+<div class="dk-card dk-none">Сборка готовится — загляните позже.</div>
+{% else %}
+{% set main = (rel.files|selectattr('os', 'equalto', guess)|list or rel.files)[0] %}
+<div class="dk-card dl-hero">
+  <div>
+    <p class="faint" style="margin:0">Версия {{ rel.version }} · {{ rel.date }}</p>
+    <h2 style="font-size:22px;margin:4px 0">{{ main.title }}</h2>
+    <p class="dk-muted" style="margin:0">{{ main.hint }}</p>
+  </div>
+  <a class="dk-btn dl-main" href="{{ main.url }}">⤓ Скачать · {{ '%.0f'|format(main.size / 1048576) }} МБ</a>
+</div>
+<h2 class="d-h2">Все варианты</h2>
+<table class="dk-table">
+  <tr><th>система</th><th>файл</th><th>размер</th><th>SHA-256</th></tr>
+  {% for f in rel.files %}<tr><td><b>{{ f.title }}</b><br><span class="faint">{{ f.hint }}</span></td>
+    <td><a href="{{ f.url }}">{{ f.name }}</a></td><td>{{ '%.0f'|format(f.size / 1048576) }} МБ</td>
+    <td><code class="dl-sha">{{ f.sha256 }}</code></td></tr>{% endfor %}
+</table>
+<p class="faint">Все суммы одним файлом: <a href="/downloads/{{ rel.version }}/SHA256SUMS">SHA256SUMS</a>. Проверка: <code>sha256sum -c SHA256SUMS</code>
+  в Linux или <code>Get-FileHash файл</code> в PowerShell.</p>
+
+<div class="dl-grid">
+  <section class="dk-card">
+    <h2>Windows 10 и 11</h2>
+    <ol>
+      <li>Скачайте <b>.exe</b> и запустите.</li>
+      <li>Если Windows покажет «Система Windows защитила ваш компьютер» — нажмите <b>«Подробнее» → «Выполнить в любом случае»</b>.
+        Предупреждение появляется, потому что у программы пока нет платной цифровой подписи.</li>
+      <li>Следуйте мастеру установки: права администратора не нужны.</li>
+      <li>Откройте <b>DXA QC</b> из меню «Пуск». Проверить установку — ярлык «Проверка установки».</li>
+    </ol>
+    <p class="faint">Для администраторов: <code>msiexec /i DXAQC-{{ rel.version }}.msi /qn</code> — тихая установка на компьютер,
+      <code>msiexec /x … /qn</code> — удаление. Окно использует встроенный в Windows Microsoft Edge WebView2.</p>
+  </section>
+  <section class="dk-card">
+    <h2>Linux</h2>
+    <ol>
+      <li>Скачайте <b>.deb</b>.</li>
+      <li>Установите: <code>sudo apt install ./dxaqc_{{ rel.version }}_amd64.deb</code> — система доставит нужные пакеты окна (WebKitGTK).</li>
+      <li>Откройте <b>DXA QC</b> из меню приложений или командой <code>dxaqc</code>.</li>
+      <li>Проверка установки: <code>dxaqc --selftest</code>.</li>
+    </ol>
+    <p class="faint">Ubuntu 22.04 и 24.04, Debian 12 (Python 3.10–3.12). Удаление: <code>sudo apt remove dxaqc</code>.</p>
+  </section>
+</div>
+
+<div class="dl-grid">
+  <section class="dk-card">
+    <h2>Системные требования</h2>
+    <table class="dk-table">
+      <tr><td>минимум</td><td>2 ядра, 4 ГБ памяти, 600 МБ на диске, 64-битная система</td></tr>
+      <tr><td>рекомендуется</td><td>4 ядра, 8 ГБ памяти, 2 ГБ на диске под проверки</td></tr>
+      <tr><td>скорость</td><td>меньше 1 секунды на снимок, видеокарта не нужна</td></tr>
+      <tr><td>3D-модель</td><td>поддержка WebGL (есть почти везде)</td></tr>
+    </table>
+  </section>
+  <section class="dk-card">
+    <h2>Модели</h2>
+    <p class="dk-muted">Проверка работает сразу после установки. Голос для озвучки пояснений скачивается в программе (раздел «Модели»)
+      или отсюда — для компьютеров без интернета: <a href="/downloads/models/ru_RU-irina-medium.onnx">ru_RU-irina-medium.onnx</a>
+      и <a href="/downloads/models/ru_RU-irina-medium.onnx.json">.json</a>, затем «Импорт из файла».</p>
+  </section>
+</div>
+
+<div class="dk-card">
+  <h2>Авторы и контакты</h2>
+  <p class="dk-muted">Команда «Квантовый Скачок»: Юрий Коноплёв, Алексей Чуркин. ЛЦТ 2026, задача 04 Департамента здравоохранения Москвы.
+    Вопросы и замечания — в Telegram: <a href="https://t.me/bimodaling">@bimodaling</a>, <a href="https://t.me/lesha_cfc">@lesha_cfc</a>.</p>
+  <p class="faint">Программа контролирует качество снимка и не ставит диагноз. Загружайте только обезличенные исследования.</p>
+</div>
+{% endif %}
+</div>
+{% endblock %}

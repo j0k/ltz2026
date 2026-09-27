@@ -11,6 +11,7 @@ import hashlib
 import json
 import os
 import shutil
+import ssl
 import threading
 import time
 import urllib.error
@@ -23,6 +24,20 @@ TIMEOUT = 20
 CHUNK = 1 << 16
 
 _lock = threading.Lock()
+
+
+def _ssl() -> ssl.SSLContext:
+    """Корневые сертификаты из certifi внутри приложения: в минимальной системе без ca-certificates
+    (и в Windows без обновлённого хранилища) загрузка с сайта иначе падает на проверке сертификата."""
+    try:
+        import certifi
+        return ssl.create_default_context(cafile=certifi.where())
+    except Exception:  # noqa: BLE001
+        return ssl.create_default_context()
+
+
+def _open(req, timeout=None):
+    return urllib.request.urlopen(req, timeout=timeout or TIMEOUT, context=_ssl())
 _state: dict[str, dict] = {}          # key -> status, done, total, error, file
 _manifest: dict = {}
 
@@ -34,7 +49,7 @@ def fetch_manifest(force: bool = False) -> dict:
     if _manifest and not force:
         return _manifest
     try:
-        with urllib.request.urlopen(MANIFEST_URL, timeout=TIMEOUT) as r:
+        with _open(MANIFEST_URL) as r:
             data = json.loads(r.read().decode("utf-8"))
         with open(cache, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=1)
@@ -89,7 +104,7 @@ def _download_file(key: str, url: str, dest: str, size: int, digest: str, done_b
     os.makedirs(os.path.dirname(dest), exist_ok=True)
     have = os.path.getsize(part) if os.path.exists(part) else 0
     req = urllib.request.Request(url, headers={"Range": f"bytes={have}-"} if have else {})
-    with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
+    with _open(req) as r:
         if have and r.status != 206:          # сервер не умеет докачку — начинаем заново
             have = 0
         with open(part, "ab" if have else "wb") as out:

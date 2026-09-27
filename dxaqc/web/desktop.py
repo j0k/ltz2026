@@ -242,7 +242,7 @@ def updates():
     if not settings()["check_updates"]:
         return dict(enabled=False)
     try:
-        with urllib.request.urlopen(D.SITE + "/downloads/latest.json", timeout=10) as r:
+        with M._open(D.SITE + "/downloads/latest.json", 10) as r:
             latest = json.loads(r.read().decode())
     except Exception as exc:  # noqa: BLE001
         return dict(enabled=True, error=f"сайт недоступен ({type(exc).__name__})")

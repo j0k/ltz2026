@@ -78,7 +78,7 @@ Version: $DEBVER
 Architecture: amd64
 Maintainer: DXA QC <support@ltz2026.ru>
 Installed-Size: $SIZE
-Depends: python3 (>= 3.10), python3 (<< 3.13), python3-gi, gir1.2-gtk-3.0, gir1.2-webkit2-4.1 | gir1.2-webkit2-4.0
+Depends: python3 (>= 3.10), python3 (<< 3.13), python3-gi, ca-certificates, gir1.2-gtk-3.0, gir1.2-webkit2-4.1 | gir1.2-webkit2-4.0
 Recommends: xdg-utils
 Section: science
 Priority: optional

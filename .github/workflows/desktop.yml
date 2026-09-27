@@ -18,9 +18,22 @@ jobs:
         with: {python-version: "3.12"}
       - run: sudo apt-get update -qq && sudo apt-get install -y -qq nsis msitools wixl rsync
       - run: python -m venv .venv && .venv/bin/pip install -q -U pip
-      - run: packaging/build_windows.sh "$RUNNER_TEMP/build" "$RUNNER_TEMP/dist"
+      - name: Отметка «запущено» в ветку ci/desktop-build
+        run: |
+          mkdir -p "$RUNNER_TEMP/ci" && cd "$RUNNER_TEMP/ci" && git init -q && git config user.name desktop-ci && git config user.email ci@ltz2026.ru
+          echo "run ${{ github.run_id }} · ${{ github.ref_name }} · ${{ github.sha }} · запущено $(date -u)" > STATUS.txt
+          git add -A && git commit -qm "build started" && git push -q -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" HEAD:refs/heads/ci/desktop-build
+      - name: Сборка .exe и .msi
+        run: packaging/build_windows.sh "$RUNNER_TEMP/build" "$RUNNER_TEMP/dist" 2>&1 | tee "$RUNNER_TEMP/ci/build.log"; exit ${PIPESTATUS[0]}
       - uses: actions/upload-artifact@v4
         with: {name: windows, path: "${{ runner.temp }}/dist/*"}
+      - name: Журнал сборки в ветку ci/desktop-build
+        if: always()
+        run: |
+          cd "$RUNNER_TEMP/ci"
+          echo "run ${{ github.run_id }} · ${{ github.ref_name }} · ${{ github.sha }} · сборка: ${{ job.status }} · $(date -u)" > STATUS.txt
+          ls -la "$RUNNER_TEMP/dist" >> STATUS.txt 2>&1 || true
+          git add -A && git commit -qm "build ${{ job.status }}" && git push -q -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" HEAD:refs/heads/ci/desktop-build
   test-windows:
     needs: build-windows
     runs-on: windows-latest

@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 560 640" role="img" aria-labelledby="t">
-  <title id="t">Спортивная девушка машет рукой и показывает приложение DXA QC на телефоне</title>
+  <title id="t">Медсестра машет рукой и показывает приложение DXA QC на телефоне</title>
   <style>
     .wave{transform-box:fill-box;transform-origin:50% 95%;animation:wave 2.4s ease-in-out infinite}
     .swish{animation:swish 2.4s ease-in-out infinite}
@@ -9,8 +9,8 @@
   </style>
   <defs>
     <radialGradient id="bg" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#c9f2e9"/><stop offset="1" stop-color="#8fd9cb"/></radialGradient>
-    <linearGradient id="top" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c3a2f7"/><stop offset="1" stop-color="#a47ff0"/></linearGradient>
-    <linearGradient id="leg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7c5bd9"/><stop offset="1" stop-color="#6547c4"/></linearGradient>
+    <linearGradient id="top" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6cc0e6"/><stop offset="1" stop-color="#46a3d2"/></linearGradient>
+    <linearGradient id="leg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3f97c6"/><stop offset="1" stop-color="#3281b0"/></linearGradient>
     <linearGradient id="hair" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8a5d3f"/><stop offset="1" stop-color="#5e3d28"/></linearGradient>
     <clipPath id="scr"><rect x="-64" y="-128" width="128" height="256" rx="14"/></clipPath>
     <clipPath id="circ"><circle cx="290" cy="330" r="262"/></clipPath>
@@ -25,13 +25,22 @@
     <path d="M360 262 C392 262 420 276 442 300 L478 250 C486 238 504 244 500 258 L462 330 C454 346 436 350 422 340 L372 306 Z" fill="#f3c5a6"/>
     <!-- туловище: топ -->
     <path d="M214 258 C236 246 262 244 290 250 C318 244 344 246 366 258 C384 268 390 290 386 316 L376 450 L204 450 L194 316 C190 290 196 268 214 258 Z" fill="url(#top)"/>
-    <path d="M250 250 C262 282 318 282 330 250" fill="none" stroke="#8f68e6" stroke-width="7" stroke-linecap="round"/>
-    <path d="M214 258 C222 300 226 380 222 450" fill="none" stroke="#9a75ec" stroke-width="4" opacity=".6"/>
-    <path d="M366 258 C358 300 354 380 358 450" fill="none" stroke="#9a75ec" stroke-width="4" opacity=".6"/>
+    <path d="M258 250 L290 300 L322 250" fill="#e8b394"/>
+    <path d="M254 248 L290 304 L326 248" fill="none" stroke="#2f86b6" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M214 258 C222 300 226 380 222 450" fill="none" stroke="#3d95c3" stroke-width="4" opacity=".6"/>
+    <path d="M366 258 C358 300 354 380 358 450" fill="none" stroke="#3d95c3" stroke-width="4" opacity=".6"/>
     <!-- пояс и леггинсы -->
-    <rect x="204" y="436" width="172" height="26" rx="8" fill="#5a3fb5"/>
+    <path d="M204 446 L376 446" stroke="#2f86b6" stroke-width="5" stroke-linecap="round"/>
     <path d="M204 458 L376 458 L392 660 L188 660 Z" fill="url(#leg)"/>
-    <path d="M290 520 L290 660" stroke="#5a3fb5" stroke-width="3" opacity=".7"/>
+    <rect x="318" y="330" width="40" height="44" rx="6" fill="#58b1dc" stroke="#2f86b6" stroke-width="3"/>
+    <rect x="330" y="316" width="6" height="30" rx="3" fill="#1b2130"/><rect x="341" y="320" width="6" height="26" rx="3" fill="#e34948"/>
+    <rect x="232" y="318" width="50" height="30" rx="6" fill="#fff"/>
+    <rect x="238" y="324" width="14" height="18" rx="3" fill="#9cc4ff"/>
+    <rect x="256" y="326" width="20" height="4" rx="2" fill="#2a78d6"/><rect x="256" y="334" width="16" height="3" rx="1.5" fill="#b9c2cf"/>
+    <path d="M270 252 C252 280 246 320 254 360 C258 380 272 392 288 392" fill="none" stroke="#2d3446" stroke-width="5" stroke-linecap="round"/>
+    <path d="M310 252 C326 282 330 318 322 350 C318 366 306 378 292 386" fill="none" stroke="#2d3446" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="290" cy="394" r="12" fill="#c8d1dc" stroke="#2d3446" stroke-width="4"/><circle cx="290" cy="394" r="5" fill="#8a96a8"/>
+    <path d="M290 520 L290 660" stroke="#2a74a0" stroke-width="3" opacity=".7"/>
   </g>
   <!-- рука с телефоном: плечо вдоль тела, локоть, предплечье к телефону -->
   <path d="M214 256 C198 258 186 272 186 294 L192 486 C194 504 218 508 226 492 L224 300 C226 282 224 266 214 256 Z" fill="#f3c5a6"/>
@@ -45,7 +54,8 @@
   <path d="M232 132 C228 84 256 60 292 60 C330 60 356 84 350 132 C344 110 330 96 306 92 C282 100 258 104 240 118 Z" fill="url(#hair)"/>
   <path d="M234 124 C230 150 232 176 240 196 C236 168 240 146 246 130 Z" fill="url(#hair)"/>
   <path d="M346 124 C350 150 348 176 340 196 C344 168 340 146 334 130 Z" fill="url(#hair)"/>
-  <path d="M236 108 C262 90 318 86 346 106" fill="none" stroke="#2fb8a3" stroke-width="10" stroke-linecap="round"/>
+  <path d="M244 92 C252 58 330 58 338 92 L334 106 C306 96 276 96 248 106 Z" fill="#fff" stroke="#d7dde6" stroke-width="2"/>
+  <rect x="285" y="70" width="10" height="26" rx="2" fill="#e34948"/><rect x="277" y="78" width="26" height="10" rx="2" fill="#e34948"/>
   <!-- лицо -->
   <path d="M258 124 Q268 118 278 123" fill="none" stroke="#6b4632" stroke-width="3.5" stroke-linecap="round"/>
   <path d="M302 123 Q312 118 322 124" fill="none" stroke="#6b4632" stroke-width="3.5" stroke-linecap="round"/>

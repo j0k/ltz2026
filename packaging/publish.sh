@@ -43,3 +43,14 @@ json.dump(dict(models=[dict(key="piper-irina", dir="piper", title="Голос д
           open(os.path.join(m, "manifest.json"), "w"), ensure_ascii=False, indent=1)
 print(json.dumps(json.load(open(os.path.join(dist, "latest.json"))), ensure_ascii=False)[:300])
 PY
+
+# подпись сумм ключом релизов (#160): ключ вне репозитория, открытая часть — на сайте
+export GNUPGHOME=${GNUPGHOME:-$REPO/../keys/gnupg}
+if gpg --list-secret-keys "DXA QC Releases" >/dev/null 2>&1; then
+  for f in SHA256SUMS CRC32SUMS; do
+    gpg --batch --yes --pinentry-mode loopback --passphrase '' --local-user "DXA QC Releases" --armor --detach-sign -o "$DIST/$VER/$f.asc" "$DIST/$VER/$f"
+  done
+  gpg --armor --export "DXA QC Releases" > "$DIST/dxaqc-release-key.asc"
+  gpg --with-colons --fingerprint "DXA QC Releases" | awk -F: '/^fpr/{print $10; exit}' > "$DIST/dxaqc-release-key.fpr"
+  echo "[publish] суммы подписаны: $(cat "$DIST/dxaqc-release-key.fpr")"
+fi

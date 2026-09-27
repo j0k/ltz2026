@@ -42,6 +42,11 @@ def latest() -> dict | None:
         f.update(KINDS.get(ext, dict(os="other", title=f["name"], hint="")))
         f["url"] = f"/downloads/{data['version']}/{f['name']}"
     data["models"] = models()
+    try:                                  # отпечаток ключа подписи сумм (#160)
+        data["key_fpr"] = open(os.path.join(root(), "dxaqc-release-key.fpr")).read().strip()
+    except OSError:
+        data["key_fpr"] = ""
+    data["signed"] = os.path.isfile(os.path.join(root(), data["version"], "SHA256SUMS.asc"))
     return data
 
 
@@ -70,5 +75,6 @@ def download_file(path: str):
     full = os.path.join(root(), path)
     if not os.path.isfile(full):
         raise HTTPException(404, "файла нет")
-    media = "application/json" if path.endswith(".json") else "text/plain; charset=utf-8" if path.endswith("SUMS") else "application/octet-stream"
+    media = "application/json" if path.endswith(".json") else \
+        "text/plain; charset=utf-8" if path.endswith(("SUMS", ".asc", ".fpr")) else "application/octet-stream"
     return FileResponse(full, media_type=media, filename=os.path.basename(full) if media == "application/octet-stream" else None)

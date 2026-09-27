@@ -166,12 +166,14 @@ def open_window(url: str, api: Api, prefer_browser: bool = False) -> str:
             api.window = win
             from dxaqc.web import desktop as webdesk
             webdesk.ctx["navigate"] = win.load_url
+            print(f"[window] открываю встроенное окно pywebview: {url}", flush=True)
             webview.start(private_mode=False, storage_path=os.path.join(paths.data_dir(), "webview"))
             return "pywebview"
         except Exception as exc:  # noqa: BLE001 — нет WebView2 / WebKitGTK: браузер в режиме приложения
             print(f"[window] встроенное окно недоступно: {type(exc).__name__}: {exc}", flush=True)
     proc = _browser_app(url)
     if proc:
+        print(f"[window] окно браузера в режиме приложения: {url}", flush=True)
         proc.wait()
         return "browser-app"
     import webbrowser

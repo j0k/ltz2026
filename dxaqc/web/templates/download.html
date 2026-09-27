@@ -34,6 +34,20 @@
 <p class="faint">Все суммы файлами: <a href="/downloads/{{ rel.version }}/CRC32SUMS">CRC32SUMS</a> · <a href="/downloads/{{ rel.version }}/SHA256SUMS">SHA256SUMS</a>.
   Проверка CRC32: 7-Zip — правая кнопка → CRC SHA → CRC-32; Linux — <code>crc32 файл</code> (пакет libarchive-zip-perl) или <code>7z h файл</code>.
   SHA-256: <code>sha256sum -c SHA256SUMS</code> в Linux, <code>Get-FileHash файл</code> в PowerShell.</p>
+{% if rel.signed %}
+<div class="dk-card">
+  <h2>Подпись</h2>
+  <p class="dk-muted">Файлы сумм подписаны ключом «DXA QC Releases» —
+    <a href="/downloads/{{ rel.version }}/SHA256SUMS.asc">SHA256SUMS.asc</a>, <a href="/downloads/{{ rel.version }}/CRC32SUMS.asc">CRC32SUMS.asc</a>,
+    открытый ключ: <a href="/downloads/dxaqc-release-key.asc">dxaqc-release-key.asc</a>.</p>
+  <p class="faint">Отпечаток ключа: <code>{{ rel.key_fpr }}</code></p>
+  <div class="dk-code">gpg --import dxaqc-release-key.asc
+gpg --verify SHA256SUMS.asc SHA256SUMS
+sha256sum -c SHA256SUMS --ignore-missing</div>
+  <p class="faint">Цифровой подписи Windows (Authenticode) у установщиков пока нет — поэтому Windows может показать предупреждение
+    о неизвестном издателе; проверить подлинность можно суммами выше.</p>
+</div>
+{% endif %}
 
 <div class="dl-grid">
   <section class="dk-card">

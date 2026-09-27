@@ -14,12 +14,15 @@ def B():
 
 
 SPINE = dict(key="s1", study_key="st1", anatomical_region="lumbar_spine", quality_class=1, processing_status="Success",
+             original_png="s1_original.png", overlay_png="s1_overlay.png",
              violation_list=["artifact"], metrics=dict(angle_deg=-2.2),
              callouts=dict(image_box=[200, 50, 600, 634], items=[
                  dict(label="L1", anchor=[424, 368]), dict(label="L5", anchor=[424, 662]),
                  dict(label="посторонний предмет", anchor=[728, 62]), dict(label="ось столба", anchor=[506, 272])]))
 HIP = dict(key="h1", study_key="st1", anatomical_region="hip_left", quality_class=1, processing_status="Success",
-           violation_list=["hip_positioning"], metrics=dict(hip_prob_bad=0.77))
+           violation_list=["hip_positioning"], metrics=dict(hip_prob_bad=0.77), original_png="h1_original.png",
+           callouts=dict(image_box=[230, 50, 560, 582], items=[dict(label="шейка и головка бедра", anchor=[370, 206]),
+                                                                 dict(label="большой вертел", anchor=[686, 290])]))
 
 
 def test_scene_takes_verdicts_angle_and_spots():
@@ -31,6 +34,9 @@ def test_scene_takes_verdicts_angle_and_spots():
     assert "ось -2,2° (допуск 5°) ✓" in sp["lines"] and "предметы ✕ 1" in sp["lines"]
     assert hl["positioning"] and not hl["roi"] and hl["lines"][0] == "вероятность брака 0,77"
     assert hr["status"] == "absent" and hr["card"] is None and hr["lines"] == ["снимка нет в исследовании"]
+    # рентген-вид: снимок и опоры для совмещения с моделью
+    assert sp["image"] == "/runs/r1/files/s1_original.png" and hr["image"] is None
+    assert hl["anchors"] == {"head": [0.25, 0.268], "gt": [0.814, 0.412]} and hl["aspect"] == 0.9622
 
 
 def test_worst_image_of_region_wins_and_studies_group():
@@ -59,8 +65,10 @@ def test_page_renders_tags_and_data(client):
     one = client.get("/runs/20260927-190000-aaaaaa/3d?study=st2").text
     assert 'b3d-tag right ok' in one and 'b3d-tag tl absent' in one
     assert client.get("/runs/nope-run/3d").status_code == 404
+    assert 'id="b3dMix"' in html and 'id="b3dToggle"' in html, "переключатель рентген ⇄ 3D"
     check = client.get("/check/20260927-190000-aaaaaa").text
     assert 'href="/runs/20260927-190000-aaaaaa/3d"' in check
+    assert "3d?study=st1&amp;focus=lumbar_spine&amp;view=xray&amp;play=1" in check, "кнопка «⇄ 3D» на снимке"
 
 
 def test_three_is_served_locally(client):

@@ -73,6 +73,9 @@
 <p class="faint"><a href="/runs/{{ run_id }}">← к прогону</a></p>
 <h1>{{ region_ru.get(row.anatomical_region, row.anatomical_region)|capitalize }}</h1>
 <p class="muted">{{ row.path_to_study }}</p>
+{% if row.anatomical_region in ('lumbar_spine', 'hip_left', 'hip_right') and not preliminary %}
+<p><a class="btn" href="/runs/{{ run_id }}/3d?study={{ (row.study_key or '')|urlencode }}&amp;focus={{ row.anatomical_region }}&amp;view=xray&amp;play=1">⇄ Снимок в 3D</a></p>
+{% endif %}
 {% if preliminary %}
 <p class="note" id="preliminary" role="status">
   {% if run_state in ['queued', 'running'] %}Прогон ещё идёт: это готовый результат анализа снимка. Таблицы, сравнение с экспертами и правки вердикта появятся по завершении.

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ st.title or 'Проверка' }}{% endblock %}
-{% block head %}<link rel="stylesheet" href="/static/v2.css?v={{ version }}">{% endblock %}
+{% block head %}<link rel="stylesheet" href="/static/v2.css?v={{ version }}"><link rel="stylesheet" href="/static/body3d.css?v={{ version }}">{% endblock %}
 {% block header %}{% include "_v2_header.html" %}{% endblock %}
 {% block content %}
 <p class="faint"><a href="/">← новая проверка</a></p>
@@ -45,7 +45,8 @@
   {% if r.processing_status == 'Success' %}
   {% set kind = 'bad' if r.quality_class == 1 else 'ok' if r.quality_class == 0 else 'none' %}
   <article class="v2-res" id="{{ r.key }}">
-    <div class="pic"><img src="/runs/{{ run_id }}/files/{{ r.overlay_png }}" alt="атлас: {{ region_ru.get(r.anatomical_region, '') }}" loading="lazy"></div>
+    <div class="pic"><img src="/runs/{{ run_id }}/files/{{ r.overlay_png }}" alt="атлас: {{ region_ru.get(r.anatomical_region, '') }}" loading="lazy">
+      {% if r.anatomical_region in ('lumbar_spine', 'hip_left', 'hip_right') %}<a class="v2-to3d" href="/runs/{{ run_id }}/3d?study={{ (r.study_key or '')|urlencode }}&amp;focus={{ r.anatomical_region }}&amp;view=xray&amp;play=1" title="снимок превратится в 3D-модель исследования">⇄ 3D</a>{% endif %}</div>
     <div>
       <h2>{{ (region_ru.get(r.anatomical_region, '') or 'снимок')|capitalize }}</h2>
       <p class="v2-verdict"><i class="v2-ic {{ kind }}" aria-hidden="true">{{ '✕' if kind == 'bad' else '✓' if kind == 'ok' else '—' }}</i>

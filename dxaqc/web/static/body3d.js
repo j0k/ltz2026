@@ -176,6 +176,68 @@ sideLabel('П', -22); sideLabel('Л', 22);
 body.position.y = 8;                                  // скелет по центру кадра над подиумом
 disc.position.y = ring.position.y = floorY + 8; glow.position.y = floorY + 7.95;
 
+// ---------------------------------------------------------------- снимки: рентген-вид, совмещённый со скелетом
+// Плоскость снимка лежит в плоскости тела (z = 0) и рисуется поверх костей; масштаб и сдвиг подобраны так,
+// чтобы позвонки Th12–L5 (у позвоночника) или головка и большой вертел (у бедра) на снимке совпали с моделью.
+const planes = {};
+const loader = new THREE.TextureLoader();
+function addPlane(reg, url, widthCm, aspect, cx, cy) {
+  if (!url || !(widthCm > 2) || !(widthCm < 80)) return;
+  const h = widthCm / aspect;
+  const mat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthTest: false, depthWrite: false, toneMapped: false });
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(widthCm, h), mat);
+  m.position.set(cx, cy, 0); m.renderOrder = 10; m.visible = false;
+  m.userData.region = reg;
+  body.add(m);
+  planes[reg] = { mesh: m, w: widthCm, h };
+  loader.load(url, (tex) => { tex.colorSpace = THREE.SRGBColorSpace; mat.map = tex; mat.needsUpdate = true; m.userData.ready = true; applyMix(); });
+}
+if (hasSpine && sp.levels) {
+  const known = LEVELS.map((n, i) => sp.levels[n] ? { i, u: sp.levels[n][0], v: sp.levels[n][1] } : null).filter(Boolean);
+  if (known.length >= 2) {
+    const a = known[0], b = known[known.length - 1];
+    const cmPerV = (levelY(b.i) - levelY(a.i)) / (a.v - b.v);
+    const uc = known.reduce((t, k) => t + k.u, 0) / known.length;
+    const asp = sp.aspect || 1;
+    addPlane('lumbar_spine', sp.image, asp * cmPerV, asp, (0.5 - uc) * asp * cmPerV, levelY(a.i) + (a.v - 0.5) * cmPerV);
+  }
+}
+for (const [reg, s] of [['hip_left', 1], ['hip_right', -1]]) {
+  const d = R[reg], A = d.anchors || {};
+  if (d.status === 'absent' || !A.head || !A.gt) continue;
+  const asp = d.aspect || 1;
+  const head = new THREE.Vector3(s * 9.6, -9.6, 0), gt = new THREE.Vector3(s * 9.6 + s * 5.6, -9.6 - 2.0, 0);
+  const du = (A.gt[0] - A.head[0]) * asp, dv = A.gt[1] - A.head[1];          // в долях высоты кадра
+  const cmPerV = head.distanceTo(gt) / Math.max(Math.hypot(du, dv), 1e-3);
+  const cx = head.x + (0.5 - A.head[0]) * asp * cmPerV, cy = head.y - (0.5 - A.head[1]) * cmPerV;
+  addPlane(reg, d.image, asp * cmPerV, asp, cx, cy);
+}
+
+// всё, что проявляется при переходе к 3D: кости, диски, ось, предметы, подиум
+const fade = [];
+scene.traverse((o) => {
+  if (!o.material || o.userData.region && planes[o.userData.region] && planes[o.userData.region].mesh === o) return;
+  for (const m of [].concat(o.material)) {
+    if (!fade.some((f) => f.m === m)) fade.push({ m, opacity: m.opacity, transparent: m.transparent, depthWrite: m.depthWrite });
+  }
+});
+let mix = 1;                                          // 0 — рентген, 1 — 3D
+const smooth = (a, b, x) => { const t = Math.min(Math.max((x - a) / (b - a), 0), 1); return t * t * (3 - 2 * t); };
+function applyMix() {
+  const bones = smooth(0.25, 0.95, mix), films = 1 - smooth(0.05, 0.7, mix);
+  for (const f of fade) {
+    if (bones >= 0.999) { f.m.opacity = f.opacity; f.m.transparent = f.transparent; f.m.depthWrite = f.depthWrite; }
+    else { f.m.opacity = f.opacity * bones; f.m.transparent = true; f.m.depthWrite = false; }
+    f.m.needsUpdate = true;
+  }
+  for (const p of Object.values(planes)) {
+    p.mesh.material.opacity = films;
+    p.mesh.visible = films > 0.01 && !!p.mesh.userData.ready;
+  }
+  root.style.setProperty('--mix', bones.toFixed(3));
+  root.dataset.mode = mix < 0.5 ? 'xray' : '3d';
+}
+
 // ---------------------------------------------------------------- управление
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.target.copy(TARGET);
@@ -186,7 +248,67 @@ const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 controls.autoRotate = !reduce; controls.autoRotateSpeed = 1.1;
 let idleTimer;
 controls.addEventListener('start', () => { controls.autoRotate = false; clearTimeout(idleTimer); });
-controls.addEventListener('end', () => { clearTimeout(idleTimer); if (!reduce) idleTimer = setTimeout(() => { controls.autoRotate = true; }, 7000); });
+controls.addEventListener('end', () => { clearTimeout(idleTimer); if (!reduce && mix >= 1) idleTimer = setTimeout(() => { controls.autoRotate = true; }, 7000); });
+
+// ---------------------------------------------------------------- переход рентген ⇄ 3D
+const params = new URLSearchParams(location.search);
+const focus = planes[params.get('focus')] ? params.get('focus') : null;
+function dist3d() { const w = holder.clientWidth, h = holder.clientHeight; return w < 560 ? 150 : h < 560 ? 185 : 165; }
+function poseXray() {                                 // прямо спереди, снимок (или все снимки) во весь кадр
+  const list = focus ? [planes[focus]] : Object.values(planes);
+  const box = new THREE.Box3();
+  for (const p of list) { p.mesh.updateWorldMatrix(true, false); box.expandByObject(p.mesh); }
+  if (box.isEmpty()) return pose3d();
+  const c = box.getCenter(new THREE.Vector3()), sz = box.getSize(new THREE.Vector3());
+  const tan = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  const d = Math.max(sz.y / 2 / tan, sz.x / 2 / (tan * camera.aspect)) * 1.12;
+  return { target: c, r: d, theta: 0, phi: Math.PI / 2 };
+}
+function pose3d() {                                   // три четверти: объём виден сразу
+  return { target: TARGET.clone(), r: dist3d(), theta: 0.55, phi: Math.PI / 2 - 0.12 };
+}
+function poseNow() {
+  const off = camera.position.clone().sub(controls.target), sph = new THREE.Spherical().setFromVector3(off);
+  return { target: controls.target.clone(), r: sph.radius, theta: sph.theta, phi: sph.phi };
+}
+function setPose(p) {
+  controls.target.copy(p.target);
+  camera.position.copy(p.target).add(new THREE.Vector3().setFromSpherical(new THREE.Spherical(p.r, p.phi, p.theta)));
+  camera.lookAt(p.target);
+}
+function lerpPose(a, b, t) {
+  let dt = b.theta - a.theta; if (dt > Math.PI) dt -= 2 * Math.PI; if (dt < -Math.PI) dt += 2 * Math.PI;
+  return { target: a.target.clone().lerp(b.target, t), r: a.r + (b.r - a.r) * t, theta: a.theta + dt * t, phi: a.phi + (b.phi - a.phi) * t };
+}
+const ease = (t) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const slider = document.getElementById('b3dMix');
+const btn = document.getElementById('b3dToggle');
+let anim = null;
+function setMode(v) {                                 // в рентгене вращение превращается в переход, колесо не мешает странице
+  controls.enableRotate = controls.enableZoom = v >= 1;
+  controls.autoRotate = v >= 1 && !reduce;
+  if (slider) slider.value = Math.round(v * 100);
+  if (btn) btn.textContent = v >= 0.5 ? 'Показать снимок' : 'Показать в 3D';
+}
+function animateTo(to, ms = 1500) {
+  if (!Object.keys(planes).length && to < 1) return;
+  anim = { from: poseNow(), to: to >= 1 ? pose3d() : poseXray(), m0: mix, m1: to, t0: performance.now(), ms: reduce ? 1 : ms };
+  controls.autoRotate = false; controls.enableRotate = controls.enableZoom = false;
+}
+function scrub(v) {                                   // слайдер: камера и прозрачность — прямо от положения ползунка
+  anim = null; mix = v; applyMix();
+  setPose(lerpPose(poseXray(), pose3d(), ease(v)));
+  setMode(v);
+}
+if (slider) slider.addEventListener('input', () => scrub(slider.value / 100));
+if (btn) btn.addEventListener('click', () => animateTo(mix >= 0.5 ? 0 : 1));
+// в рентгене достаточно потянуть снимок — он «оживает» в 3D
+let dragFrom = null;
+renderer.domElement.addEventListener('pointerdown', (e) => { if (mix < 1 && !anim) dragFrom = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener('pointermove', (e) => {
+  if (dragFrom && Math.hypot(e.clientX - dragFrom[0], e.clientY - dragFrom[1]) > 14) { dragFrom = null; animateTo(1, 1100); }
+});
+window.addEventListener('pointerup', () => { dragFrom = null; });
 
 // нажатие на область — карточка её снимка
 const ray = new THREE.Raycaster(); const ptr = new THREE.Vector2(); let down = null;
@@ -196,7 +318,7 @@ renderer.domElement.addEventListener('pointerup', (e) => {
   const r = renderer.domElement.getBoundingClientRect();
   ptr.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
   ray.setFromCamera(ptr, camera);
-  const hit = ray.intersectObjects(Object.values(regionMeshes).flat(), false)[0];
+  const hit = ray.intersectObjects(mix < 0.5 ? Object.values(planes).map((p) => p.mesh) : Object.values(regionMeshes).flat(), false)[0];
   const reg = hit && hit.object.userData.region;
   if (reg && R[reg].card) window.location.href = R[reg].card;
 });
@@ -236,10 +358,11 @@ function resize() {
   if (!w || !h) return;
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
-  const dist = w < 560 ? 150 : h < 560 ? 185 : 165;   // выноски сверху не должны закрывать позвоночник
-  const dir = camera.position.clone().sub(controls.target).normalize();
-  camera.position.copy(controls.target).addScaledVector(dir, dist);
   camera.updateProjectionMatrix();
+  if (anim) return;
+  if (mix < 1) { setPose(lerpPose(poseXray(), pose3d(), ease(mix))); return; }
+  const dir = camera.position.clone().sub(controls.target).normalize();   // выноски сверху не должны закрывать позвоночник
+  camera.position.copy(controls.target).addScaledVector(dir, dist3d());
 }
 new ResizeObserver(resize).observe(holder);
 resize();
@@ -249,8 +372,20 @@ renderer.setAnimationLoop(() => {
   const t = clock.getElapsedTime();
   const k = 0.5 + 0.5 * Math.sin(t * 2.6);
   for (const m of pulsing) m.emissiveIntensity = 0.35 + 0.5 * k;
-  controls.update();
+  if (anim) {
+    const x = Math.min((performance.now() - anim.t0) / anim.ms, 1), e = ease(x);
+    mix = anim.m0 + (anim.m1 - anim.m0) * e; applyMix();
+    setPose(lerpPose(anim.from, anim.to, e));
+    if (slider) slider.value = Math.round(mix * 100);
+    if (x >= 1) { mix = anim.m1; anim = null; applyMix(); setMode(mix); }
+  } else if (mix >= 1) controls.update();        // в рентгене камера стоит там, где её поставил переход: без ограничений орбиты
   renderer.render(scene, camera);
   drawLines();
 });
+// старт: с карточки снимка — рентген-вид этого снимка и сразу переход в 3D; иначе — 3D
+if (!Object.keys(planes).length) { root.classList.add('no-xray'); }
+if (params.get('view') === 'xray' && Object.keys(planes).length) {
+  mix = 0; applyMix(); setPose(poseXray()); setMode(0);
+  if (params.get('play') === '1') setTimeout(() => animateTo(1, 1800), 900);
+} else { mix = 1; applyMix(); setMode(1); }
 root.dataset.ready = '1';                             // для e2e-проверки: сцена построена

@@ -52,12 +52,21 @@ def _spine(r: dict) -> dict:
 
 def _hip(r: dict) -> dict:
     m = r.get("metrics") or {}
+    c = r.get("callouts") or {}
+    x0, y0, w, h = (c.get("image_box") or [0, 0, 1, 1])[:4]
+    pts = {}
+    for it in c.get("items", []):                     # опоры для совмещения снимка с моделью: головка и большой вертел
+        lab = it.get("label") or ""
+        k = "head" if lab.startswith("шейка и головка") else "gt" if lab.startswith("большой вертел") else None
+        if k:
+            pts[k] = [round((it["anchor"][0] - x0) / max(w, 1), 3), round((it["anchor"][1] - y0) / max(h, 1), 3)]
     v = set(r.get("violation_list") or [])
     p = m.get("hip_prob_bad")
     lines = [f"вероятность брака {_num(p, 2)}" if p is not None else "не оценено"]
     if v & {"hip_positioning", "hip_roi"}:
         lines.append(", ".join(VIOL[x] for x in ("hip_positioning", "hip_roi") if x in v))
-    return dict(prob=p, positioning="hip_positioning" in v, roi="hip_roi" in v, lines=lines)
+    return dict(prob=p, positioning="hip_positioning" in v, roi="hip_roi" in v, lines=lines, anchors=pts,
+                aspect=round(w / max(h, 1), 4))
 
 
 def scene(run_id: str, rows: list[dict]) -> dict:
@@ -74,7 +83,8 @@ def scene(run_id: str, rows: list[dict]) -> dict:
         st = _status(r)
         d = dict(title=TITLE[reg], status=st, violations=[VIOL.get(x, x) for x in (r or {}).get("violation_list") or []
                                                          if x != "hip_not_evaluated_v0"],
-                 card=f"/runs/{run_id}/images/{r['key']}" if r else None)
+                 card=f"/runs/{run_id}/images/{r['key']}" if r else None,
+                 image=f"/runs/{run_id}/files/{r['original_png']}" if r and r.get("original_png") else None)
         if r is None:
             d["lines"] = ["снимка нет в исследовании"]
         elif reg == "lumbar_spine":

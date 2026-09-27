@@ -5,7 +5,10 @@
 set -euo pipefail
 REPO=$(cd "$(dirname "$0")/.." && pwd)
 BUILD=${1:-$REPO/../build-desktop}
-VER=$(sed -n 's/^__version__ = "\(.*\)"/\1/p' "$REPO/dxaqc/__init__.py")
+VER=$(sed -n 's/^APP_VERSION = "\([^"]*\)".*/\1/p' "$REPO/dxaqc/desktop/__init__.py")
+WINVER=$(sed -n 's/^WIN_VERSION = "\([^"]*\)".*/\1/p' "$REPO/dxaqc/desktop/__init__.py")
+DEBVER=$(sed -n 's/^DEB_VERSION = "\([^"]*\)".*/\1/p' "$REPO/dxaqc/desktop/__init__.py")
+FVER=$(echo "$VER" | tr 'A-Z' 'a-z')                 # в именах файлов: 1.0-beta
 OUT=${2:-$REPO/../dist-desktop/$VER}
 PYV=3.12.10
 PIP="$REPO/.venv/bin/pip"
@@ -42,9 +45,9 @@ printf '@echo off\r\nchcp 65001 >nul\r\n"%%~dp0python\\python.exe" -m dxaqc.desk
 printf '@echo off\r\n"%%~dp0python\\python.exe" -m dxaqc.desktop --mcp-stdio\r\n' > "$STAGE/dxaqc-mcp.cmd"
 
 # 3) запускатель и установщики
-makensis -V2 -DOUTFILE="$STAGE/DXA QC.exe" -DICON="$STAGE/icon.ico" -DVERSION="$VER" "$REPO/packaging/windows/launcher.nsi"
-makensis -V2 -DOUTFILE="$OUT/DXAQC-$VER-setup.exe" -DICON="$STAGE/icon.ico" -DVERSION="$VER" -DSTAGE="$STAGE" \
+makensis -V2 -DOUTFILE="$STAGE/DXA QC.exe" -DICON="$STAGE/icon.ico" -DVERSION="$WINVER" -DDISPLAYVER="$VER" "$REPO/packaging/windows/launcher.nsi"
+makensis -V2 -DOUTFILE="$OUT/DXAQC-$FVER-setup.exe" -DICON="$STAGE/icon.ico" -DVERSION="$WINVER" -DDISPLAYVER="$VER" -DSTAGE="$STAGE" \
   -DLICENSE="$STAGE/LICENSE.txt" "$REPO/packaging/windows/installer.nsi"
-python3 "$REPO/packaging/windows/make_wxs.py" "$STAGE" "$VER" "$BUILD/dxaqc.wxs"
-wixl -a x64 -o "$OUT/DXAQC-$VER.msi" "$BUILD/dxaqc.wxs"
-du -sh "$STAGE" "$OUT"/DXAQC-$VER-setup.exe "$OUT"/DXAQC-$VER.msi
+python3 "$REPO/packaging/windows/make_wxs.py" "$STAGE" "$WINVER" "$BUILD/dxaqc.wxs" "$VER"
+wixl -a x64 -o "$OUT/DXAQC-$FVER.msi" "$BUILD/dxaqc.wxs"
+du -sh "$STAGE" "$OUT"/DXAQC-$FVER-setup.exe "$OUT"/DXAQC-$FVER.msi

@@ -116,7 +116,8 @@ def run() -> int:
     if state.get("srv"):
         state["srv"].should_exit = True
     ok = all(r[1] for r in results)
-    lines = [f"DXA QC {__version__} — проверка установки: {'ВСЁ В ПОРЯДКЕ' if ok else 'ЕСТЬ ПРОБЛЕМЫ'}"]
+    from dxaqc.desktop import APP_VERSION
+    lines = [f"DXA QC {APP_VERSION} (анализ {__version__}) — проверка установки: {'ВСЁ В ПОРЯДКЕ' if ok else 'ЕСТЬ ПРОБЛЕМЫ'}"]
     lines += [f"  {'✓' if r[1] else '✕'} {r[0]}: {r[2]}" for r in results]
     report = "\n".join(lines)
     try:

@@ -9,6 +9,7 @@ import sys
 from xml.sax.saxutils import quoteattr
 
 stage, version, out = sys.argv[1], sys.argv[2], sys.argv[3]
+display = sys.argv[4] if len(sys.argv) > 4 else version
 UPGRADE = "6F0C2A57-3E1B-4B7E-9A55-2D7C4E0A1B26"       # постоянный: новые версии заменяют старые
 
 
@@ -45,7 +46,7 @@ exe_id = ident("f", "DXA QC.exe")
 cmd_id = ident("f", "selftest.cmd")
 wxs = f'''<?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
-  <Product Id="*" Name="DXA QC" Language="1049" Codepage="1251" Version="{version}" Manufacturer="команда «Квантовый Скачок»" UpgradeCode="{UPGRADE}">
+  <Product Id="*" Name="DXA QC {display}" Language="1049" Codepage="1251" Version="{version}" Manufacturer="команда «Квантовый Скачок»" UpgradeCode="{UPGRADE}">
     <Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine" SummaryCodepage="1251"
              Description="DXA QC — контроль качества денситометрии" Comments="Работает без интернета, снимки не покидают компьютер"/>
     <MajorUpgrade DowngradeErrorMessage="Уже установлена более новая версия DXA QC."/>

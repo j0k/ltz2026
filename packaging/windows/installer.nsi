@@ -2,17 +2,24 @@
 Unicode true
 !include MUI2.nsh
 !include FileFunc.nsh
-Name "DXA QC ${VERSION}"
+Name "DXA QC ${DISPLAYVER}"
 OutFile "${OUTFILE}"
 InstallDir "$LOCALAPPDATA\Programs\DXA QC"
 InstallDirRegKey HKCU "Software\DXA QC" "InstallDir"
 RequestExecutionLevel user
 SetCompressor /SOLID lzma
 BrandingText "DXA QC · команда «Квантовый Скачок»"
+VIProductVersion "${VERSION}.0"
+VIAddVersionKey "ProductName" "DXA QC"
+VIAddVersionKey "FileDescription" "Установка DXA QC ${DISPLAYVER}"
+VIAddVersionKey "FileVersion" "${VERSION}"
+VIAddVersionKey "ProductVersion" "${DISPLAYVER}"
+VIAddVersionKey "CompanyName" "команда «Квантовый Скачок»"
+VIAddVersionKey "LegalCopyright" "© 2026 авторы DXA QC"
 !define MUI_ICON "${ICON}"
 !define MUI_UNICON "${ICON}"
 !define MUI_ABORTWARNING
-!define MUI_WELCOMEPAGE_TITLE "Установка DXA QC ${VERSION}"
+!define MUI_WELCOMEPAGE_TITLE "Установка DXA QC ${DISPLAYVER}"
 !define MUI_WELCOMEPAGE_TEXT "Программа проверяет качество снимков денситометрии DXA: область, вердикт и причина брака по каждому снимку, разметка, 3D-модель и пояснение решения.$\r$\n$\r$\nРаботает на этом компьютере без интернета — снимки никуда не отправляются.$\r$\n$\r$\nНажмите «Далее»."
 !define MUI_FINISHPAGE_RUN "$INSTDIR\DXA QC.exe"
 !define MUI_FINISHPAGE_RUN_TEXT "Открыть DXA QC"
@@ -46,7 +53,7 @@ Section "DXA QC (обязательно)" SecMain
   WriteRegStr HKCU "Software\DXA QC" "InstallDir" "$INSTDIR"
   !define UNKEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\DXAQC"
   WriteRegStr HKCU "${UNKEY}" "DisplayName" "DXA QC"
-  WriteRegStr HKCU "${UNKEY}" "DisplayVersion" "${VERSION}"
+  WriteRegStr HKCU "${UNKEY}" "DisplayVersion" "${DISPLAYVER}"
   WriteRegStr HKCU "${UNKEY}" "Publisher" "команда «Квантовый Скачок»"
   WriteRegStr HKCU "${UNKEY}" "DisplayIcon" "$INSTDIR\icon.ico"
   WriteRegStr HKCU "${UNKEY}" "UninstallString" '"$INSTDIR\Удалить DXA QC.exe"'

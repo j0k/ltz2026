@@ -10,7 +10,7 @@ VIProductVersion "${VERSION}.0"
 VIAddVersionKey "ProductName" "DXA QC"
 VIAddVersionKey "FileDescription" "DXA QC — контроль качества денситометрии"
 VIAddVersionKey "FileVersion" "${VERSION}"
-VIAddVersionKey "ProductVersion" "${VERSION}"
+VIAddVersionKey "ProductVersion" "${DISPLAYVER}"
 VIAddVersionKey "LegalCopyright" "© 2026 авторы DXA QC"
 Section
   ${GetParameters} $R0

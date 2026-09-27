@@ -5,19 +5,22 @@
 set -euo pipefail
 REPO=$(cd "$(dirname "$0")/.." && pwd)
 DIST=${1:-$REPO/../dist-desktop}
-VER=$(sed -n 's/^__version__ = "\(.*\)"/\1/p' "$REPO/dxaqc/__init__.py")
+VER=$(sed -n 's/^APP_VERSION = "\([^"]*\)".*/\1/p' "$REPO/dxaqc/desktop/__init__.py")
+WINVER=$(sed -n 's/^WIN_VERSION = "\([^"]*\)".*/\1/p' "$REPO/dxaqc/desktop/__init__.py")
+DEBVER=$(sed -n 's/^DEB_VERSION = "\([^"]*\)".*/\1/p' "$REPO/dxaqc/desktop/__init__.py")
+FVER=$(echo "$VER" | tr 'A-Z' 'a-z')                 # в именах файлов: 1.0-beta
 cd "$DIST/$VER"
-sha256sum DXAQC-$VER-setup.exe DXAQC-$VER.msi dxaqc_${VER}_amd64.deb > SHA256SUMS
+sha256sum DXAQC-$FVER-setup.exe DXAQC-$FVER.msi dxaqc_${FVER}_amd64.deb > SHA256SUMS
 mkdir -p "$DIST/models"
 for f in ru_RU-irina-medium.onnx ru_RU-irina-medium.onnx.json; do
   [ -f "$DIST/models/$f" ] || docker cp "ltz_app:/models/piper/$f" "$DIST/models/$f"
 done
-python3 - "$DIST" "$VER" <<'PY'
+python3 - "$DIST" "$VER" "$FVER" <<'PY'
 import hashlib, json, os, sys, time
-dist, ver = sys.argv[1], sys.argv[2]
+dist, ver, fver = sys.argv[1], sys.argv[2], sys.argv[3]
 sha = lambda p: hashlib.sha256(open(p, "rb").read()).hexdigest()
 files = [dict(name=n, size=os.path.getsize(os.path.join(dist, ver, n)), sha256=sha(os.path.join(dist, ver, n)))
-         for n in (f"DXAQC-{ver}-setup.exe", f"DXAQC-{ver}.msi", f"dxaqc_{ver}_amd64.deb")]
+         for n in (f"DXAQC-{fver}-setup.exe", f"DXAQC-{fver}.msi", f"dxaqc_{fver}_amd64.deb")]
 json.dump(dict(version=ver, date=time.strftime("%Y-%m-%d"), files=files), open(os.path.join(dist, "latest.json"), "w"),
           ensure_ascii=False, indent=1)
 m = os.path.join(dist, "models")

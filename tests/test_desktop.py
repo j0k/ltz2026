@@ -25,7 +25,7 @@ def test_selftest_passes(tmp_path):
     r = subprocess.run([sys.executable, "-W", "ignore", "-m", "dxaqc.desktop", "--selftest"], env=_env(tmp_path),
                        capture_output=True, text=True, timeout=240)
     assert r.returncode == 0, r.stdout + r.stderr[-2000:]
-    assert "ВСЁ В ПОРЯДКЕ" in r.stdout and "MCP-сервер" in r.stdout
+    assert "ВСЁ В ПОРЯДКЕ" in r.stdout and "MCP-сервер" in r.stdout and "DXA QC 1.0-Beta" in r.stdout
 
 
 def test_mcp_stdio_roundtrip(tmp_path):
@@ -107,3 +107,10 @@ def test_phantom_regions():
     assert AN.analyze(synth.spine())["region"] == "lumbar_spine" and AN.analyze(synth.spine())["quality_class"] == 0
     assert AN.analyze(synth.spine(artifact=True))["violations"] == ["artifact"]
     assert AN.analyze(synth.hip("left"))["region"] == "hip_left" and AN.analyze(synth.hip("right"))["region"] == "hip_right"
+
+
+def test_app_version_is_beta_and_orders_before_release():
+    from dxaqc.desktop import APP_VERSION, DEB_VERSION, WIN_VERSION
+    from dxaqc.web import desktop as W
+    assert APP_VERSION == "1.0-Beta" and WIN_VERSION == "1.0.0" and DEB_VERSION == "1.0~beta"
+    assert W._ver("0.5.4") < W._ver("1.0-Beta") < W._ver("1.0") < W._ver("1.0.1")

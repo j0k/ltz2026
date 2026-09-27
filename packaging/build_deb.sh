@@ -5,10 +5,13 @@
 set -euo pipefail
 REPO=$(cd "$(dirname "$0")/.." && pwd)
 BUILD=${1:-$REPO/../build-desktop}
-VER=$(sed -n 's/^__version__ = "\(.*\)"/\1/p' "$REPO/dxaqc/__init__.py")
+VER=$(sed -n 's/^APP_VERSION = "\([^"]*\)".*/\1/p' "$REPO/dxaqc/desktop/__init__.py")
+WINVER=$(sed -n 's/^WIN_VERSION = "\([^"]*\)".*/\1/p' "$REPO/dxaqc/desktop/__init__.py")
+DEBVER=$(sed -n 's/^DEB_VERSION = "\([^"]*\)".*/\1/p' "$REPO/dxaqc/desktop/__init__.py")
+FVER=$(echo "$VER" | tr 'A-Z' 'a-z')                 # в именах файлов: 1.0-beta
 OUT=${2:-$REPO/../dist-desktop/$VER}
 PIP="$REPO/.venv/bin/pip"
-PKG="$BUILD/deb/dxaqc_${VER}_amd64"
+PKG="$BUILD/deb/dxaqc_${FVER}_amd64"
 mkdir -p "$OUT"; cd "$BUILD"
 echo "[deb] версия $VER → $OUT"
 grep -v '^pywebview' "$REPO/packaging/requirements-desktop.txt" > req-lin.txt
@@ -71,7 +74,7 @@ CP
 SIZE=$(du -sk "$PKG" | cut -f1)
 cat > "$PKG/DEBIAN/control" <<CT
 Package: dxaqc
-Version: $VER
+Version: $DEBVER
 Architecture: amd64
 Maintainer: DXA QC <support@ltz2026.ru>
 Installed-Size: $SIZE
@@ -95,5 +98,5 @@ exit 0
 PI
 cp "$PKG/DEBIAN/postinst" "$PKG/DEBIAN/postrm"
 chmod 755 "$PKG/DEBIAN/postinst" "$PKG/DEBIAN/postrm"
-dpkg-deb --root-owner-group -Zxz -b "$PKG" "$OUT/dxaqc_${VER}_amd64.deb" >/dev/null
-du -sh "$PKG" "$OUT/dxaqc_${VER}_amd64.deb"
+dpkg-deb --root-owner-group -Zxz -b "$PKG" "$OUT/dxaqc_${FVER}_amd64.deb" >/dev/null
+du -sh "$PKG" "$OUT/dxaqc_${FVER}_amd64.deb"

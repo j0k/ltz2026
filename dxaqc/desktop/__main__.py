@@ -205,7 +205,8 @@ def main(argv=None):
     a = ap.parse_args(argv)
     if a.version:
         from dxaqc import __version__
-        print(f"{APP_NAME} {__version__}")
+        from dxaqc.desktop import APP_VERSION
+        print(f"{APP_NAME} {APP_VERSION} (анализ {__version__})")
         return 0
     if a.mcp_stdio:
         configure_env(a.port or None)

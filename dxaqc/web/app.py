@@ -46,6 +46,9 @@ templates.env.globals["public_url"] = PUBLIC_URL
 # настольное приложение: тот же сервис локально, без аккаунтов, админки, бота, Claude и cookie (#139)
 DESKTOP = os.environ.get("DXAQC_MODE") == "desktop"
 templates.env.globals["desktop"] = DESKTOP
+if DESKTOP:
+    from dxaqc.desktop import APP_VERSION
+    templates.env.globals["app_version"] = APP_VERSION
 DESKTOP_BLOCKED = ("/admin", "/login", "/logout", "/register", "/account", "/cabinet", "/ask", "/api/ask", "/invite", "/tg",
                    "/gallery", "/api/gallery", "/tz", "/trac", "/cookies", "/runs/dataset", "/start")
 executor = ThreadPoolExecutor(max_workers=1)      # сервер слабый: одна пачка за раз

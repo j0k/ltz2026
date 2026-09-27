@@ -246,12 +246,15 @@ def updates():
             latest = json.loads(r.read().decode())
     except Exception as exc:  # noqa: BLE001
         return dict(enabled=True, error=f"сайт недоступен ({type(exc).__name__})")
-    newer = _ver(latest.get("version", "0")) > _ver(__version__)
-    return dict(enabled=True, current=__version__, latest=latest.get("version"), newer=newer, url=D.SITE + "/download")
+    newer = _ver(latest.get("version", "0")) > _ver(D.APP_VERSION)
+    return dict(enabled=True, current=D.APP_VERSION, latest=latest.get("version"), newer=newer, url=D.SITE + "/download")
 
 
 def _ver(v: str) -> tuple:
-    return tuple(int(x) for x in re.findall(r"\d+", v)[:3])
+    """1.0-Beta < 1.0 < 1.0.1: бета раньше выпуска той же версии."""
+    nums = tuple(int(x) for x in re.findall(r"\d+", v.split("-")[0])[:3])
+    nums += (0,) * (3 - len(nums))
+    return nums + ((0,) if re.search(r"[-~](alpha|beta|rc)", v, re.I) else (1,))
 
 
 @router.post("/desktop/welcomed")

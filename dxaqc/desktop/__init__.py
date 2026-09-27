@@ -7,6 +7,9 @@
 from __future__ import annotations
 
 APP_NAME = "DXA QC"
+APP_VERSION = "1.0-Beta"          # версия приложения; версия анализа — dxaqc.__version__
+WIN_VERSION = "1.0.0"             # Windows (MSI, свойства .exe): только цифры
+DEB_VERSION = "1.0~beta"          # Debian: «~» — раньше будущей 1.0
 APP_ID = "dxaqc"
 DEFAULT_PORT = 8765
 SITE = "https://ltz2026.ru"

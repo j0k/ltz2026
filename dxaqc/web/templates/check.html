@@ -39,7 +39,7 @@
   <span class="pill"><i class="v2-ic ok" aria-hidden="true">✓</i>качественных <b>{{ s.good }}</b></span>
   <span class="pill"><i class="v2-ic bad" aria-hidden="true">✕</i>с нарушением <b>{{ s.bad }}</b></span>
   {% if s.not_evaluated %}<span class="pill"><i class="v2-ic" aria-hidden="true">—</i>не оценено <b>{{ s.not_evaluated }}</b></span>{% endif %}
-  <span class="links"><a href="/runs/{{ run_id }}/files/results.csv">таблица CSV</a><a href="/runs/{{ run_id }}">подробно в v1 →</a></span>
+  <span class="links">{% if rows|selectattr('processing_status', 'equalto', 'Success')|list %}<a href="/runs/{{ run_id }}/3d" class="v2-3d">🧍 3D-модель</a>{% endif %}<a href="/runs/{{ run_id }}/files/results.csv">таблица CSV</a><a href="/runs/{{ run_id }}">подробно в v1 →</a></span>
 </div>
 {% for r in rows %}
   {% if r.processing_status == 'Success' %}
@@ -52,7 +52,7 @@
         {{ 'Есть нарушение' if kind == 'bad' else 'Снимок качественный' if kind == 'ok' else 'Не оценено' }}</p>
       {% set viol = r.violation_list|reject('equalto', 'hip_not_evaluated_v0')|list %}
       {% if viol %}<ul>{% for v in viol %}<li><b>{{ violation_ru.get(v, v) }}</b></li>{% endfor %}</ul>{% endif %}
-      {% if kind == 'none' %}<p class="expl">Бедро в этой версии сервиса не оценивается: сторона определена, вердикт появится в следующей версии.</p>{% endif %}
+      {% if kind == 'none' %}<p class="expl">Бедро не оценено: сторона определена, а вердикт этой проверки не вынесен (прогон до версии 0.5.4).</p>{% endif %}
       <ul class="expl">{% for e in (r.explanations or [])[:4] %}<li>{{ e }}</li>{% endfor %}</ul>
       <p class="more"><a href="/runs/{{ run_id }}/images/{{ r.key }}">Подробнее: слои атласа, лупа, озвучка →</a></p>
     </div>

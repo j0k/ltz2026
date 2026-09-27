@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}3D-модель исследования · DXA QC{% endblock %}
+{% block head %}<link rel="stylesheet" href="/static/v2.css?v={{ version }}"><link rel="stylesheet" href="/static/body3d.css?v={{ version }}">{% endblock %}
+{% block header %}{% include "_v2_header.html" %}{% endblock %}
+{% block content %}
+<p class="faint"><a href="/check/{{ run_id }}">← к результату проверки</a></p>
+<h1 style="margin-bottom:4px">3D-модель исследования</h1>
+<p class="faint" style="margin-top:0">{{ 'Демо: пример организатора' if run_id == example_id else (st.title or 'Проверка') }}</p>
+
+{% if studies|length > 1 %}
+<form class="b3d-pick" method="get" action="/runs/{{ run_id }}/3d">
+  <label>Исследование
+    <select name="study" onchange="this.form.submit()">
+      {% for s in studies %}<option value="{{ s.key }}" {{ 'selected' if s.key == study }}>{{ '✕' if s.scene.verdict == 'bad' else '✓' if s.scene.verdict == 'ok' else '—' }} {{ s.key[-24:] }} · снимков {{ s.n }}</option>{% endfor %}
+    </select></label>
+  <noscript><button>Показать</button></noscript>
+</form>
+{% endif %}
+
+{% set R = scene.regions %}
+<div class="b3d" id="b3d" data-verdict="{{ scene.verdict }}">
+  <div class="b3d-canvas" id="b3dCanvas" aria-hidden="true"></div>
+  <svg class="b3d-lines" id="b3dLines" aria-hidden="true"></svg>
+  {% for reg, pos in (('lumbar_spine', 'tl'), ('hip_right', 'left'), ('hip_left', 'right')) %}{% set d = R[reg] %}
+  <a class="b3d-tag {{ pos }} {{ d.status }}" data-region="{{ reg }}" {% if d.card %}href="{{ d.card }}"{% endif %}>
+    <b>{{ d.title }}</b>
+    <span class="v">{{ '✕ есть нарушение' if d.status == 'bad' else '✓ годен' if d.status == 'ok' else '— не оценено' if d.status == 'na' else '· нет снимка' }}</span>
+    {% for l in d.lines %}<span class="l">{{ l }}</span>{% endfor %}
+  </a>{% endfor %}
+  <div class="b3d-verdict {{ scene.verdict }}">{{ 'Есть нарушение: ' ~ scene.bad|join(', ') if scene.verdict == 'bad' else 'Исследование качественное' if scene.verdict == 'ok' else 'Не оценено' }}</div>
+  <p class="b3d-hint" id="b3dHint">потяните, чтобы повернуть · колесо — приблизить · нажмите на область — карточка снимка</p>
+  <p class="b3d-nogl" id="b3dNoGL" hidden>Браузер не поддерживает WebGL — 3D-вид недоступен, результаты по областям — в выносках.</p>
+</div>
+
+<div class="b3d-legend">
+  <span><i class="bad"></i>нарушение</span><span><i class="ok"></i>годен</span><span><i class="na"></i>нет снимка или не оценено</span>
+  <span><i class="spot"></i>найденный предмет</span>
+</div>
+<p class="note b3d-note">Модель схематичная и общая для всех: денситометрия — плоский снимок, объём тела по нему не восстанавливается.
+  Из проверки берутся вердикты областей, угол оси позвоночника, уровни позвонков Th12–L5 и места найденных предметов, вероятности
+  модели бедра. Пациент стоит лицом к вам: его левая сторона — справа.</p>
+
+<script type="application/json" id="b3dData">{{ scene|tojson }}</script>
+<script type="importmap">{"imports": {"three": "/static/vendor/three/three.module.min.js"}}</script>
+<script type="module" src="/static/body3d.js?v={{ version }}"></script>
+{% endblock %}

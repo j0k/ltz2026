@@ -475,6 +475,24 @@ def check_page(request: Request, run_id: str):
         og_title=f"{st.get('title') or 'Проверка'} · DXA QC", og_image=f"/runs/{run_id}/og.jpg"))
 
 
+@app.get("/runs/{run_id}/3d", response_class=HTMLResponse)
+def body3d_page(request: Request, run_id: str, study: str = ""):
+    """3D-вид исследования: схематичный скелет на подиуме, области окрашены по вердикту, выноски с цифрами."""
+    from dxaqc.web import body3d
+    st = _read(run_id, "status.json")
+    man = _read(run_id, os.path.join("out", "manifest.json"))
+    if not st or not man:
+        raise HTTPException(404, "проверка не найдена или ещё идёт")
+    groups = body3d.studies(man["rows"])
+    if not groups:
+        raise HTTPException(404, "в проверке нет снимков позвоночника или бедра")
+    key = study if study in groups else next(iter(groups))
+    items = [dict(key=k, scene=body3d.scene(run_id, rs), n=len(rs)) for k, rs in groups.items()]
+    return templates.TemplateResponse(request, "body3d.html", dict(
+        run_id=run_id, st=st, study=key, scene=body3d.scene(run_id, groups[key]), studies=items, version=__version__,
+        example_id=EXAMPLE_ID, og_title=f"3D-модель исследования · {st.get('title') or 'DXA QC'}", og_image=f"/runs/{run_id}/og.jpg"))
+
+
 @app.post("/runs")
 async def create_run(request: Request, files: list[UploadFile] = File(...), ui: str = Form("")):
     run_id = _new_run("Загрузка " + _msk_now())

@@ -61,6 +61,7 @@ def test_page_with_examples(client):
     assert "Ложная тревога <span class=\"n\">· 1" in axis and "/images/k3" in axis
     hip = html[html.index('id="v-hip_positioning"'):html.index('id="v-hip_roi"')]
     assert "Сервис нашёл <span class=\"n\">· 1" in hip and "/images/k4" in hip
+    assert "на которых модель" in hip and "кросс-валидация" in hip, "честная оговорка про обучающие снимки"
     assert "/images/k6" not in hip, "неоценённое бедро (прогон до 0.5.4) не должно считаться пропуском"
     att = html[html.index('id="attention"'):html.index('id="normal"')]
     assert "«требует внимание»" in att and "«сколиоз»" in att

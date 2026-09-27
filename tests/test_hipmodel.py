@@ -33,8 +33,10 @@ def test_missing_features_fall_back_to_medians():
 
 
 def test_without_weights_hip_stays_not_evaluated(monkeypatch):
-    monkeypatch.setattr(HM, "load", lambda *a, **k: None)
-    res = AN.analyze_hip(np.zeros((200, 150), np.uint8), "hip_right")
+    import importlib
+    # другие тесты перезагружают пакет — берём модули, которые analyze увидит сейчас
+    monkeypatch.setattr(importlib.import_module("dxaqc.hipmodel"), "load", lambda *a, **k: None)
+    res = importlib.import_module("dxaqc.analyze").analyze_hip(np.zeros((200, 150), np.uint8), "hip_right")
     assert res["quality_class"] is None and res["violations"] == ["hip_not_evaluated_v0"]
 
 

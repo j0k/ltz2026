@@ -108,6 +108,8 @@
     <a class="vc-up" href="#toc">↑ оглавление</a></div>
   <dl class="vc-def"><dt>По ТЗ</dt><dd>{{ e.tz }}</dd><dt>Как проверяет сервис</dt><dd>{{ e.method }}
     {% if e.roadmap %}<a href="/tz/roadmap.html#{{ e.roadmap }}">что дальше →</a>{% endif %}</dd></dl>
+  {% if e.insample and (e.caught or e.missed or e.false_alarm) %}<p class="vc-metrics">Примеры ниже — снимки обучающего набора, на которых модель
+    училась, поэтому находок здесь больше, чем будет на новых снимках. Честная оценка — кросс-валидация: {{ e.insample }}.</p>{% endif %}
   {% if e.metric_values %}{% set m = e.metric_values %}
   <p class="vc-metrics">Против экспертов на уровне исследования: <b>F1 {{ '%.2f'|format(m.f1 or 0)|replace('.', ',') }}</b> ·
     нашёл <b>{{ m.tp }}</b> из {{ m.tp + m.fn }} · ложных тревог <b>{{ m.fp }}</b> ·

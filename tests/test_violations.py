@@ -37,7 +37,9 @@ def fake_run(run_id):
              expert=ex(bad=1, types=["artifact"], comment="Требует внимание")),
         dict(key="k3", thumb_png="k3.png", anatomical_region="lumbar_spine", violation_list=["axis_tilt"], quality_class=1,
              expert=ex(comment="сколиоз")),
-        dict(key="k4", thumb_png="k4.png", anatomical_region="hip_left", violation_list=["hip_not_evaluated_v0"], quality_class=None,
+        dict(key="k4", thumb_png="k4.png", anatomical_region="hip_left", violation_list=["hip_positioning"], quality_class=1,
+             expert=ex(bad=1, types=["hip_positioning"])),
+        dict(key="k6", thumb_png="k6.png", anatomical_region="hip_right", violation_list=["hip_not_evaluated_v0"], quality_class=None,
              expert=ex(bad=1, types=["hip_positioning"])),
         dict(key="k5", thumb_png="k5.png", anatomical_region="lumbar_spine", violation_list=[], quality_class=0, expert=ex()),
     ]
@@ -58,7 +60,8 @@ def test_page_with_examples(client):
     axis = html[html.index('id="v-axis_tilt"'):html.index('id="v-artifact"')]
     assert "Ложная тревога <span class=\"n\">· 1" in axis and "/images/k3" in axis
     hip = html[html.index('id="v-hip_positioning"'):html.index('id="v-hip_roi"')]
-    assert "Отмечено экспертами" in hip and "пропустил" not in hip, "бедро не проверяется — «пропустил» нечестно"
+    assert "Сервис нашёл <span class=\"n\">· 1" in hip and "/images/k4" in hip
+    assert "/images/k6" not in hip, "неоценённое бедро (прогон до 0.5.4) не должно считаться пропуском"
     att = html[html.index('id="attention"'):html.index('id="normal"')]
     assert "«требует внимание»" in att and "«сколиоз»" in att
     assert "/images/k5" in html[html.index('id="normal"'):], "норма для сравнения"

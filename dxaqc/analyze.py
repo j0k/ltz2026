@@ -198,14 +198,34 @@ def analyze_hip(a: np.ndarray, region: str) -> dict:
     col = b[int(h * 0.72):].mean(0)
     shaft = int(np.argmax(np.convolve(col, np.ones(25) / 25, mode="same")))
     side_ru = "правое" if region == "hip_right" else "левое"
+    where = (f"Определено {side_ru} бедро: таз и головка лежат по {'правую' if region == 'hip_right' else 'левую'} "
+             f"сторону от диафиза на изображении.")
+    from dxaqc import hipmodel
+    m = hipmodel.predict(a, region)
+    measurements = {"центр диафиза, px": str(shaft), "ширина кадра, px": str(w)}
+    if m is None:                                        # весов нет — поведение версии 0.5
+        return dict(quality_class=None, violations=["hip_not_evaluated_v0"],
+                    explanations=[where, "Модель качества бедра не найдена, снимок не оценён."],
+                    measurements=measurements, metrics=dict(shaft_x=shaft), geometry=dict(shaft_x=shaft))
+    p, t = m["prob"], m["thresholds"]
+    expl = [where]
+    if m["quality_class"]:
+        what = {"hip_positioning": "укладка или ротация бедра", "hip_roi": "поля вокруг зоны интереса"}
+        expl.append(f"Обученная модель считает снимок бракованным: вероятность брака {p['bad']:.2f} при пороге {t['bad']:.2f}; "
+                    f"вероятнее всего — {', '.join(what[v] for v in m['violations'])}.")
+    else:
+        expl.append(f"Обученная модель считает снимок годным: вероятность брака {p['bad']:.2f} при пороге {t['bad']:.2f}.")
+    expl.append("Модель бедра — ExtraTrees по 47 признакам формы кости, краёв кадра и ориентиров; обучена на 150 снимках, "
+                "по кросс-валидации ROC-AUC около 0,66 — это подсказка для проверки, а не окончательный вывод.")
+    measurements.update({"вероятность брака": f"{p['bad']:.2f}", "укладка": f"{p['hip_positioning']:.2f}",
+                         "поля зоны интереса": f"{p['hip_roi']:.2f}"})
     return dict(
-        quality_class=None,
-        violations=["hip_not_evaluated_v0"],
-        explanations=[f"Определено {side_ru} бедро: таз и головка лежат по {'правую' if region == 'hip_right' else 'левую'} "
-                      f"сторону от диафиза на изображении.",
-                      "Проверка позиционирования, ротации по малому вертелу и полей зоны интереса появится в следующих версиях."],
-        measurements={"центр диафиза, px": str(shaft), "ширина кадра, px": str(w)},
-        metrics=dict(shaft_x=shaft),
+        quality_class=m["quality_class"],
+        violations=m["violations"],
+        explanations=expl,
+        measurements=measurements,
+        metrics=dict(shaft_x=shaft, hip_prob_bad=round(p["bad"], 4), hip_prob_positioning=round(p["hip_positioning"], 4),
+                     hip_prob_roi=round(p["hip_roi"], 4)),
         geometry=dict(shaft_x=shaft),
     )
 

@@ -43,7 +43,11 @@ def main():
               f"{fmt(r['cv']['f1']):>5} [{rng(r['cv']['f1_ci']):>10}] | {fmt(r['roc_auc']):>4} [{rng(r['roc_auc_ci']):>9}] | "
               f"{fmt(r['cv']['threshold_median'])}")
     h = rep["hips"]
-    print(f"бёдра: не оцениваются · размечено {h['labeled']} снимков, из них с нарушением {h['bad']}")
+    if not h["evaluated"]:
+        print(f"бёдра: не оцениваются · размечено {h['labeled']} снимков, из них с нарушением {h['bad']}")
+    for t, c in (h.get("cv") or {}).items():
+        print(f"бедро, {quality.TITLES.get('hip_overall' if t == 'bad' else t, t):16} +{h['positives'][t]:<3} | F1 CV {fmt(c['f1']['mean'])} "
+              f"[{rng(c['f1']['ci'])}] | ROC-AUC {fmt(c['auc']['mean'])} [{rng(c['auc']['ci'])}] | порог {fmt(h['thresholds'][t])}")
     print(f"за {time.time() - t0:.0f} с → {a.out}")
 
 

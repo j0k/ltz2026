@@ -186,6 +186,20 @@ def evaluate_criterion(images, grp: dict, criterion: str, k: int = 5, repeats: i
                 roc_auc=auc_all, roc_auc_ci=auc_ci)
 
 
+def hip_report(hips: list[dict]) -> dict:
+    """Бедро: модель обучена на всех размеченных снимках, поэтому честные цифры — кросс-валидация из обучения
+    (scripts/train_hip.py, хранится в весах); оценка на тех же снимках не показывается — она заведомо завышена."""
+    from dxaqc import hipmodel
+    out = dict(labeled=len(hips), bad=sum(1 for im in hips if im["expert"]["bad"] == 1))
+    m = hipmodel.load()
+    if m is None:
+        return dict(out, evaluated=False, note="весов модели бедра нет — вердикта нет, метрики не считаются")
+    meta = m["meta"]
+    return dict(out, evaluated=True, algorithm=meta["algorithm"], trained=meta["trained"], images=meta["images"],
+                thresholds=meta["thresholds"], positives=meta["positives"], cv=meta["cv"], method=meta["method"],
+                note="кросс-валидация по исследованиям при обучении модели; пороги — по F1 внутри обучающей части")
+
+
 def report(images: list[dict], k: int = 5, repeats: int = 50, boots: int = 1000) -> dict:
     grp = groups(images)
     shared = len(grp) - len(set(grp.values()))
@@ -197,8 +211,7 @@ def report(images: list[dict], k: int = 5, repeats: int = 50, boots: int = 1000)
                   spine_images=sum(1 for im in images if im["region"] == "lumbar_spine"),
                   hip_images=sum(1 for im in images if im["region"].startswith("hip"))),
         spine=[evaluate_criterion(images, grp, c, k, repeats, boots) for c in SPINE_CRITERIA],
-        hips=dict(evaluated=False, labeled=len(hips), bad=sum(1 for im in hips if im["expert"]["bad"] == 1),
-                  note="бедро в этой версии не оценивается — вердикта нет, метрики не считаются"),
+        hips=hip_report(hips),
     )
 
 

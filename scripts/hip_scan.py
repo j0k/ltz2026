@@ -7,41 +7,9 @@ import os, sys
 import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dxaqc import analyze as AN, datasets, quality as Q, hipfeat as HF
+from dxaqc.hipmodel import features as scan  # признаки переехали в продукт (#129)
 from dxaqc import io as dio
 from dxaqc.atlas import otsu
-
-
-def scan(a, region):
-    if region == "hip_left":
-        a = a[:, ::-1]                                  # таз всегда справа, наружная сторона — слева
-    h, w = a.shape
-    af = a.astype(np.float32)
-    b = AN._blur(af, 5)
-    thr = max(otsu(b), 25)
-    bone = b > thr
-    f = {"rows": h}
-    e = max(2, int(min(h, w) * 0.04))                  # полоса у края кадра
-    for name, band in (("top", bone[:e]), ("bottom", bone[-e:]), ("lateral", bone[:, :e]), ("medial", bone[:, -e:]),
-                       ("lat_top", bone[: h // 2, :e]), ("med_bottom", bone[h // 2:, -e:]), ("med_top", bone[: h // 2, -e:])):
-        f[f"edge_{name}"] = float(band.mean())
-    ys, xs = np.nonzero(bone)
-    if len(xs):
-        f["bone_left"] = xs.min() / w; f["bone_right"] = xs.max() / w; f["bone_top"] = ys.min() / h
-        f["bone_frac"] = bone.mean(); f["bone_cx"] = xs.mean() / w; f["bone_cy"] = ys.mean() / h
-    for q in range(3):                                  # сколько кости в каждой трети по высоте и ширине
-        f[f"row_third_{q}"] = float(bone[q * h // 3:(q + 1) * h // 3].mean())
-        f[f"col_third_{q}"] = float(bone[:, q * w // 3:(q + 1) * w // 3].mean())
-    local = af - AN._blur(af, 21)
-    f["contrast_p999"] = float(np.percentile(local, 99.9))
-    gy, gx = np.gradient(AN._blur(af, 3)); g = np.hypot(gx, gy)
-    f["grad_p99"] = float(np.percentile(g, 99))
-    f["mean"] = float(af.mean()) / 255; f["bone_mean"] = float(af[bone].mean()) / 255 if bone.any() else 0
-    prof = bone.mean(1)                                 # профиль ширины кости по строкам
-    f["prof_max_row"] = float(np.argmax(prof)) / h; f["prof_std"] = float(prof.std())
-    hf = HF.features(a if region == "hip_right" else a[:, ::-1], region)
-    if hf:
-        f.update({f"geo_{k}": v for k, v in hf.items()})
-    return f
 
 
 root = os.path.join(datasets.ROOT, "train"); labels = datasets.load_labels("train")

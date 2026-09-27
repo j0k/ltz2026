@@ -8,7 +8,8 @@
   <div>
     <h1>{{ 'Демо: пример организатора' if run_id == example_id else 'Результат проверки' }}</h1>
     <p class="faint">{{ st.title or '' }} · версия сервиса {{ st.version or version }} · проверка {{ run_id }}</p>
-    {% if dash and dash.judged %}<p class="d-agree">Сравнение с экспертами: совпало <b>{{ dash.agree }} из {{ dash.judged }}</b> снимков</p>{% endif %}
+    {% if dash and dash.judged %}<p class="d-agree">Сравнение с экспертами: совпало <b>{{ dash.agree }} из {{ dash.judged }}</b> снимков{% if st.dataset == 'train' %}
+      <span class="faint">· снимки из обучающего набора: модель бедра видела их при обучении, честная точность — на странице качества</span>{% endif %}</p>{% endif %}
   </div>
   {% if man and not running %}
   <div class="d-dl">

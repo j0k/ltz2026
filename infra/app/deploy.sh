@@ -5,7 +5,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 LOCAL=http://127.0.0.1:8098
-PUBLIC=https://ltz2026.juri-konoplev.pro/
+PUBLIC=https://ltz2026.ru/
 
 echo "[deploy] сборка образа"
 docker compose build --pull=false

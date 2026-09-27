@@ -1,7 +1,7 @@
 # Стенд DXA QC
 
 Сервис контроля качества денситометрии для задачи 04 ЛЦТ 2026, развёрнутый на
-https://ltz2026.juri-konoplev.pro/ без пароля. Трекер проекта на `/trac/` под паролем команды.
+https://ltz2026.ru/ без пароля. Трекер проекта на `/trac/` под паролем команды.
 
 ## Как устроено
 
@@ -21,7 +21,7 @@ infra/app/deploy.sh
 
 Скрипт собирает образ, перезапускает контейнер `ltz_app` на `127.0.0.1:8098`, ждёт `/api/health` и
 завершения прогона примера. Снаружи трафик идёт через nginx
-`/etc/nginx/sites-available/ltz2026.juri-konoplev.pro` с basic-auth.
+`/etc/nginx/sites-available/ltz2026.ru` с basic-auth.
 
 ## Вопросы к Claude по рабочей папке
 
@@ -61,7 +61,7 @@ docker exec ltz_app python -m dxaqc.web.accounts set-password LOGIN
 
 ```bash
 python -m dxaqc.pipeline <папка_с_исследованиями> <папка_результатов>
-curl -u ltz:*** -F "files=@study.zip" "https://ltz2026.juri-konoplev.pro/api/batch?wait=true"
+curl -u ltz:*** -F "files=@study.zip" "https://ltz2026.ru/api/batch?wait=true"
 ```
 
 ## Ограничения версии 0.1

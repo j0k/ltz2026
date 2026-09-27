@@ -1,4 +1,4 @@
-# Стенд сервиса на https://ltz2026.juri-konoplev.pro/ (nginx с паролем команды проксирует на 127.0.0.1:8098).
+# Стенд сервиса на https://ltz2026.ru/ (nginx с паролем команды проксирует на 127.0.0.1:8098).
 services:
   ltz-app:
     build:
@@ -9,7 +9,7 @@ services:
     restart: unless-stopped
     environment:
       DXAQC_SEED: "/seed/Для теста.zip"
-      DXAQC_TRAC_URL: "https://ltz2026.juri-konoplev.pro/trac/"
+      DXAQC_TRAC_URL: "https://ltz2026.ru/trac/"
       DXAQC_DATASETS: "/datasets"
       # вопросы к Claude: брокер tools/ask_broker.py на хосте слушает шлюз сети этого контейнера
       DXAQC_ASK_URL: "http://172.27.0.1:8099"

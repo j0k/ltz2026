@@ -11,7 +11,7 @@ services:
     environment:
       TRAC_PROJECT: "ЛЦТ 2026 · Квантовый Скачок · контроль качества DXA"
       TRAC_BASE_PATH: /trac
-      TRAC_BASE_URL: https://ltz2026.juri-konoplev.pro/trac
+      TRAC_BASE_URL: https://ltz2026.ru/trac
       TRAC_REPO_NAME: ltz2026
     volumes:
       - ltz_trac_env:/trac

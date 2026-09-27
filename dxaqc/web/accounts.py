@@ -662,7 +662,7 @@ def tg_group_migrate(old: int, new: int):
 INVITE_ROLES = {"admin": "админ", "ask": "доступ к вопросам Claude"}
 INVITE_DEFAULT_HOURS = 48
 INVITE_MAX_HOURS = 24 * 30
-PUBLIC_URL = os.environ.get("DXAQC_PUBLIC_URL", "https://ltz2026.juri-konoplev.pro").rstrip("/")
+PUBLIC_URL = os.environ.get("DXAQC_PUBLIC_URL", "https://ltz2026.ru").rstrip("/")
 INVITE_ERRORS = {"used": "это приглашение уже использовано", "expired": "срок действия приглашения истёк",
                  "revoked": "приглашение отозвано админом"}
 

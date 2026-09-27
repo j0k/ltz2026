@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 
 TRAC = (os.environ.get("DXAQC_TRAC_INTERNAL") or os.environ.get("DXAQC_TG_TRAC", "")).rstrip("/")
-PUBLIC_TRAC = os.environ.get("DXAQC_TRAC_URL", "https://ltz2026.juri-konoplev.pro/trac/").rstrip("/") + "/"
+PUBLIC_TRAC = os.environ.get("DXAQC_TRAC_URL", "https://ltz2026.ru/trac/").rstrip("/") + "/"
 TTL = 120
 DAY = 86400
 QUERY = ("/query?format=csv&col=id&col=summary&col=status&col=milestone&col=component&col=time&col=changetime"

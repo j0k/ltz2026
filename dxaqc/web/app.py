@@ -41,7 +41,7 @@ os.makedirs(RUNS, exist_ok=True)
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "templates"))
 ask.setup(templates)
 # абсолютные адреса для превью ссылок: за nginx request.base_url видит внутренний http-адрес
-PUBLIC_URL = os.environ.get("DXAQC_PUBLIC_URL", "https://ltz2026.juri-konoplev.pro").rstrip("/")
+PUBLIC_URL = os.environ.get("DXAQC_PUBLIC_URL", "https://ltz2026.ru").rstrip("/")
 templates.env.globals["public_url"] = PUBLIC_URL
 executor = ThreadPoolExecutor(max_workers=1)      # сервер слабый: одна пачка за раз
 _lock = threading.Lock()

@@ -10,10 +10,10 @@
 
 | | |
 |---|---|
-| Стенд | https://ltz2026.juri-konoplev.pro/ |
-| Документы задачи | https://ltz2026.juri-konoplev.pro/tz/ — mind map ТЗ, данные, каталог нарушений, роудмап, диаграмма Ганта |
-| API | https://ltz2026.juri-konoplev.pro/docs |
-| Трекер | https://ltz2026.juri-konoplev.pro/trac/ |
+| Стенд | https://ltz2026.ru/ |
+| Документы задачи | https://ltz2026.ru/tz/ — mind map ТЗ, данные, каталог нарушений, роудмап, диаграмма Ганта |
+| API | https://ltz2026.ru/docs |
+| Трекер | https://ltz2026.ru/trac/ |
 
 ## Что делает
 
@@ -45,8 +45,8 @@
 Обучение — `scripts/train_hip.py` (scikit-learn), веса — `dxaqc/models/hip_trees.npz`, предсказание на numpy.
 
 Разметки позвонков и зон от аппарата или врача в данных нет, поэтому анатомию сервис размечает сам. План — в
-[роудмапе](https://ltz2026.juri-konoplev.pro/tz/roadmap.html), все нарушения с примерами — в
-[каталоге](https://ltz2026.juri-konoplev.pro/tz/violations.html).
+[роудмапе](https://ltz2026.ru/tz/roadmap.html), все нарушения с примерами — в
+[каталоге](https://ltz2026.ru/tz/violations.html).
 
 ## Что есть на стенде
 
@@ -98,7 +98,7 @@ python3 -m venv .venv && .venv/bin/pip install -r infra/app/requirements.txt pyt
 Данные организатора — медицинские, **в репозиторий не входят**: `data/`, архивы, модели и собранные документы
 лежат рядом с репозиторием и подключаются к контейнеру томами (`infra/app/docker-compose.yml`). Тесты, которым
 нужны эти данные, без них пропускаются. Что именно дал организатор — на странице
-[«Данные задачи 04»](https://ltz2026.juri-konoplev.pro/tz/data.html).
+[«Данные задачи 04»](https://ltz2026.ru/tz/data.html).
 
 ## Устройство
 

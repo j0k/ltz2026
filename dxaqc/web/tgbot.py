@@ -48,7 +48,7 @@ BOT_USERNAME = os.environ.get("DXAQC_TG_BOT", "QuJump_bot")
 OWNERS = {int(x) for x in re.split(r"[,\s]+", os.environ.get("DXAQC_TG_OWNERS", "")) if re.fullmatch(r"-?\d+", x)}
 # Trac изнутри сети контейнеров (снаружи он за паролем) и публичный адрес для ссылок
 TRAC_INTERNAL = os.environ.get("DXAQC_TG_TRAC", "").rstrip("/")
-TRAC_PUBLIC = os.environ.get("DXAQC_TRAC_URL", "https://ltz2026.juri-konoplev.pro/trac/").rstrip("/") + "/"
+TRAC_PUBLIC = os.environ.get("DXAQC_TRAC_URL", "https://ltz2026.ru/trac/").rstrip("/") + "/"
 MAX_FILE = 20 * 1024 * 1024       # предел скачивания файла ботом в Bot API
 DAILY_RUNS = 20
 WATCH_EVERY = 3.0
@@ -113,7 +113,7 @@ def setup(**kw):
 
 def _url(path: str) -> str:
     # ctx пуст, когда модуль запущен отдельной командой (управление группами): адрес берём из окружения
-    base = ctx.get("public_url") or os.environ.get("DXAQC_PUBLIC_URL", "https://ltz2026.juri-konoplev.pro").rstrip("/")
+    base = ctx.get("public_url") or os.environ.get("DXAQC_PUBLIC_URL", "https://ltz2026.ru").rstrip("/")
     return base + path
 
 

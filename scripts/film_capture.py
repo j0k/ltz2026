@@ -25,7 +25,7 @@ import numpy as np
 from PIL import Image, ImageDraw
 from playwright.sync_api import sync_playwright
 
-BASE = os.environ.get("FILM_BASE", "https://ltz2026.juri-konoplev.pro")
+BASE = os.environ.get("FILM_BASE", "https://ltz2026.ru")
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "films", "service")
 ASSETS = os.path.join(OUT, "assets")
 VW, VH = 1920, 854

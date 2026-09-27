@@ -527,6 +527,12 @@ def _dashboard(run_id: str, rows: list[dict]) -> dict:
                             bad=sum(1 for r in rr if r.get("quality_class") == 1),
                             na=sum(1 for r in rr if r.get("quality_class") not in (0, 1))))
     times = [float(r["time_of_processing"]) for r in ok_rows if r.get("time_of_processing") not in (None, "")]
+    from dxaqc import hipmodel
+    from dxaqc.web import explain
+    hm = hipmodel.load()
+    params = _read(run_id, os.path.join("out", "manifest.json")) or {}
+    for r in ok_rows:                                      # пояснение графом для карточек дашборда
+        r["_graph"] = explain.graph(r, params.get("params"), hm["meta"]["thresholds"] if hm else None)
     judged = [r for r in ok_rows if (r.get("expert") or {}).get("bad") in (0, 1) and r.get("quality_class") in (0, 1)]
     agree = sum(1 for r in judged if r["expert"]["bad"] == r["quality_class"])
     return dict(studies=studies, focus=focus, scene=body3d.scene(run_id, focus["rows"]) if focus else None,

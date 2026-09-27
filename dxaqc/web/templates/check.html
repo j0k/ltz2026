@@ -129,8 +129,28 @@
           {% if r.anatomical_region == 'lumbar_spine' and m.angle_deg is defined and m.angle_deg is not none %}угол оси {{ '%.1f'|format(m.angle_deg)|replace('.', ',') }}°{% endif %}
           {% if m.hip_prob_bad is defined and m.hip_prob_bad is not none %}вероятность брака {{ '%.2f'|format(m.hip_prob_bad)|replace('.', ',') }}{% endif %}
           {% if r.time_of_processing is defined and r.time_of_processing not in (none, '') %}· {{ '%.2f'|format(r.time_of_processing|float)|replace('.', ',') }} с{% endif %}</p>
-        <details class="d-expl"><summary>Пояснения</summary><ul>{% for e in (r.explanations or [])[:6] %}<li>{{ e }}</li>{% endfor %}</ul>
-          <p class="faint">image_uid {{ r.image_uid }} · <a href="/runs/{{ run_id }}/images/{{ r.key }}">карточка снимка</a></p></details>
+        {% set g = r._graph %}
+        <div class="xg-box" data-view="graph">
+          <div class="xg-top"><span>Пояснение</span>
+            <span class="xg-sw" role="group" aria-label="вид пояснения"><button type="button" data-v="graph" aria-pressed="true">граф</button><button type="button" data-v="text" aria-pressed="false">текст</button></span></div>
+          {% if g %}
+          <div class="xg" aria-label="граф решения">
+            <div class="xg-n src">Снимок DICOM</div>
+            <div class="xg-e"></div>
+            <div class="xg-n">Область: {{ g.region }}{% if g.basis %}<small>{{ g.basis }}</small>{% endif %}</div>
+            <div class="xg-e"></div>
+            <div class="xg-n meth">{{ g.method }}</div>
+            <div class="xg-e"></div>
+            <div class="xg-br" style="--n:{{ g.checks|length }}">
+              {% for c in g.checks %}<div class="xg-b"><div class="xg-n chk {{ c.state }}"><b>{{ '✕' if c.state == 'bad' else '✓' if c.state == 'ok' else '—' }} {{ c.title }}</b><small>{{ c.value }}</small>{% if c.rule %}<small class="r">норма {{ c.rule }}</small>{% endif %}</div></div>{% endfor %}
+            </div>
+            <div class="xg-e"></div>
+            <div class="xg-n verdict {{ g.verdict.state }}">Вердикт: {{ g.verdict.text }}{% if viol %}<small>{{ viol|map('replace', 'hip_not_evaluated_v0', 'не оценено')|map('replace', 'hip_positioning', 'укладка бедра')|map('replace', 'hip_roi', 'поля зоны интереса')|map('replace', 'axis_tilt', 'наклон оси')|map('replace', 'coverage', 'неполный охват')|map('replace', 'artifact', 'посторонний предмет')|join(', ') }}</small>{% endif %}</div>
+          </div>
+          {% endif %}
+          <ul class="xg-text">{% for e in (r.explanations or [])[:6] %}<li>{{ e }}</li>{% endfor %}</ul>
+          <p class="faint xg-uid">image_uid {{ r.image_uid }} · <a href="/runs/{{ run_id }}/images/{{ r.key }}">карточка снимка</a></p>
+        </div>
       </div>
     </article>
   {% endfor %}
@@ -158,6 +178,20 @@
   {% endfor %}
 </table>
 </div>
+<script>
+(function () {   // пояснение: граф ⇄ текст, выбор запоминается
+  const KEY = 'dxaqc_expl_view';
+  function set(view) {
+    document.querySelectorAll('.xg-box').forEach(b => {
+      b.dataset.view = view;
+      b.querySelectorAll('.xg-sw button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.v === view)));
+    });
+    try { localStorage.setItem(KEY, view); } catch (e) {}
+  }
+  document.querySelectorAll('.xg-sw button').forEach(x => x.addEventListener('click', () => set(x.dataset.v)));
+  try { const v = localStorage.getItem(KEY); if (v === 'text') set('text'); } catch (e) {}
+})();
+</script>
 {% endif %}
 {% endblock %}
 {% block footer %}{% endblock %}

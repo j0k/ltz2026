@@ -95,3 +95,13 @@ def scene(run_id: str, rows: list[dict]) -> dict:
     bad = [TITLE[k] for k, d in regions.items() if d["status"] == "bad"]
     verdict = "bad" if bad else "ok" if any(d["status"] == "ok" for d in regions.values()) else "na"
     return dict(regions=regions, verdict=verdict, bad=bad)
+
+
+def hero_scene() -> dict:
+    """Сцена для главной: все области годные, без выносок и снимков — просто модель на подиуме."""
+    blank = dict(status="ok", violations=[], lines=[], card=None, image=None)
+    return dict(regions={"lumbar_spine": dict(blank, title=TITLE["lumbar_spine"], angle=0.0, levels={}, spots=[], aspect=1.0,
+                                              coverage_bad=False, axis_bad=False),
+                         "hip_left": dict(blank, title=TITLE["hip_left"], prob=None, positioning=False, roi=False, anchors={}),
+                         "hip_right": dict(blank, title=TITLE["hip_right"], prob=None, positioning=False, roi=False, anchors={})},
+                verdict="ok", bad=[])

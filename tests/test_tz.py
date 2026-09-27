@@ -32,7 +32,7 @@ def test_page_lists_documents(client, tz_dir):
     assert "12 стр." in html and 'src="/tz/tz-04.png"' in html
     assert 'href="/tz/razbor/download"' in html
     assert "файл ещё не выложен" in html, "у команды файла в каталоге нет"
-    assert 'href="/tz/"' in client.get("/").text, "ссылка в шапке"
+    assert 'href="/tz/"' in client.get("/start").text, "ссылка в шапке"
 
 
 def test_pdf_inline_and_download(client, tz_dir):

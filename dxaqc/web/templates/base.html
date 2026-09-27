@@ -77,7 +77,7 @@ footer{max-width:1180px;margin:0 auto;padding:0 20px 30px;color:var(--ink3);font
 </div></header>{% endblock %}
 {% block fullbleed %}{% endblock %}
 <main>{% block content %}{% endblock %}</main>
-<footer>ЛЦТ 2026 · задача Департамента здравоохранения · команда «Квантовый Скачок»: Юрий Коноплёв, Алексей Чуркин · версия {{ version }} · только обезличенные данные организатора · <a href="/cookies">cookie</a></footer>
-{% include "_cookie_notice.html" %}
+{% block footer %}<footer>ЛЦТ 2026 · задача Департамента здравоохранения · команда «Квантовый Скачок»: Юрий Коноплёв, Алексей Чуркин · версия {{ version }} · только обезличенные данные организатора · <a href="/cookies">cookie</a></footer>{% endblock %}
+{% block cookie %}{% include "_cookie_notice.html" %}{% endblock %}
 </body>
 </html>

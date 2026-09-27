@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Проверка качества снимка денситометрии{% endblock %}
+{% block head %}<link rel="stylesheet" href="/static/v2.css?v={{ version }}"><link rel="stylesheet" href="/static/body3d.css?v={{ version }}"><link rel="stylesheet" href="/static/dash.css?v={{ version }}">{% endblock %}
+{% block header %}{% include "_kiosk_header.html" %}{% endblock %}
+{% block content %}
+<section class="k-home">
+  <div class="k-left">
+    <h1>Проверка качества снимка денситометрии</h1>
+    <p class="k-sub">Загрузите исследование — сервис определит область, найдёт нарушения по критериям ТЗ и покажет результат на дашборде.</p>
+    <form class="k-upload" id="v2Upload" action="/runs" method="post" enctype="multipart/form-data">
+      <input type="hidden" name="ui" value="v2">
+      <label class="k-drop" id="v2Drop">
+        <input type="file" name="files" id="v2Files" multiple>
+        <span class="ic" aria-hidden="true">⤒</span>
+        <b>Загрузите снимок</b>
+        <span>перетащите файлы сюда или нажмите, чтобы выбрать</span>
+        <span class="k-fmt">DICOM · поясничный отдел или бедро · несколько файлов или zip · до 64 МБ</span>
+      </label>
+      <div class="v2-prog" id="v2Prog" hidden><div class="track"><span id="v2Bar"></span></div><p id="v2Msg"></p></div>
+      <noscript><button class="v2-btn" type="submit">Проверить</button></noscript>
+    </form>
+  </div>
+  <div class="k-right">{% set hero = True %}{% include "_b3d_stage.html" %}</div>
+</section>
+<script>
+(function () {
+  const form = document.getElementById('v2Upload'), input = document.getElementById('v2Files'), drop = document.getElementById('v2Drop');
+  const prog = document.getElementById('v2Prog'), bar = document.getElementById('v2Bar'), msg = document.getElementById('v2Msg');
+  function send(files) {
+    if (!files || !files.length) return;
+    const data = new FormData();
+    data.append('ui', 'v2');
+    for (const f of files) data.append('files', f, f.name);
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/runs');
+    prog.hidden = false; drop.classList.add('busy');
+    msg.textContent = 'Отправляю ' + files.length + ' ' + (files.length === 1 ? 'файл' : 'файла(ов)') + '…';
+    xhr.upload.onprogress = e => { if (e.lengthComputable) { const p = Math.round(e.loaded / e.total * 100); bar.style.width = p + '%'; msg.textContent = 'Отправлено ' + p + '%'; } };
+    xhr.onload = () => {
+      if (xhr.status < 400 && xhr.responseURL) { bar.style.width = '100%'; msg.textContent = 'Файлы получены, открываю результат…'; location.href = xhr.responseURL; }
+      else { msg.textContent = 'Не получилось отправить: ' + xhr.status + '. Попробуйте ещё раз.'; drop.classList.remove('busy'); }
+    };
+    xhr.onerror = () => { msg.textContent = 'Связь прервалась — попробуйте ещё раз.'; drop.classList.remove('busy'); };
+    xhr.send(data);
+  }
+  input.addEventListener('change', () => send(input.files));
+  ['dragenter', 'dragover'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', e => send(e.dataTransfer.files));
+  form.addEventListener('submit', e => { e.preventDefault(); send(input.files); });
+})();
+</script>
+{% endblock %}
+{% block footer %}{% endblock %}
+{% block cookie %}{% endblock %}

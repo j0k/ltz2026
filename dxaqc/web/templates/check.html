@@ -1,10 +1,22 @@
 {% extends "base.html" %}
 {% block title %}{{ st.title or 'Проверка' }}{% endblock %}
-{% block head %}<link rel="stylesheet" href="/static/v2.css?v={{ version }}"><link rel="stylesheet" href="/static/body3d.css?v={{ version }}">{% endblock %}
-{% block header %}{% include "_v2_header.html" %}{% endblock %}
+{% block head %}<link rel="stylesheet" href="/static/v2.css?v={{ version }}"><link rel="stylesheet" href="/static/body3d.css?v={{ version }}"><link rel="stylesheet" href="/static/dash.css?v={{ version }}">{% endblock %}
+{% block header %}{% set new_check = True %}{% include "_kiosk_header.html" %}{% endblock %}
 {% block content %}
-<p class="faint"><a href="/">← новая проверка</a></p>
-<h1 style="margin-bottom:4px">{{ 'Демо: пример организатора' if run_id == example_id else 'Результат проверки' }}</h1>
+{% set s = (man or {}).get('summary') or {} %}
+<div class="d-head">
+  <div>
+    <h1>{{ 'Демо: пример организатора' if run_id == example_id else 'Результат проверки' }}</h1>
+    <p class="faint">{{ st.title or '' }} · версия сервиса {{ st.version or version }} · проверка {{ run_id }}</p>
+  </div>
+  {% if man and not running %}
+  <div class="d-dl">
+    <a class="v2-btn" href="/runs/{{ run_id }}/files/results.xlsx">⤓ Таблица XLSX</a>
+    <a class="v2-btn ghost" href="/runs/{{ run_id }}/files/results.csv">CSV</a>
+    <a class="v2-btn ghost" href="/runs/{{ run_id }}/files/overlays.zip">Разметка ZIP</a>
+  </div>
+  {% endif %}
+</div>
 
 {% if running %}
 <div class="v2-wait" id="v2Wait" data-run="{{ run_id }}">
@@ -32,39 +44,114 @@
 <p class="note" role="alert">Проверка не удалась: {{ st.error }}. <a href="/">Попробовать снова</a>.</p>
 {% elif st.state == 'cancelled' %}
 <p class="note">Проверка отменена. <a href="/">Начать новую</a>.</p>
+{% elif not man %}
+<p class="note">Проверка не завершилась{% if st.error %}: {{ st.error }}{% endif %}. <a href="/">Загрузить файлы ещё раз</a></p>
 {% else %}
-{% set s = man.summary %}
-<div class="v2-sum">
-  <span class="pill">снимков <b>{{ s.images }}</b></span>
-  <span class="pill"><i class="v2-ic ok" aria-hidden="true">✓</i>качественных <b>{{ s.good }}</b></span>
-  <span class="pill"><i class="v2-ic bad" aria-hidden="true">✕</i>с нарушением <b>{{ s.bad }}</b></span>
-  {% if s.not_evaluated %}<span class="pill"><i class="v2-ic" aria-hidden="true">—</i>не оценено <b>{{ s.not_evaluated }}</b></span>{% endif %}
-  <span class="links">{% if rows|selectattr('processing_status', 'equalto', 'Success')|list %}<a href="/runs/{{ run_id }}/3d" class="v2-3d">🧍 3D-модель</a>{% endif %}<a href="/runs/{{ run_id }}/files/results.csv">таблица CSV</a><a href="/runs/{{ run_id }}">подробно в v1 →</a></span>
+
+<div class="d-kpis">
+  <div class="d-kpi"><b>{{ s.studies or 0 }}</b><span>исследований</span></div>
+  <div class="d-kpi"><b>{{ s.images or 0 }}</b><span>снимков</span></div>
+  <div class="d-kpi ok"><b>{{ s.good or 0 }}</b><span>качественные</span></div>
+  <div class="d-kpi bad"><b>{{ s.bad or 0 }}</b><span>с нарушениями</span></div>
+  <div class="d-kpi"><b>{{ s.not_evaluated or 0 }}</b><span>не оценено</span></div>
+  <div class="d-kpi {{ 'bad' if s.failures else '' }}"><b>{{ s.failures or 0 }}</b><span>не прочитано</span></div>
+  <div class="d-kpi"><b>{{ '%.2f'|format(s.mean_time or 0)|replace('.', ',') }} с</b><span>в среднем на снимок</span></div>
+  <div class="d-kpi"><b>{{ '%.1f'|format(s.wall_time or 0)|replace('.', ',') }} с</b><span>вся проверка</span></div>
 </div>
-{% for r in rows %}
-  {% if r.processing_status == 'Success' %}
-  {% set kind = 'bad' if r.quality_class == 1 else 'ok' if r.quality_class == 0 else 'none' %}
-  <article class="v2-res" id="{{ r.key }}">
-    <div class="pic"><img src="/runs/{{ run_id }}/files/{{ r.overlay_png }}" alt="атлас: {{ region_ru.get(r.anatomical_region, '') }}" loading="lazy">
-      {% if r.anatomical_region in ('lumbar_spine', 'hip_left', 'hip_right') %}<a class="v2-to3d" href="/runs/{{ run_id }}/3d?study={{ (r.study_key or '')|urlencode }}&amp;focus={{ r.anatomical_region }}&amp;view=xray&amp;play=1" title="снимок превратится в 3D-модель исследования">⇄ 3D</a>{% endif %}</div>
-    <div>
-      <h2>{{ (region_ru.get(r.anatomical_region, '') or 'снимок')|capitalize }}</h2>
-      <p class="v2-verdict"><i class="v2-ic {{ kind }}" aria-hidden="true">{{ '✕' if kind == 'bad' else '✓' if kind == 'ok' else '—' }}</i>
-        {{ 'Есть нарушение' if kind == 'bad' else 'Снимок качественный' if kind == 'ok' else 'Не оценено' }}</p>
-      {% set viol = r.violation_list|reject('equalto', 'hip_not_evaluated_v0')|list %}
-      {% if viol %}<ul>{% for v in viol %}<li><b>{{ violation_ru.get(v, v) }}</b></li>{% endfor %}</ul>{% endif %}
-      {% if kind == 'none' %}<p class="expl">Бедро не оценено: сторона определена, а вердикт этой проверки не вынесен (прогон до версии 0.5.4).</p>{% endif %}
-      <ul class="expl">{% for e in (r.explanations or [])[:4] %}<li>{{ e }}</li>{% endfor %}</ul>
-      <p class="more"><a href="/runs/{{ run_id }}/images/{{ r.key }}">Подробнее: слои атласа, лупа, озвучка →</a></p>
-    </div>
-  </article>
-  {% else %}
-  <div class="v2-fail"><b>{{ r.path_to_study.split('/')[-1] }}</b> — не проверен: {{ (r.explanations or ['файл не подошёл'])[0] }}
-    <a href="/runs/{{ run_id }}">что можно сделать →</a></div>
-  {% endif %}
+
+{% if dash.scene %}
+<div class="d-main">
+  <section class="d-card d-3d">
+    <div class="d-card-h"><h2>3D-модель исследования</h2>
+      <a href="/runs/{{ run_id }}/3d?study={{ dash.focus.key|urlencode }}">во весь экран →</a></div>
+    <p class="faint d-3d-sub">{{ dash.focus.key }}{% if dash.studies|length > 1 %} · показано исследование с нарушениями первым, остальные — ниже{% endif %}</p>
+    {% set scene = dash.scene %}{% set hero = False %}{% include "_b3d_stage.html" %}
+  </section>
+  <div class="d-side">
+    <section class="d-card">
+      <h2>Нарушения по типам</h2>
+      <ul class="d-bars">
+        {% for code, title, n in dash.violations %}
+        <li class="{{ 'on' if n else '' }}"><span class="t">{{ title }}</span><span class="n">{{ n }}</span>
+          <i style="width:{{ (n / dash.viol_max * 100) if dash.viol_max else 0 }}%"></i></li>
+        {% endfor %}
+      </ul>
+    </section>
+    <section class="d-card">
+      <h2>По областям</h2>
+      <table class="d-reg">
+        <tr><th>область</th><th>снимков</th><th>годны</th><th>нарушения</th></tr>
+        {% for r in dash.regions %}<tr><td>{{ region_ru.get(r.key, r.key)|capitalize }}</td><td>{{ r.n }}</td>
+          <td class="ok">{{ r.ok }}</td><td class="{{ 'bad' if r.bad else '' }}">{{ r.bad }}</td></tr>{% endfor %}
+      </table>
+    </section>
+    <section class="d-card">
+      <h2>Что проверяется по ТЗ</h2>
+      <p class="d-crit"><b>Поясничный отдел:</b> охват от гребней подвздошных костей до Th12 · ось в пределах 5° · нет посторонних предметов.</p>
+      <p class="d-crit"><b>Бедро:</b> укладка и ротация по малому вертелу · поля вокруг зоны интереса. Вердикт по бедру — подсказка модели, её точность ниже, чем у позвоночника.</p>
+    </section>
+  </div>
+</div>
+{% endif %}
+
+<h2 class="d-h2">Снимки</h2>
+{% for study in dash.studies %}
+<section class="d-study">
+  <div class="d-study-h">
+    <span class="pill {{ study.verdict if study.verdict in ('ok', 'bad') else 'na' }}">{{ '✕ есть нарушение' if study.verdict == 'bad' else '✓ качественное' if study.verdict == 'ok' else 'не оценено' }}</span>
+    <b>Исследование {{ study.key }}</b><span class="faint">{{ study.uid }}</span>
+    <a class="d-study-3d" href="/runs/{{ run_id }}/3d?study={{ study.key|urlencode }}">🧍 3D</a>
+  </div>
+  <div class="d-imgs">
+  {% for r in study.rows %}
+    {% set kind = 'bad' if r.quality_class == 1 else 'ok' if r.quality_class == 0 else 'na' %}
+    {% set viol = r.violation_list or [] %}
+    <article class="d-img {{ kind }}" id="{{ r.key }}">
+      <div class="pic"><img src="/runs/{{ run_id }}/files/{{ r.overlay_png }}" alt="атлас: {{ region_ru.get(r.anatomical_region, '') }}" loading="lazy">
+        <a class="v2-to3d" href="/runs/{{ run_id }}/3d?study={{ (r.study_key or '')|urlencode }}&amp;focus={{ r.anatomical_region }}&amp;view=xray&amp;play=1">⇄ 3D</a></div>
+      <div class="body">
+        <div class="d-img-h"><h3>{{ region_ru.get(r.anatomical_region, 'снимок')|capitalize }}</h3>
+          <span class="pill {{ kind }}">{{ 'нарушение' if kind == 'bad' else 'годен' if kind == 'ok' else 'не оценено' }}</span></div>
+        <ul class="d-checks">
+          {% for code, title in checks.get(r.anatomical_region, []) %}
+          <li class="{{ 'bad' if code in viol else 'na' if kind == 'na' else 'ok' }}"><i>{{ '✕' if code in viol else '—' if kind == 'na' else '✓' }}</i>{{ title }}</li>
+          {% endfor %}
+        </ul>
+        {% set m = r.metrics or {} %}
+        <p class="d-meas">
+          {% if r.anatomical_region == 'lumbar_spine' and m.angle_deg is defined and m.angle_deg is not none %}угол оси {{ '%.1f'|format(m.angle_deg)|replace('.', ',') }}°{% endif %}
+          {% if m.hip_prob_bad is defined and m.hip_prob_bad is not none %}вероятность брака {{ '%.2f'|format(m.hip_prob_bad)|replace('.', ',') }}{% endif %}
+          {% if r.time_of_processing is defined and r.time_of_processing not in (none, '') %}· {{ '%.2f'|format(r.time_of_processing|float)|replace('.', ',') }} с{% endif %}</p>
+        <details class="d-expl"><summary>Пояснения</summary><ul>{% for e in (r.explanations or [])[:6] %}<li>{{ e }}</li>{% endfor %}</ul>
+          <p class="faint">image_uid {{ r.image_uid }} · <a href="/runs/{{ run_id }}/images/{{ r.key }}">карточка снимка</a></p></details>
+      </div>
+    </article>
+  {% endfor %}
+  </div>
+</section>
 {% else %}
-  <p class="note">В загрузке не нашлось снимков денситометрии. <a href="/runs/{{ run_id }}">Подробности</a> · <a href="/">загрузить другие файлы</a></p>
+<p class="note">В загрузке не нашлось снимков денситометрии. <a href="/">Загрузить другие файлы</a></p>
 {% endfor %}
-<p style="text-align:center;margin-top:22px"><a class="v2-btn" href="/">Проверить ещё снимок</a></p>
+
+{% if dash.failures %}
+<h2 class="d-h2">Не прочитано</h2>
+<div class="d-card">
+  <ul class="d-fail">{% for r in dash.failures %}<li><b>{{ r.path_to_study.split('/')[-1] }}</b> — {{ (r.explanations or ['файл не подошёл'])[0] }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+<h2 class="d-h2">Таблица результатов <span class="faint">формат ТЗ, раздел 2.5</span></h2>
+<div class="d-table">
+<table>
+  <tr><th>path_to_study</th><th>study_uid</th><th>image_uid</th><th>anatomical_region</th><th>quality_class</th><th>violation_type</th><th>processing_status</th><th>time_of_processing</th></tr>
+  {% for r in rows %}
+  <tr><td class="p">{{ r.path_to_study }}</td><td class="u">{{ r.study_uid }}</td><td class="u">{{ r.image_uid }}</td><td>{{ r.anatomical_region }}</td>
+    <td class="{{ 'bad' if r.quality_class == 1 else 'ok' if r.quality_class == 0 else '' }}">{{ r.quality_class if r.quality_class is not none else '' }}</td>
+    <td>{{ r.violation_type }}</td><td>{{ r.processing_status }}</td><td>{{ '%.3f'|format(r.time_of_processing|float) if r.time_of_processing is defined and r.time_of_processing not in (none, '') else '' }}</td></tr>
+  {% endfor %}
+</table>
+</div>
 {% endif %}
 {% endblock %}
+{% block footer %}{% endblock %}
+{% block cookie %}{% endblock %}

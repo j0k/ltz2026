@@ -347,6 +347,13 @@ def home(request: Request):
     """Новый интерфейс: загрузить снимок или посмотреть демо. Старые ссылки с ?design= открывают v1 как раньше."""
     if request.query_params.get("design"):
         return index(request)
+    from dxaqc.web import body3d
+    return templates.TemplateResponse(request, "home_kiosk.html", dict(scene=body3d.hero_scene(), version=__version__))
+
+
+@app.get("/start", response_class=HTMLResponse)
+def home_start(request: Request):
+    """Прежняя главная v2: приветствие медсестры, загрузка и демо."""
     example = _read(EXAMPLE_ID, os.path.join("out", "manifest.json")) or {}
     demo = [dict(key=r["key"], thumb=r.get("thumb_png") or r.get("overlay_png"), region=REGION_RU.get(r.get("anatomical_region"), ""),
                  quality_class=r.get("quality_class"))
@@ -457,6 +464,44 @@ def v1_alias(request: Request, path: str):
     return RedirectResponse("/" + path + query, status_code=307)
 
 
+# критерии ТЗ по областям: что проверяется на каждом снимке (код нарушения → формулировка)
+CHECKS = {
+    "lumbar_spine": [("coverage", "Охват: от гребней подвздошных костей до Th12"), ("axis_tilt", "Ось позвоночника в пределах 5°"),
+                     ("artifact", "Нет посторонних предметов в зоне исследования")],
+    "hip_left": [("hip_positioning", "Укладка и ротация бедра"), ("hip_roi", "Поля вокруг зоны интереса")],
+    "hip_right": [("hip_positioning", "Укладка и ротация бедра"), ("hip_roi", "Поля вокруг зоны интереса")],
+}
+
+
+def _dashboard(run_id: str, rows: list[dict]) -> dict:
+    """Сводка для дашборда результата: исследования, 3D худшего исследования, нарушения по типам и по областям."""
+    from collections import Counter
+    from dxaqc.web import body3d
+    ok_rows = [r for r in rows if r.get("processing_status") == "Success"]
+    groups = body3d.studies(ok_rows)
+    studies = []
+    for key, rs in groups.items():
+        sc = body3d.scene(run_id, rs)
+        studies.append(dict(key=key, uid=next((r.get("study_uid") for r in rs if r.get("study_uid")), key), rows=rs,
+                            verdict=sc["verdict"], bad=sc["bad"]))
+    studies.sort(key=lambda x: {"bad": 0, "ok": 1}.get(x["verdict"], 2))
+    focus = studies[0] if studies else None
+    viol = Counter(v for r in ok_rows for v in (r.get("violation_list") or []) if v != "hip_not_evaluated_v0")
+    regions = []
+    for reg in ("lumbar_spine", "hip_left", "hip_right"):
+        rr = [r for r in ok_rows if r.get("anatomical_region") == reg]
+        regions.append(dict(key=reg, n=len(rr), ok=sum(1 for r in rr if r.get("quality_class") == 0),
+                            bad=sum(1 for r in rr if r.get("quality_class") == 1),
+                            na=sum(1 for r in rr if r.get("quality_class") not in (0, 1))))
+    times = [float(r["time_of_processing"]) for r in ok_rows if r.get("time_of_processing") not in (None, "")]
+    return dict(studies=studies, focus=focus, scene=body3d.scene(run_id, focus["rows"]) if focus else None,
+                violations=[(code, VIOLATION_RU.get(code, code), viol.get(code, 0)) for code in
+                            ("coverage", "axis_tilt", "artifact", "hip_positioning", "hip_roi")],
+                viol_max=max(viol.values()) if viol else 0, regions=regions,
+                failures=[r for r in rows if r.get("processing_status") != "Success"],
+                time_max=max(times) if times else None)
+
+
 @app.get("/check/{run_id}", response_class=HTMLResponse)
 def check_page(request: Request, run_id: str):
     """Результат в новом интерфейсе: прогресс, затем по каждому снимку атлас, вердикт, нарушения и пояснения."""
@@ -469,9 +514,10 @@ def check_page(request: Request, run_id: str):
         ok = [r for r in man["rows"] if r.get("processing_status") == "Success"]
         ok.sort(key=lambda r: ({1: 0, 0: 1}.get(r.get("quality_class"), 2), r.get("anatomical_region") or ""))
         rows = ok + [r for r in man["rows"] if r.get("processing_status") != "Success"]
+    dash = _dashboard(run_id, rows) if man else None
     return templates.TemplateResponse(request, "check.html", dict(
         run_id=run_id, st=st, man=man, rows=rows, region_ru=REGION_RU, violation_ru=VIOLATION_RU, example_id=EXAMPLE_ID,
-        running=st.get("state") in ("queued", "running"), version=__version__,
+        running=st.get("state") in ("queued", "running"), version=__version__, dash=dash, checks=CHECKS,
         og_title=f"{st.get('title') or 'Проверка'} · DXA QC", og_image=f"/runs/{run_id}/og.jpg"))
 
 

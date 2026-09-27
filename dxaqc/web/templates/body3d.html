@@ -17,26 +17,7 @@
 </form>
 {% endif %}
 
-{% set R = scene.regions %}
-<div class="b3d" id="b3d" data-verdict="{{ scene.verdict }}">
-  <div class="b3d-canvas" id="b3dCanvas" aria-hidden="true"></div>
-  <div class="b3d-switch" role="group" aria-label="Рентген или 3D">
-    <span>Рентген</span>
-    <input type="range" id="b3dMix" min="0" max="100" value="100" aria-label="от снимка к 3D-модели">
-    <span>3D</span>
-    <button type="button" class="b3d-toggle" id="b3dToggle">Показать снимок</button>
-  </div>
-  <svg class="b3d-lines" id="b3dLines" aria-hidden="true"></svg>
-  {% for reg, pos in (('lumbar_spine', 'tl'), ('hip_right', 'left'), ('hip_left', 'right')) %}{% set d = R[reg] %}
-  <a class="b3d-tag {{ pos }} {{ d.status }}" data-region="{{ reg }}" {% if d.card %}href="{{ d.card }}"{% endif %}>
-    <b>{{ d.title }}</b>
-    <span class="v">{{ '✕ есть нарушение' if d.status == 'bad' else '✓ годен' if d.status == 'ok' else '— не оценено' if d.status == 'na' else '· нет снимка' }}</span>
-    {% for l in d.lines %}<span class="l">{{ l }}</span>{% endfor %}
-  </a>{% endfor %}
-  <div class="b3d-verdict {{ scene.verdict }}">{{ 'Есть нарушение: ' ~ scene.bad|join(', ') if scene.verdict == 'bad' else 'Исследование качественное' if scene.verdict == 'ok' else 'Не оценено' }}</div>
-  <p class="b3d-hint" id="b3dHint"><span class="h3d">потяните, чтобы повернуть · колесо — приблизить · нажмите на область — карточка снимка</span><span class="hx">потяните снимок — он станет 3D-моделью · нажмите на снимок — его карточка</span></p>
-  <p class="b3d-nogl" id="b3dNoGL" hidden>Браузер не поддерживает WebGL — 3D-вид недоступен, результаты по областям — в выносках.</p>
-</div>
+{% include "_b3d_stage.html" %}
 
 <div class="b3d-legend">
   <span><i class="bad"></i>нарушение</span><span><i class="ok"></i>годен</span><span><i class="na"></i>нет снимка или не оценено</span>
@@ -47,7 +28,4 @@
   модели бедра. Пациент стоит лицом к вам: его левая сторона — справа. В режиме «Рентген» настоящие снимки исследования
   совмещены с моделью: позвоночник — по позвонкам Th12–L5, бедро — по головке и большому вертелу.</p>
 
-<script type="application/json" id="b3dData">{{ scene|tojson }}</script>
-<script type="importmap">{"imports": {"three": "/static/vendor/three/three.module.min.js"}}</script>
-<script type="module" src="/static/body3d.js?v={{ version }}"></script>
 {% endblock %}

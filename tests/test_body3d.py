@@ -67,7 +67,7 @@ def test_page_renders_tags_and_data(client):
     assert client.get("/runs/nope-run/3d").status_code == 404
     assert 'id="b3dMix"' in html and 'id="b3dToggle"' in html, "переключатель рентген ⇄ 3D"
     check = client.get("/check/20260927-190000-aaaaaa").text
-    assert 'href="/runs/20260927-190000-aaaaaa/3d"' in check
+    assert 'href="/runs/20260927-190000-aaaaaa/3d?study=st1"' in check and 'id="b3dData"' in check, "3D исследования на дашборде"
     assert "3d?study=st1&amp;focus=lumbar_spine&amp;view=xray&amp;play=1" in check, "кнопка «⇄ 3D» на снимке"
 
 

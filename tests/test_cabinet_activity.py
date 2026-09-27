@@ -47,11 +47,11 @@ def test_helpers_mask_ip_and_device(client):
 def test_cabinet_register_and_my_runs(client):
     guest = TestClient(client.app)
     assert guest.get("/cabinet", follow_redirects=False).headers["location"] == "/login?next=/cabinet"
-    head = guest.get("/").text
+    head = guest.get("/start").text
     assert 'href="/register"' in head and 'href="/login">Войти' in head
 
     alice = register(client.app, "cab-alice")
-    home = alice.get("/").text
+    home = alice.get("/start").text
     assert 'href="/cabinet">Кабинет · cab-alice' in home and 'href="/register"' not in home
     page = alice.get("/cabinet").text
     assert "Личный кабинет" in page and "Мои проверки" in page and "Здесь появятся ваши проверки" in page
@@ -110,4 +110,4 @@ def test_activity_feed_records_and_is_admin_only(client):
     with admin.stream("GET", f"/admin/api/activity/stream?after={before}&once=1") as s:
         body = "".join(s.iter_text())
     assert "event: activity" in body and "act-carol" in body
-    assert 'href="/admin/activity">Активность' in admin.get("/").text, "ссылка в шапке для админа"
+    assert 'href="/admin/activity">Активность' in admin.get("/start").text, "ссылка в шапке для админа"

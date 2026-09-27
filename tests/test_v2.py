@@ -16,11 +16,15 @@ TEST_DIR = ROOT / "data" / "Для теста"
 needs_data = pytest.mark.skipif(not TEST_DIR.exists(), reason="нет данных организатора")
 
 
-def test_new_home_has_two_actions(client):
+def test_home_is_just_upload_and_3d(client):
     html = client.get("/").text
     assert 'id="v2Upload"' in html and 'action="/runs"' in html and 'name="ui" value="v2"' in html
-    assert "Демо" in html and 'href="/v1"' in html and 'href="/tz/"' in html
-    assert 'href="/control">Пульт' not in html, "в новом интерфейсе нет полного меню"
+    assert 'class="b3d b3d-hero"' in html and "/static/body3d.js" in html, "справа 3D-кость"
+    for extra in ('href="/login"', 'href="/register"', 'href="/v1"', 'href="/tz/"', 'id="cookieBar"', "<footer>", "Подробнее"):
+        assert extra not in html, f"на главной только загрузка: лишнее {extra}"
+    old = client.get("/start").text
+    assert "Демо" in old and 'href="/v1"' in old and 'href="/tz/"' in old, "прежняя главная — по /start"
+    assert 'href="/control">Пульт' not in old
 
 
 def test_v1_keeps_everything(client):
@@ -57,11 +61,14 @@ def test_upload_goes_to_new_result_page(client):
     running = client.get(f"/check/{rid}").text
     _wait(client, rid)
     html = client.get(f"/check/{rid}").text
-    assert html.count('class="v2-res"') == 1 and "Поясничный отдел" in html
-    assert "Снимок качественный" in html or "Есть нарушение" in html
-    assert 'class="v2-fail"' in html and "photo.jpg" in html and "не DICOM" in html.replace("а не DICOM", "не DICOM"), "отказ с причиной"
-    assert f'/runs/{rid}/files/results.csv' in html and f'/runs/{rid}/images/' in html
-    assert "v2Wait" in running or "v2-res" in running
+    assert html.count('<article class="d-img') == 1 and "Поясничный отдел" in html
+    assert "годен" in html or "нарушение" in html
+    assert 'class="d-kpis"' in html and 'class="d-checks"' in html and "Таблица результатов" in html, "дашборд по ТЗ"
+    assert 'class="d-fail"' in html and "photo.jpg" in html and "не DICOM" in html.replace("а не DICOM", "не DICOM"), "отказ с причиной"
+    for f in ("results.csv", "results.xlsx", "overlays.zip"):
+        assert f'/runs/{rid}/files/{f}' in html, f
+    assert f'/runs/{rid}/images/' in html and 'id="cookieBar"' not in html and 'href="/login"' not in html
+    assert "v2Wait" in running or "d-img" in running
 
     legacy = client.post("/runs", files=[("files", (spine.name, spine.read_bytes(), "application/dicom"))], follow_redirects=False)
     assert legacy.headers["location"].startswith("/runs/"), "прежняя загрузка ведёт на страницу прогона"
@@ -81,10 +88,10 @@ def test_demo_from_example_run(client):
         with open(os.path.join(ex, "out", "manifest.json"), "w") as f:
             json.dump(dict(summary=dict(images=1, good=1, bad=0, not_evaluated=0, studies=1), rows=rows), f)
     try:
-        home = client.get("/").text
+        home = client.get("/start").text
         assert f'href="/check/{app.EXAMPLE_ID}"' in home and f'/runs/{app.EXAMPLE_ID}/files/' in home
         demo = client.get(f"/check/{app.EXAMPLE_ID}").text
-        assert "Демо: пример организатора" in demo and 'class="v2-res"' in demo
+        assert "Демо: пример организатора" in demo and '<article class="d-img' in demo
     finally:
         if not existed:
             shutil.rmtree(ex, ignore_errors=True)

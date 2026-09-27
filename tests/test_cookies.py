@@ -13,7 +13,7 @@ def test_cookie_notice_and_page(client):
     ask = sys.modules["dxaqc.web.ask"]
     A = sys.modules["dxaqc.web.accounts"]
 
-    home = client.get("/")
+    home = client.get("/start")
     assert home.status_code == 200
     assert 'id="cookieBar"' in home.text and 'hidden' in home.text, "плашка в разметке и скрыта по умолчанию"
     assert 'href="/cookies"' in home.text, "ссылки на подробности"

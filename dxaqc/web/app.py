@@ -348,7 +348,8 @@ def home(request: Request):
     if request.query_params.get("design"):
         return index(request)
     from dxaqc.web import body3d
-    return templates.TemplateResponse(request, "home_kiosk.html", dict(scene=body3d.hero_scene(), version=__version__))
+    return templates.TemplateResponse(request, "home_kiosk.html", dict(scene=body3d.hero_scene(), presets=_presets(),
+                                                                      version=__version__))
 
 
 @app.get("/start", response_class=HTMLResponse)
@@ -445,6 +446,38 @@ def create_dataset_run(request: Request, dataset: str = Form(...), mode: str = F
     return RedirectResponse(f"/runs/{run_id}", status_code=303)
 
 
+def _presets():
+    from dxaqc.web import presets
+    run_id, man = _latest_train_run()
+    items = presets.build(run_id, man)
+    if datasets.REGISTRY.get("test") and any(d.get("id") == "test" for d in datasets.available()):
+        ex = _read(EXAMPLE_ID, os.path.join("out", "manifest.json")) or {}
+        thumb = next((r.get("thumb_png") for r in ex.get("rows", []) if r.get("thumb_png")), None)
+        items.append(dict(key="test", title="Пример «Для теста»", sub="фрагмент организатора: поясница и оба бедра",
+                          dataset="test", study="", thumb=f"/runs/{EXAMPLE_ID}/files/{thumb}" if thumb else None,
+                          expert="без оценки экспертов"))
+    return items
+
+
+@app.post("/presets/run")
+def run_preset(request: Request, key: str = Form(...)):
+    """Главная: проверить готовый пример — одно исследование обучающего набора или фрагмент «Для теста»."""
+    p = next((x for x in _presets() if x["key"] == key), None)
+    if not p:
+        raise HTTPException(404, "нет такого примера")
+    meta = datasets.REGISTRY[p["dataset"]]
+    run_id = _new_run(f"Пример: {p['title']}")
+    try:
+        mode = "study" if p["study"] else "all"
+        chosen = datasets.link_selection(p["dataset"], mode, os.path.join(RUNS, run_id, "input"), study=p["study"])
+    except Exception as exc:
+        _write_status(run_id, state="error", error=str(exc)[:300])
+        return RedirectResponse(f"/check/{run_id}", status_code=303)
+    _write_status(run_id, dataset=p["dataset"], studies=len(chosen), has_labels=bool(meta.get("labels")), preset=p["title"])
+    _submit(run_id)
+    return RedirectResponse(f"/check/{run_id}", status_code=303)
+
+
 @app.get("/api/datasets")
 def api_datasets():
     return [dict(d, studies=None) for d in datasets.available()]
@@ -494,12 +527,14 @@ def _dashboard(run_id: str, rows: list[dict]) -> dict:
                             bad=sum(1 for r in rr if r.get("quality_class") == 1),
                             na=sum(1 for r in rr if r.get("quality_class") not in (0, 1))))
     times = [float(r["time_of_processing"]) for r in ok_rows if r.get("time_of_processing") not in (None, "")]
+    judged = [r for r in ok_rows if (r.get("expert") or {}).get("bad") in (0, 1) and r.get("quality_class") in (0, 1)]
+    agree = sum(1 for r in judged if r["expert"]["bad"] == r["quality_class"])
     return dict(studies=studies, focus=focus, scene=body3d.scene(run_id, focus["rows"]) if focus else None,
                 violations=[(code, VIOLATION_RU.get(code, code), viol.get(code, 0)) for code in
                             ("coverage", "axis_tilt", "artifact", "hip_positioning", "hip_roi")],
                 viol_max=max(viol.values()) if viol else 0, regions=regions,
                 failures=[r for r in rows if r.get("processing_status") != "Success"],
-                time_max=max(times) if times else None)
+                time_max=max(times) if times else None, judged=len(judged), agree=agree)
 
 
 @app.get("/check/{run_id}", response_class=HTMLResponse)

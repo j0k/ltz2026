@@ -8,6 +8,7 @@
   <div>
     <h1>{{ 'Демо: пример организатора' if run_id == example_id else 'Результат проверки' }}</h1>
     <p class="faint">{{ st.title or '' }} · версия сервиса {{ st.version or version }} · проверка {{ run_id }}</p>
+    {% if dash and dash.judged %}<p class="d-agree">Сравнение с экспертами: совпало <b>{{ dash.agree }} из {{ dash.judged }}</b> снимков</p>{% endif %}
   </div>
   {% if man and not running %}
   <div class="d-dl">
@@ -117,6 +118,11 @@
           <li class="{{ 'bad' if code in viol else 'na' if kind == 'na' else 'ok' }}"><i>{{ '✕' if code in viol else '—' if kind == 'na' else '✓' }}</i>{{ title }}</li>
           {% endfor %}
         </ul>
+        {% set ex = r.expert or {} %}
+        {% if ex.bad in (0, 1) %}{% set same = (ex.bad == r.quality_class) %}
+        <p class="d-expert {{ 'same' if same else 'diff' }}">{{ '✓ совпадает с экспертами' if same else '≠ эксперты иначе' }}:
+          {{ 'годен' if ex.bad == 0 else ((ex.types or [])|map('replace', 'hip_positioning', 'укладка бедра')|map('replace', 'hip_roi', 'поля зоны интереса')|map('replace', 'axis_tilt', 'наклон оси')|map('replace', 'coverage', 'неполный охват')|map('replace', 'artifact', 'посторонний предмет')|join(', ')) or 'брак' }}{% if ex.comment %} · «{{ ex.comment }}»{% endif %}</p>
+        {% endif %}
         {% set m = r.metrics or {} %}
         <p class="d-meas">
           {% if r.anatomical_region == 'lumbar_spine' and m.angle_deg is defined and m.angle_deg is not none %}угол оси {{ '%.1f'|format(m.angle_deg)|replace('.', ',') }}°{% endif %}

@@ -19,6 +19,26 @@
       <div class="v2-prog" id="v2Prog" hidden><div class="track"><span id="v2Bar"></span></div><p id="v2Msg"></p></div>
       <noscript><button class="v2-btn" type="submit">Проверить</button></noscript>
     </form>
+    {% if presets %}
+    <button type="button" class="k-preset" id="kPresetBtn" aria-haspopup="dialog" aria-controls="kPresets">
+      <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+      или выберите готовый пример</button>
+    <dialog class="k-dlg" id="kPresets" aria-labelledby="kPresetsTitle">
+      <div class="k-dlg-h"><h2 id="kPresetsTitle">Готовые примеры</h2>
+        <button type="button" class="k-x" id="kPresetClose" aria-label="Закрыть">×</button></div>
+      <p class="k-dlg-sub">Исследования обучающего набора организатора с оценкой экспертов — по одному на каждый тип нарушения из ТЗ.
+        Выберите пример: сервис проверит его и покажет полный разбор.</p>
+      <div class="k-presets">
+        {% for p in presets %}
+        <form method="post" action="/presets/run"><input type="hidden" name="key" value="{{ p.key }}">
+          <button class="k-pre" type="submit">
+            {% if p.thumb %}<img src="{{ p.thumb }}" alt="" loading="lazy">{% else %}<span class="k-pre-ph"></span>{% endif %}
+            <b>{{ p.title }}</b><span>{{ p.sub }}</span><em>{{ p.expert }}</em>
+          </button></form>
+        {% endfor %}
+      </div>
+    </dialog>
+    {% endif %}
   </div>
   <div class="k-right">{% set hero = True %}{% include "_b3d_stage.html" %}</div>
 </section>
@@ -48,6 +68,13 @@
   ['dragleave', 'drop'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove('over'); }));
   drop.addEventListener('drop', e => send(e.dataTransfer.files));
   form.addEventListener('submit', e => { e.preventDefault(); send(input.files); });
+  const dlg = document.getElementById('kPresets'), open = document.getElementById('kPresetBtn');
+  if (dlg && open) {
+    open.addEventListener('click', () => dlg.showModal());
+    document.getElementById('kPresetClose').addEventListener('click', () => dlg.close());
+    dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });   // клик по фону закрывает
+    dlg.querySelectorAll('form').forEach(f => f.addEventListener('submit', () => f.querySelector('button').classList.add('busy')));
+  }
 })();
 </script>
 {% endblock %}

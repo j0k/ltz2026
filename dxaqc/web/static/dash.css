@@ -92,3 +92,31 @@
 .d-side>*{min-width:0}
 .d-bars li .t{min-width:0;overflow-wrap:anywhere}
 .d-reg th{white-space:normal;font-size:11px}
+/* главная: тихий выбор готового примера */
+.k-preset{display:inline-flex;align-items:center;gap:8px;margin:14px auto 0;padding:6px 10px;border:0;background:none;color:var(--ink3);
+  font:inherit;font-size:14px;cursor:pointer;border-radius:8px}
+.k-preset svg{fill:currentColor;opacity:.8}
+.k-preset:hover,.k-preset:focus-visible{color:var(--accent);background:var(--accent-soft)}
+.k-left{display:flex;flex-direction:column}
+.k-left .k-preset{align-self:center}
+.k-dlg{width:min(880px,94vw);max-height:88vh;border:0;border-radius:20px;padding:20px 22px 24px;box-shadow:0 24px 80px rgba(10,20,40,.28)}
+.k-dlg::backdrop{background:rgba(12,18,32,.45);backdrop-filter:blur(3px)}
+.k-dlg-h{display:flex;justify-content:space-between;align-items:center}
+.k-dlg-h h2{margin:0;font-size:20px}
+.k-x{border:0;background:#f1f0ec;border-radius:50%;width:34px;height:34px;font-size:22px;line-height:1;cursor:pointer;color:var(--ink2)}
+.k-dlg-sub{margin:6px 0 16px;color:var(--ink2);font-size:14px}
+.k-presets{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
+.k-presets form{margin:0}
+.k-pre{width:100%;display:flex;flex-direction:column;gap:3px;text-align:left;padding:0 0 12px;border:1px solid var(--line);border-radius:14px;
+  background:var(--card);overflow:hidden;cursor:pointer;font:inherit;color:var(--ink);transition:.15s}
+.k-pre:hover,.k-pre:focus-visible{border-color:var(--accent);box-shadow:0 6px 20px rgba(42,120,214,.15);transform:translateY(-1px)}
+.k-pre.busy{opacity:.6;pointer-events:none}
+.k-pre img,.k-pre-ph{width:100%;aspect-ratio:4/3;object-fit:cover;background:#000;display:block;margin-bottom:6px}
+.k-pre b,.k-pre span,.k-pre em{padding:0 12px}
+.k-pre b{font-size:15px}
+.k-pre span{font-size:12.5px;color:var(--ink3)}
+.k-pre em{font-style:normal;font-size:12.5px;color:var(--ink2)}
+.d-agree{margin:4px 0 0;font-size:14px;color:var(--ink2)}
+.d-expert{margin:2px 0 6px;font-size:13px;padding:5px 9px;border-radius:8px}
+.d-expert.same{background:var(--ok-soft);color:#0c7a53}
+.d-expert.diff{background:var(--warn-soft);color:#8a5b00}

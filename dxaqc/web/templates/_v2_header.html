@@ -1,3 +1,4 @@
+{% if desktop %}{% include "_desk_header.html" %}{% else %}
 {% set me = request.state.user if request is defined and request.state.user is defined else None %}
 <style>.v2-head .bar nav a.v2-full{padding:5px 12px;border:1px solid var(--line);border-radius:999px}
 .v2-head .bar nav a.v2-cta{padding:5px 12px;border-radius:999px;background:var(--accent);color:#fff}
@@ -9,3 +10,4 @@
     {% else %}<a href="/login">Войти</a><a href="/register" class="v2-cta">Регистрация</a>{% endif %}
     <a href="/v1" class="v2-full">Полная версия · v1</a></nav>
 </div></header>
+{% endif %}

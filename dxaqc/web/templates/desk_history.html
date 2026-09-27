@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}История проверок{% endblock %}
+{% block head %}<link rel="stylesheet" href="/static/v2.css?v={{ version }}">{% endblock %}
+{% block content %}
+<div class="dk-page">
+<h1>История проверок</h1>
+<p class="dk-muted">Все проверки на этом компьютере. Результаты хранятся, пока вы их не удалите.</p>
+<input type="search" id="hq" placeholder="Поиск по названию" style="font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:10px;min-width:280px;margin-bottom:10px">
+{% if runs %}
+<table class="dk-table" id="ht">
+  <tr><th>когда</th><th>что проверяли</th><th>снимков</th><th>годны</th><th>нарушения</th><th>состояние</th><th></th></tr>
+  {% for r in runs %}{% set s = r.summary or {} %}
+  <tr data-t="{{ (r.title or '')|lower }}"><td>{{ r.created_str }}</td><td><a href="/check/{{ r.id }}">{{ r.title }}</a></td><td>{{ s.images or '' }}</td>
+    <td class="dk-ok">{{ s.good if s.good is not none else '' }}</td><td class="{{ 'dk-bad' if s.bad else '' }}">{{ s.bad if s.bad is not none else '' }}</td>
+    <td>{{ {'done': 'готово', 'running': 'идёт', 'queued': 'в очереди', 'error': 'ошибка', 'cancelled': 'отменено'}.get(r.state, r.state) }}</td>
+    <td>{% if r.id != 'example' %}<form method="post" action="/history/{{ r.id }}/delete" onsubmit="return confirm('Удалить проверку и её результаты с компьютера?')">
+      <button class="dk-btn danger" style="padding:4px 10px">Удалить</button></form>{% endif %}</td></tr>
+  {% endfor %}
+</table>
+{% else %}<div class="dk-card dk-none">Проверок пока нет. <a href="/">Загрузите снимок</a> или откройте демо.</div>{% endif %}
+</div>
+<script>
+document.getElementById('hq').addEventListener('input', e => { const q = e.target.value.toLowerCase();
+  document.querySelectorAll('#ht tr[data-t]').forEach(tr => tr.hidden = !tr.dataset.t.includes(q)); });
+</script>
+{% endblock %}

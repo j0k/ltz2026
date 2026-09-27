@@ -1,0 +1,25 @@
+# -*- coding: utf-8 -*-
+"""Настольное приложение DXA QC: тот же сервис, что на стенде, локально и без сети (эпики D1–D7, #138–#170).
+
+Окно — pywebview (WebView2 в Windows, WebKitGTK в Linux) или браузер в режиме приложения; внутри — сервер FastAPI
+на 127.0.0.1. Режим DXAQC_MODE=desktop убирает аккаунты, админку, Telegram-бота, вопросы Claude и cookie.
+"""
+from __future__ import annotations
+
+APP_NAME = "DXA QC"
+APP_ID = "dxaqc"
+DEFAULT_PORT = 8765
+SITE = "https://ltz2026.ru"
+AUTHORS = [
+    dict(name="Юрий Коноплёв", role="руководитель проекта, продукт"),
+    dict(name="Алексей Чуркин", role="стенд, Telegram-бот, проверка сервиса, обратная связь"),
+    dict(name="Claude (Anthropic)", role="ИИ-разработчик: алгоритмы, сервис, приложение"),
+]
+TEAM = "команда «Квантовый Скачок»"
+CONTEXT = "ЛЦТ 2026 · задача 04 Департамента здравоохранения Москвы: контроль качества денситометрии DXA"
+CONTACTS = [
+    dict(kind="Сайт", value="ltz2026.ru", url=SITE),
+    dict(kind="Telegram · Юрий Коноплёв", value="@bimodaling", url="https://t.me/bimodaling"),
+    dict(kind="Telegram · Алексей Чуркин", value="@lesha_cfc", url="https://t.me/lesha_cfc"),
+]
+LICENSE = "© 2026 авторы DXA QC. Все права защищены. Сервис для контроля качества снимков, не для постановки диагноза."

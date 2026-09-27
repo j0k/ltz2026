@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Модели{% endblock %}
+{% block head %}<link rel="stylesheet" href="/static/v2.css?v={{ version }}">{% endblock %}
+{% block content %}
+<div class="dk-page">
+<h1>Модели <a class="dk-help-q" href="/help#models" title="справка">?</a></h1>
+<p class="dk-muted">Проверка снимков работает сразу после установки: правила и модель бедра уже внутри. Здесь — дополнительные модели,
+  которые не поместились в установщик. Они скачиваются с сайта DXA QC и проверяются по контрольной сумме.</p>
+<p class="note" id="mOffline" hidden></p>
+<div id="mList"><div class="dk-card dk-none">Загружаю каталог моделей…</div></div>
+<p class="faint">Источник каталога: <span id="mSrc"></span> · <a href="#" id="mRefresh">обновить</a></p>
+</div>
+<script>
+(function () {
+  const list = document.getElementById('mList');
+  const mb = b => (b / 1048576).toFixed(b > 104857600 ? 0 : 1).replace('.', ',') + ' МБ';
+  function card(m) {
+    const pct = m.total ? Math.round(m.done / m.total * 100) : 0;
+    const st = m.installed ? '<span class="dk-ok">✓ установлена</span>' : m.state === 'downloading' ? 'скачивается… ' + pct + '%' :
+      m.state === 'paused' ? 'на паузе, ' + pct + '%' : m.state === 'error' ? '<span class="dk-bad">ошибка</span>' : 'не установлена';
+    const btns = m.installed ? `<button class="dk-btn danger" data-a="delete" data-k="${m.key}">Удалить</button>` :
+      m.state === 'downloading' ? `<button class="dk-btn ghost" data-a="pause" data-k="${m.key}">Пауза</button>` :
+      `<button class="dk-btn" data-a="download" data-k="${m.key}">${m.state === 'paused' || m.state === 'error' ? 'Продолжить загрузку' : 'Скачать · ' + mb(m.size)}</button>
+       <label class="dk-btn ghost">Импорт из файла<input type="file" hidden data-imp="${m.key}"></label>`;
+    return `<div class="dk-card"><div class="dk-row" style="justify-content:space-between"><h2>${m.title}</h2><span>${st}</span></div>
+      <p class="dk-muted" style="margin:0 0 6px">${m.purpose}</p>
+      <p class="faint" style="margin:0">версия ${m.version || '—'} · ${mb(m.size)} · файлы: ${m.files.join(', ')}</p>
+      ${m.state === 'downloading' || m.state === 'paused' ? `<div class="dk-bar"><i style="width:${pct}%"></i></div>` : ''}
+      ${m.error ? `<p class="dk-bad" style="font-weight:500">${m.error}</p>` : ''}
+      <div class="dk-row" style="margin-top:8px">${btns}</div></div>`;
+  }
+  async function load(refresh) {
+    const r = await (await fetch('/api/models' + (refresh ? '?refresh=1' : ''), {cache: 'no-store'})).json();
+    render(r);
+  }
+  function render(r) {
+    document.getElementById('mSrc').textContent = r.source;
+    const off = document.getElementById('mOffline'); off.hidden = !r.error; off.textContent = r.error || '';
+    list.innerHTML = r.models.length ? r.models.map(card).join('') :
+      '<div class="dk-card dk-none">Каталог пуст: нет связи с сайтом и сохранённой копии. Когда появится интернет, нажмите «обновить».</div>';
+    if (r.models.some(m => m.state === 'downloading')) setTimeout(() => load(false), 1000);
+  }
+  list.addEventListener('click', async e => {
+    const b = e.target.closest('button[data-a]'); if (!b) return;
+    if (b.dataset.a === 'delete' && !confirm('Удалить модель с компьютера? Её можно будет скачать снова.')) return;
+    b.disabled = true;
+    const r = await fetch(`/api/models/${b.dataset.k}/${b.dataset.a}`, {method: 'POST'});
+    render(await r.json());
+  });
+  list.addEventListener('change', async e => {
+    const inp = e.target.closest('input[data-imp]'); if (!inp || !inp.files.length) return;
+    const fd = new FormData(); fd.append('file', inp.files[0]);
+    const r = await fetch(`/api/models/${inp.dataset.imp}/import`, {method: 'POST', body: fd});
+    const j = await r.json(); if (!r.ok) alert(j.detail || 'Не получилось импортировать'); else render(j);
+  });
+  document.getElementById('mRefresh').addEventListener('click', e => { e.preventDefault(); load(true); });
+  load(false);
+})();
+</script>
+{% endblock %}

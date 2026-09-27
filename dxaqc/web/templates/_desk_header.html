@@ -1,0 +1,16 @@
+{# шапка настольного приложения: все разделы под рукой, без входа и внешних ссылок #}
+<link rel="stylesheet" href="/static/desk.css?v={{ version }}">
+<header class="desk-head"><div class="bar">
+  <a class="logo" href="/">DXA QC<small>контроль качества денситометрии</small></a>
+  <nav>{% set p = request.url.path if request is defined else '' %}
+    <a href="/" class="{{ 'on' if p == '/' or p.startswith('/check') else '' }}">Проверка</a>
+    <a href="/history" class="{{ 'on' if p.startswith('/history') else '' }}">История</a>
+    <a href="/control" class="{{ 'on' if p.startswith('/control') else '' }}">Пульт</a>
+    <a href="/models" class="{{ 'on' if p.startswith('/models') else '' }}">Модели</a>
+    <a href="/assistant" class="{{ 'on' if p.startswith('/assistant') else '' }}">ИИ-ассистент</a>
+    <a href="/settings" class="{{ 'on' if p.startswith('/settings') else '' }}">Настройки</a>
+    <a href="/help" class="{{ 'on' if p.startswith('/help') else '' }}">Справка</a>
+    <a href="/about" class="{{ 'on' if p.startswith('/about') else '' }}">О программе</a>
+  </nav>
+</div></header>
+<script src="/static/desk.js?v={{ version }}" defer></script>

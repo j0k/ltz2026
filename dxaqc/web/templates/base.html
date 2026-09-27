@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block title %}DXA QC{% endblock %} · ЛЦТ 2026</title>
+<title>{% block title %}DXA QC{% endblock %} · {{ "DXA QC" if desktop else "ЛЦТ 2026" }}</title>
 {# превью ссылок в Telegram и мессенджерах: страницы задают og_title, og_description и og_image, остальное по умолчанию #}
 {% set og_desc = og_description or 'Сервис контроля качества денситометрии DXA: область, вердикт и причина брака по каждому снимку, разметка в стиле анатомического атласа. ЛЦТ 2026, задача 04.' %}
 <meta name="description" content="{{ og_desc }}">
@@ -70,14 +70,14 @@ footer{max-width:1180px;margin:0 auto;padding:0 20px 30px;color:var(--ink3);font
 {% block head %}{% endblock %}
 </head>
 <body>
-{% block header %}<header><div class="bar">
+{% block header %}{% if desktop %}{% include "_desk_header.html" %}{% else %}<header><div class="bar">
   <a class="logo" href="/">DXA QC<small>контроль качества денситометрии</small></a>
   {% set me = request.state.user if request is defined and request.state.user is defined else None %}
   <nav><a href="/v1">Прогоны</a><a href="/gallery">Галерея</a><a href="/control">Пульт</a><a href="/tz/">Доки</a><a href="/ask">Спросить Claude</a>{% if me and me.is_admin %}<a href="/admin">Админка</a>{% endif %}<a href="/docs">API</a><a href="{{ trac_url }}">Трекер</a>{% if me %}<a href="/account">{{ me.login }}</a>{% else %}<a href="/login">Войти</a>{% endif %}</nav>
-</div></header>{% endblock %}
+</div></header>{% endif %}{% endblock %}
 {% block fullbleed %}{% endblock %}
 <main>{% block content %}{% endblock %}</main>
-{% block footer %}<footer>ЛЦТ 2026 · задача Департамента здравоохранения · команда «Квантовый Скачок»: Юрий Коноплёв, Алексей Чуркин · версия {{ version }} · только обезличенные данные организатора · <a href="/cookies">cookie</a></footer>{% endblock %}
-{% block cookie %}{% include "_cookie_notice.html" %}{% endblock %}
+{% block footer %}{% if desktop %}<footer>DXA QC {{ version }} · работает на этом компьютере, снимки не покидают его · <a href="/about">О программе</a> · <a href="/help">Справка</a></footer>{% else %}<footer>ЛЦТ 2026 · задача Департамента здравоохранения · команда «Квантовый Скачок»: Юрий Коноплёв, Алексей Чуркин · версия {{ version }} · только обезличенные данные организатора · <a href="/cookies">cookie</a></footer>{% endif %}{% endblock %}
+{% block cookie %}{% if not desktop %}{% include "_cookie_notice.html" %}{% endif %}{% endblock %}
 </body>
 </html>

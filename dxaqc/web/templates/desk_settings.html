@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Настройки{% endblock %}
+{% block head %}<link rel="stylesheet" href="/static/v2.css?v={{ version }}">{% endblock %}
+{% block content %}
+<div class="dk-page">
+<h1>Настройки <a class="dk-help-q" href="/help#settings" title="справка">?</a></h1>
+{% if request.query_params.get('saved') %}<p class="note" style="background:var(--ok-soft);border-color:#b7e6d2;color:#0c7a53">Сохранено.</p>{% endif %}
+<div class="dk-card">
+  <h2>Пороги проверок</h2>
+  <p class="dk-muted">Допуск наклона оси, яркость подвздошных костей, контраст постороннего предмета. По умолчанию — значения по ТЗ и
+    подобранные на данных организатора.</p>
+  <a class="dk-btn ghost" href="/control">Открыть пульт порогов</a>
+</div>
+<div class="dk-card">
+  <h2>Данные на этом компьютере</h2>
+  <p>Проверки, модели, настройки и журнал хранятся в папке:</p>
+  <div class="dk-code">{{ data_dir }}</div>
+  <p class="faint">Журнал ошибок: {{ log }}. Если что-то не работает — меню Справка → «Если что-то не работает».</p>
+</div>
+<form class="dk-card" method="post" action="/settings">
+  <h2>Обновления и подсказки</h2>
+  <label class="dk-row"><input type="checkbox" name="check_updates" value="1" {{ 'checked' if s.check_updates }}>
+    Проверять новую версию на сайте ltz2026.ru при открытии настроек (по умолчанию выключено: приложение работает без сети)</label>
+  <p id="upd" class="faint"></p>
+  <label class="dk-row"><input type="checkbox" name="welcome_again" value="1"> Показать приветствие и тур при следующем открытии главной</label>
+  <p><button class="dk-btn">Сохранить</button></p>
+</form>
+</div>
+{% if s.check_updates %}
+<script>
+fetch('/api/updates').then(r => r.json()).then(u => {
+  const el = document.getElementById('upd');
+  el.innerHTML = u.error ? 'Проверка обновлений: ' + u.error : u.newer ? `Доступна версия ${u.latest} — <a href="${u.url}" target="_blank">скачать с сайта</a>` : `У вас последняя версия ${u.current}.`;
+});
+</script>
+{% endif %}
+{% endblock %}

@@ -27,7 +27,7 @@ from starlette.concurrency import run_in_threadpool
 from dxaqc import __version__, atlas, datasets, pipeline, voice
 from dxaqc import params as P
 from dxaqc.io import safe_extract
-from dxaqc.web import accounts, activity, analysis, ask, cabinet, control, datastats, gallery, mcp, og, progress, showcase, tgbot, tz, violations
+from dxaqc.web import accounts, activity, analysis, ask, cabinet, control, datastats, desktop, downloads, gallery, mcp, og, progress, showcase, tgbot, tz, violations
 
 DATA = os.environ.get("DXAQC_DATA", "/data")
 RUNS = os.path.join(DATA, "runs")
@@ -43,6 +43,11 @@ ask.setup(templates)
 # абсолютные адреса для превью ссылок: за nginx request.base_url видит внутренний http-адрес
 PUBLIC_URL = os.environ.get("DXAQC_PUBLIC_URL", "https://ltz2026.ru").rstrip("/")
 templates.env.globals["public_url"] = PUBLIC_URL
+# настольное приложение: тот же сервис локально, без аккаунтов, админки, бота, Claude и cookie (#139)
+DESKTOP = os.environ.get("DXAQC_MODE") == "desktop"
+templates.env.globals["desktop"] = DESKTOP
+DESKTOP_BLOCKED = ("/admin", "/login", "/logout", "/register", "/account", "/cabinet", "/ask", "/api/ask", "/invite", "/tg",
+                   "/gallery", "/api/gallery", "/tz", "/trac", "/cookies", "/runs/dataset", "/start")
 executor = ThreadPoolExecutor(max_workers=1)      # сервер слабый: одна пачка за раз
 _lock = threading.Lock()
 _jobs: dict[str, dict] = {}                        # прогон -> future и флаг отмены, для пульта
@@ -80,6 +85,12 @@ def _recover_interrupted():
 @asynccontextmanager
 async def lifespan(_app):
     _recover_interrupted()
+    if DESKTOP:
+        desktop.seed_example()
+        desktop.mcp_token()
+        yield
+        executor.shutdown(wait=False, cancel_futures=True)
+        return
     _seed_example()
     ask.start_worker()
     datastats.warm()                     # разбор ~500 файлов данных — заранее, а не на первом заходе
@@ -97,6 +108,12 @@ app = FastAPI(title="DXA QC · ЛЦТ 2026", version=__version__, lifespan=lifes
 
 @app.middleware("http")
 async def attach_user(request: Request, call_next):
+    if DESKTOP:                          # в приложении нет входа и журнала действий; разделы стенда закрыты
+        path = request.url.path
+        if any(path == b or path.startswith(b + "/") for b in DESKTOP_BLOCKED):
+            return HTMLResponse("<p>В приложении этого раздела нет. <a href='/'>На главную</a></p>", status_code=404)
+        request.state.user, request.state.csrf = None, ""
+        return await call_next(request)
     # кто вошёл: шапка всех страниц и доступ к вопросам Claude; остальной стенд открыт без входа
     request.state.user, request.state.csrf = await run_in_threadpool(ask.current_user, request)
     response = await call_next(request)
@@ -349,7 +366,8 @@ def home(request: Request):
         return index(request)
     from dxaqc.web import body3d
     return templates.TemplateResponse(request, "home_kiosk.html", dict(scene=body3d.hero_scene(), presets=_presets(),
-                                                                      version=__version__))
+                                                                      version=__version__,
+                                                                      welcome=DESKTOP and not desktop.settings()["welcomed"]))
 
 
 @app.get("/start", response_class=HTMLResponse)
@@ -447,6 +465,8 @@ def create_dataset_run(request: Request, dataset: str = Form(...), mode: str = F
 
 
 def _presets():
+    if DESKTOP:
+        return desktop.demo_presets()
     from dxaqc.web import presets
     run_id, man = _latest_train_run()
     items = presets.build(run_id, man)
@@ -465,6 +485,8 @@ def run_preset(request: Request, key: str = Form(...)):
     p = next((x for x in _presets() if x["key"] == key), None)
     if not p:
         raise HTTPException(404, "нет такого примера")
+    if key.startswith("synth-"):                       # приложение: синтетический фантом
+        return RedirectResponse(f"/check/{desktop.start_demo(key[len('synth-'):])}", status_code=303)
     meta = datasets.REGISTRY[p["dataset"]]
     run_id = _new_run(f"Пример: {p['title']}")
     try:
@@ -1142,6 +1164,15 @@ mcp.setup(read=_read, new_run=_new_run, write_status=_write_status, submit=_subm
           columns=pipeline.COLUMNS, region_ru=REGION_RU, violation_ru=VIOLATION_RU, public_url=PUBLIC_URL, templates=templates,
           trac_url=TRAC_URL)
 app.include_router(mcp.router)
+if DESKTOP:
+    desktop.setup(read=_read, new_run=_new_run, write_status=_write_status, submit=_submit, runs_dir=RUNS, list_runs=_list_runs,
+                  has_archives=_has_archives, templates=templates, example_id=EXAMPLE_ID,
+                  port=int(os.environ.get("DXAQC_PORT", "8765")))
+    app.include_router(desktop.router)
+    desktop.patch_mcp(mcp)
+else:
+    downloads.setup(templates=templates, data=DATA)
+    app.include_router(downloads.router)
 tgbot.setup(read=_read, new_run=_new_run, write_status=_write_status, submit=_submit, runs_dir=RUNS, list_runs=_list_runs,
             has_archives=_has_archives, progress_payload=_progress_payload, datasets=datasets, region_ru=REGION_RU,
             violation_ru=VIOLATION_RU, public_url=PUBLIC_URL, templates=templates)

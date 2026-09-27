@@ -19,6 +19,12 @@
       <div class="v2-prog" id="v2Prog" hidden><div class="track"><span id="v2Bar"></span></div><p id="v2Msg"></p></div>
       <noscript><button class="v2-btn" type="submit">Проверить</button></noscript>
     </form>
+    {% if desktop %}
+    <div class="k-native native-only">
+      <button type="button" class="dk-btn ghost" onclick="DXAQC.pick('files')">Открыть файлы…</button>
+      <button type="button" class="dk-btn ghost" onclick="DXAQC.pick('folder')">Открыть папку исследований…</button>
+    </div>
+    {% endif %}
     {% if presets %}
     <button type="button" class="k-preset" id="kPresetBtn" aria-haspopup="dialog" aria-controls="kPresets">
       <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
@@ -26,8 +32,9 @@
     <dialog class="k-dlg" id="kPresets" aria-labelledby="kPresetsTitle">
       <div class="k-dlg-h"><h2 id="kPresetsTitle">Готовые примеры</h2>
         <button type="button" class="k-x" id="kPresetClose" aria-label="Закрыть">×</button></div>
-      <p class="k-dlg-sub">Исследования обучающего набора организатора с оценкой экспертов — по одному на каждый тип нарушения из ТЗ.
-        Выберите пример: сервис проверит его и покажет полный разбор.</p>
+      <p class="k-dlg-sub">{% if desktop %}Синтетические фантомы — нарисованы программой, это не снимки пациентов. Выберите пример:
+        сервис проверит его и покажет полный разбор.{% else %}Исследования обучающего набора организатора с оценкой экспертов — по одному на каждый тип нарушения из ТЗ.
+        Выберите пример: сервис проверит его и покажет полный разбор.{% endif %}</p>
       <div class="k-presets">
         {% for p in presets %}
         <form method="post" action="/presets/run"><input type="hidden" name="key" value="{{ p.key }}">
@@ -77,6 +84,46 @@
   }
 })();
 </script>
+{% if welcome %}
+<dialog class="k-dlg k-welcome" id="kWelcome" aria-labelledby="kwT">
+  <div class="k-dlg-h"><h2 id="kwT">Добро пожаловать в DXA QC</h2><button type="button" class="k-x" data-wclose aria-label="Закрыть">×</button></div>
+  <div class="kw-step" data-step="1">
+    <p><b>1 из 3 · Что делает программа.</b> Проверяет качество снимков денситометрии DXA по критериям ТЗ: укладку, охват,
+      наклон оси, посторонние предметы. По каждому снимку — вердикт, причина, разметка на атласе, 3D-модель и граф решения.</p>
+    <p class="dk-muted">Всё работает на этом компьютере — снимки никуда не отправляются, интернет не нужен.</p>
+  </div>
+  <div class="kw-step" data-step="2" hidden>
+    <p><b>2 из 3 · Какие файлы подходят.</b> DICOM с денситометра (GE Lunar, Hologic и др.): поясничный отдел или бедро.
+      Можно выбрать несколько файлов, zip-архив или целую папку исследований — программа сама разложит снимки по исследованиям.</p>
+    <p class="dk-muted">Обычный рентген, КТ, МРТ и картинки получат понятный отказ с причиной.</p>
+  </div>
+  <div class="kw-step" data-step="3" hidden>
+    <p><b>3 из 3 · Попробуйте.</b> Откройте демо — синтетический фантом — и посмотрите дашборд результата. Или сразу загрузите свой снимок.</p>
+    <p class="dk-muted">Справка — в меню сверху. Вернуть это приветствие можно в Настройках.</p>
+  </div>
+  <div class="dk-row" style="justify-content:space-between;margin-top:14px">
+    <button type="button" class="dk-btn ghost" data-wclose>Пропустить</button>
+    <span class="dk-row"><button type="button" class="dk-btn ghost" id="kwBack" hidden>Назад</button>
+      <button type="button" class="dk-btn" id="kwNext">Дальше</button>
+      <a class="dk-btn" id="kwDemo" href="/check/example" hidden>Открыть демо</a></span>
+  </div>
+</dialog>
+<script>
+(function () {
+  const d = document.getElementById('kWelcome'); let step = 1;
+  const show = () => { d.querySelectorAll('.kw-step').forEach(s => s.hidden = +s.dataset.step !== step);
+    document.getElementById('kwBack').hidden = step === 1; document.getElementById('kwNext').hidden = step === 3;
+    document.getElementById('kwDemo').hidden = step !== 3; };
+  const done = () => fetch('/desktop/welcomed', {method: 'POST'});
+  document.getElementById('kwNext').onclick = () => { step++; show(); };
+  document.getElementById('kwBack').onclick = () => { step--; show(); };
+  document.getElementById('kwDemo').addEventListener('click', done);
+  d.querySelectorAll('[data-wclose]').forEach(b => b.onclick = () => { done(); d.close(); });
+  d.addEventListener('cancel', done);
+  d.showModal(); show();
+})();
+</script>
+{% endif %}
 {% endblock %}
 {% block footer %}{% endblock %}
 {% block cookie %}{% endblock %}

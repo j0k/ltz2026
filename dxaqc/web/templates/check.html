@@ -13,9 +13,10 @@
   </div>
   {% if man and not running %}
   <div class="d-dl">
-    <a class="v2-btn" href="/runs/{{ run_id }}/files/results.xlsx">⤓ Таблица XLSX</a>
-    <a class="v2-btn ghost" href="/runs/{{ run_id }}/files/results.csv">CSV</a>
-    <a class="v2-btn ghost" href="/runs/{{ run_id }}/files/overlays.zip">Разметка ZIP</a>
+    <a class="v2-btn" href="/runs/{{ run_id }}/files/results.xlsx" data-run="{{ run_id }}" data-save="results.xlsx">⤓ Таблица XLSX</a>
+    <a class="v2-btn ghost" href="/runs/{{ run_id }}/files/results.csv" data-run="{{ run_id }}" data-save="results.csv">CSV</a>
+    <a class="v2-btn ghost" href="/runs/{{ run_id }}/files/overlays.zip" data-run="{{ run_id }}" data-save="overlays.zip">Разметка ZIP</a>
+    {% if desktop %}<a class="v2-btn ghost native-only" href="#" data-open-run="{{ run_id }}">Открыть папку результатов</a>{% endif %}
   </div>
   {% endif %}
 </div>

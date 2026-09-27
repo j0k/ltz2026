@@ -153,3 +153,6 @@
 .xg-n.verdict.ok{color:#0c7a53}.xg-n.verdict.bad{color:#b3302f}
 .xg-n.verdict small{font-weight:500}
 .xg-uid{overflow-wrap:anywhere}
+.k-native{gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap}
+.k-welcome{width:min(620px,94vw)}
+.k-welcome p{font-size:15.5px;line-height:1.55}

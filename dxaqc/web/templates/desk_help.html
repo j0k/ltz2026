@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Справка{% endblock %}
+{% block head %}<link rel="stylesheet" href="/static/v2.css?v={{ version }}">{% endblock %}
+{% block content %}
+<h1>Справка</h1>
+<p class="dk-muted">Всё о работе с DXA QC. Справка встроена в приложение и открывается без интернета.</p>
+<div class="dk-help">
+  <nav class="dk-toc" aria-label="разделы справки">
+    <input type="search" id="hq" placeholder="Поиск по справке" aria-label="поиск по справке">
+    {% for t in topics %}<a href="#{{ t.slug }}" data-slug="{{ t.slug }}">{{ t.title }}</a>{% endfor %}
+    <p class="faint" id="hnone" hidden>Ничего не нашлось — попробуйте другое слово.</p>
+  </nav>
+  <div>
+    {% for t in topics %}
+    <section class="dk-card dk-topic" id="{{ t.slug }}" data-text="{{ t.title|lower }} {{ t.text }}">
+      <h2>{{ t.title }}</h2>{{ t.html|safe }}
+    </section>
+    {% endfor %}
+  </div>
+</div>
+<script>
+(function () {
+  const q = document.getElementById('hq'), none = document.getElementById('hnone');
+  q.addEventListener('input', () => {
+    const words = q.value.toLowerCase().split(/\s+/).filter(Boolean); let shown = 0;
+    document.querySelectorAll('.dk-topic').forEach(s => {
+      const ok = words.every(w => s.dataset.text.includes(w)); s.hidden = !ok; if (ok) shown++;
+      const link = document.querySelector('.dk-toc a[data-slug="' + s.id + '"]'); if (link) link.hidden = !ok;
+    });
+    none.hidden = shown > 0;
+  });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}О программе{% endblock %}
+{% block head %}<link rel="stylesheet" href="/static/v2.css?v={{ version }}">{% endblock %}
+{% block content %}
+<div class="dk-page">
+<h1>DXA QC <span class="faint">версия {{ version }}</span></h1>
+<p class="dk-muted">Контроль качества снимков денситометрии DXA: область, вердикт и причина брака по каждому снимку, разметка на атласе,
+  3D-модель и пояснение решения. Работает на этом компьютере — снимки никуда не отправляются.</p>
+<div class="dk-card">
+  <h2>Авторы</h2>
+  <p class="dk-muted" style="margin-top:0">{{ D.TEAM|capitalize }} · {{ D.CONTEXT }}</p>
+  <table class="dk-table">{% for a in D.AUTHORS %}<tr><td><b>{{ a.name }}</b></td><td>{{ a.role }}</td></tr>{% endfor %}</table>
+</div>
+<div class="dk-card">
+  <h2>Контакты</h2>
+  <table class="dk-table">{% for c in D.CONTACTS %}<tr><td>{{ c.kind }}</td><td><a href="{{ c.url }}" target="_blank" rel="noopener">{{ c.value }}</a></td></tr>{% endfor %}</table>
+  <p class="faint">Ссылки открываются во внешнем браузере. Приложению интернет для работы не нужен.</p>
+</div>
+<div class="dk-card">
+  <h2>Лицензия</h2>
+  <p>{{ D.LICENSE }}</p>
+  <p class="dk-muted">Сервис помогает проверить качество укладки и снимка. Он не ставит диагноз и не заменяет врача; вердикт по бедру —
+    подсказка модели, её точность ниже, чем у проверок позвоночника (подробности — в справке, раздел «Точность»).</p>
+</div>
+<div class="dk-card">
+  <h2>Сторонние компоненты</h2>
+  <table class="dk-table"><tr><th>компонент</th><th>версия</th><th>лицензия</th></tr>
+    {% for l in licenses %}<tr><td>{{ l.name }}</td><td>{{ l.version }}</td><td>{{ l.license }}</td></tr>{% endfor %}</table>
+</div>
+</div>
+{% endblock %}

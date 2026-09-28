@@ -1,5 +1,6 @@
-// Презентация DXA QC для ЛЦТ 2026 (задача 04). Слайды 1–6 и 12+ — наши (свобода оформления по правилам),
-// 7–11 — места под обязательные слайды шаблона организаторов: их переносим из шаблона без изменений сетки.
+// Презентация DXA QC для ЛЦТ 2026 (задача 04), структура — по разделу 4 ТЗ и критериям раздела 8.
+// Слайды 1–6 и 12+ — свободная часть; 7–11 — содержание обязательных слайдов, до получения файла шаблона
+// в нейтральной вёрстке (при переносе в шаблон — только текст, сетку шаблона не менять). 3D-моделей нет: только снимки.
 // Запуск: node build_deck.js → DXA_QC_presentation.pptx
 const pptxgen = require('pptxgenjs');
 const path = require('path');
@@ -31,24 +32,26 @@ function card(s, x, y, w, h, fill = C.card) {
 function img(s, f, x, y, w, ratio, opts = {}) {
   s.addImage({ path: A(f), x, y, w, h: w / ratio, ...opts });
 }
-function pageNo(s, n, dark = false) {
-  s.addText(String(n), { x: 9.3, y: 5.2, w: 0.4, h: 0.25, fontFace: B, fontSize: 10, color: dark ? '6F7F99' : 'A0A6B2', align: 'right', margin: 0, isTextBox: true });
+function pageNo(s, _n, dark = false) {
+  s.addText(String(pres.slides.length), { x: 9.3, y: 5.2, w: 0.4, h: 0.25, fontFace: B, fontSize: 10, color: dark ? '6F7F99' : 'A0A6B2', align: 'right', margin: 0, isTextBox: true });
 }
 
 // ------------------------------------------------------------------ 1. Титул
 {
   const s = pres.addSlide(); s.background = { color: C.navy };
-  s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 5.55, y: 0.45, w: 4.0, h: 4.7, fill: { color: C.white }, rectRadius: 0.25, line: { color: C.white } });
-  img(s, 'bone.jpg', 5.6, 0.55, 3.9, 1.0);
-  s.addText('DXA QC', { x: 0.55, y: 1.05, w: 4.8, h: 0.9, fontFace: H, fontSize: 54, bold: true, color: C.white, margin: 0, isTextBox: true });
-  s.addText('Автоматический контроль качества снимков денситометрии', { x: 0.55, y: 1.95, w: 4.8, h: 0.9, fontFace: H, fontSize: 22, color: 'CADCFC', margin: 0, isTextBox: true });
+  card(s, 5.35, 0.55, 4.2, 3.4, '1C2B44');
+  img(s, 'atlas.png', 5.5, 0.68, 3.9, 1.314);
+  s.addText('Атлас снимка поясничного отдела: позвонки Th12–L5, ось, найденный предмет (синтетический фантом)',
+    { x: 5.4, y: 4.1, w: 4.1, h: 0.5, fontFace: B, fontSize: 10.5, color: '8FA3C2', margin: 0, isTextBox: true });
+  s.addText('DXA QC', { x: 0.55, y: 0.95, w: 4.6, h: 0.9, fontFace: H, fontSize: 54, bold: true, color: C.white, margin: 0, isTextBox: true });
+  s.addText('Сервис ИИ для контроля качества снимков денситометрии', { x: 0.55, y: 1.85, w: 4.6, h: 0.9, fontFace: H, fontSize: 22, color: 'CADCFC', margin: 0, isTextBox: true });
   s.addText([
-    { text: 'Каждый снимок — вердикт, причина и понятное пояснение за доли секунды.', options: { breakLine: true } },
-    { text: 'Локально, без интернета: снимки не покидают клинику.' },
-  ], { x: 0.55, y: 3.05, w: 4.8, h: 0.8, fontFace: B, fontSize: 14, color: 'B9C6DA', margin: 0, paraSpaceAfter: 4, isTextBox: true });
+    { text: 'Поясничный отдел и бедро: область, вердикт, тип нарушения и пояснение на самом снимке.', options: { breakLine: true } },
+    { text: 'Работает локально — снимки не покидают медорганизацию.' },
+  ], { x: 0.55, y: 2.95, w: 4.6, h: 0.9, fontFace: B, fontSize: 14, color: 'B9C6DA', margin: 0, paraSpaceAfter: 4, isTextBox: true });
   s.addText('ЛЦТ 2026 · задача 04 Департамента здравоохранения Москвы · команда «Квантовый Скачок»',
-    { x: 0.55, y: 4.75, w: 4.9, h: 0.4, fontFace: B, fontSize: 11, color: '8FA3C2', margin: 0, isTextBox: true });
-  s.addNotes('Мы — команда «Квантовый Скачок». DXA QC проверяет качество снимков денситометрии сразу после исследования: область, вердикт, причина брака и понятное объяснение. Работает локально, без интернета.');
+    { x: 0.55, y: 4.75, w: 4.7, h: 0.4, fontFace: B, fontSize: 11, color: '8FA3C2', margin: 0, isTextBox: true });
+  s.addNotes('Мы — команда «Квантовый Скачок». DXA QC проверяет качество снимков денситометрии сразу после исследования: область, вердикт, тип нарушения и объяснение прямо на снимке. Работает локально, без интернета.');
 }
 
 // ------------------------------------------------------------------ 2. Проблема
@@ -68,29 +71,34 @@ function pageNo(s, n, dark = false) {
     { text: 'Последствия: ', options: { bold: true, color: C.ink } },
     { text: 'наклон оси, неполный охват или металл в кадре искажают минеральную плотность кости — остеопороз пропускают или назначают лишнее лечение, пациента вызывают на повторное исследование.', options: { color: C.ink2 } },
   ], { x: 0.5, y: 4.2, w: 9, h: 0.8, fontFace: B, fontSize: 14, margin: 0, isTextBox: true });
-  pageNo(s, 2);
+  pageNo(s);
   s.addNotes('В обучающем наборе организатора эксперты отметили нарушения у 32 из 99 исследований поясничного отдела и у 41 из 150 снимков бедра. Сейчас такие ошибки ищут вручную и выборочно.');
 }
 
-// ------------------------------------------------------------------ 3. Решение
+
+// ------------------------------------------------------------------ 3. Подход и обоснование
 {
   const s = pres.addSlide(); s.background = { color: C.white };
-  title(s, 'Решение: проверка каждого снимка', 'Сразу после исследования: область → вердикт → причина → понятное объяснение');
-  const items = [['Проверяет', 'Поясничный отдел и оба бедра по критериям ТЗ: охват, ось, посторонние предметы, укладка, поля зоны интереса'],
-                 ['Объясняет', 'Атлас с разметкой позвонков на снимке, граф решения с измерением и нормой, озвучка пояснений'],
-                 ['Встраивается', 'Таблица по ТЗ 2.5, HTTP API, MCP для ИИ-ассистентов, Telegram-бот, приложение .exe / .msi / .deb'],
-                 ['Бережёт данные', 'Работает на компьютере клиники без интернета; интерфейс сам объясняет, если файл не подходит']];
-  items.forEach(([h, t], i) => {
-    const y = 1.5 + i * 0.93;
-    num(s, i + 1, 0.5, y + 0.05);
-    s.addText(h, { x: 1.08, y, w: 3.4, h: 0.32, fontFace: H, fontSize: 16, bold: true, color: C.ink, margin: 0, isTextBox: true });
-    s.addText(t, { x: 1.08, y: y + 0.32, w: 4.0, h: 0.55, fontFace: B, fontSize: 12, color: C.ink2, margin: 0, valign: 'top', isTextBox: true });
+  title(s, 'Подход и его обоснование', 'Разные области — разные методы: выбор продиктован данными и требованием объяснимости');
+  const cols = [
+    ['Поясничный отдел', 'правила по анатомическим ориентирам',
+     ['Позвонки Th12–L5, ось и гребни подвздошных костей находятся на снимке', 'Критерии ТЗ проверяются как измерения: угол оси против 5°, охват, контраст пятна вне столба',
+      'Примеров брака мало (6, 10 и 17) — обучаемая модель переобучилась бы, правило — нет', 'Каждый вердикт можно показать врачу: измерение и норма']],
+    ['Бедро', 'ExtraTrees на 47 признаках формы',
+     ['Признаки ориентиров: диафиз, большой и малый вертел, шейка, поля вокруг зоны интереса', 'Лучшее из шести сравнённых решений, включая признаки нейросетей ResNet-50 и DINOv2',
+      'Веса классов против дисбаланса, порог — только на обучающей части', 'Инференс на numpy, без GPU и без сети']],
+  ];
+  cols.forEach(([h, sub, items], i) => {
+    const x = 0.5 + i * 4.6;
+    card(s, x, 1.45, 4.35, 3.7);
+    num(s, i + 1, x + 0.22, 1.62, i ? C.navy2 : C.blue);
+    s.addText(h, { x: x + 0.78, y: 1.58, w: 3.4, h: 0.32, fontFace: H, fontSize: 17, bold: true, color: C.ink, margin: 0, isTextBox: true });
+    s.addText(sub, { x: x + 0.78, y: 1.9, w: 3.4, h: 0.28, fontFace: B, fontSize: 12, color: C.blue, margin: 0, isTextBox: true });
+    s.addText(items.map((t, k) => ({ text: t, options: { bullet: true, breakLine: k < items.length - 1 } })),
+      { x: x + 0.25, y: 2.35, w: 3.9, h: 2.7, fontFace: B, fontSize: 12, color: C.ink2, margin: 0, valign: 'top', paraSpaceAfter: 6, isTextBox: true });
   });
-  card(s, 5.45, 1.45, 4.05, 3.65, C.card);
-  img(s, 'atlas.png', 5.6, 1.6, 3.75, 1.314);
-  s.addText('Атлас снимка: позвонки Th12–L5, ось, гребни подвздошных костей, найденный предмет', { x: 5.6, y: 4.5, w: 3.75, h: 0.5, fontFace: B, fontSize: 10.5, color: C.ink3, margin: 0, isTextBox: true });
-  pageNo(s, 3);
-  s.addNotes('Сервис определяет область, выносит вердикт, называет причину и показывает её на атласе. На картинке — синтетический фантом: снимки пациентов в презентации не используем.');
+  pageNo(s);
+  s.addNotes('Для позвоночника критерии ТЗ геометрические, а примеров брака единицы, поэтому правила по ориентирам надёжнее и объяснимы. Для бедра укладка сложнее формализуется — там обученная модель ExtraTrees; мы сравнили шесть вариантов и выбрали лучший.');
 }
 
 // ------------------------------------------------------------------ 4. Архитектура
@@ -117,9 +125,10 @@ function pageNo(s, n, dark = false) {
     s.addText([{ text: h, options: { bold: true, color: C.ink, breakLine: true } }, { text: t, options: { color: C.ink2 } }],
       { x, y: 3.95, w: 2.15, h: 0.75, fontFace: B, fontSize: 11.5, margin: 0, valign: 'top', isTextBox: true });
   });
-  pageNo(s, 4);
+  pageNo(s);
   s.addNotes('Один конвейер обработки обслуживает всё: стенд, API, MCP и настольное приложение. Поясницу проверяют правила, бедро — обученная модель ExtraTrees.');
 }
+
 
 // ------------------------------------------------------------------ 5. Данные и разбиение
 {
@@ -141,9 +150,10 @@ function pageNo(s, n, dark = false) {
     s.addText(h, { x: 0.5, y, w: 1.8, h: 0.4, fontFace: H, fontSize: 13, bold: true, color: C.ink, margin: 0, valign: 'middle', isTextBox: true });
     s.addText(t, { x: 2.3, y, w: 7.2, h: 0.4, fontFace: B, fontSize: 12, color: C.ink2, margin: 0, valign: 'middle', isTextBox: true });
   });
-  pageNo(s, 5);
+  pageNo(s);
   s.addNotes('100 исследований, 252 уникальных снимка после удаления 247 дублей. Главное — отсутствие утечки: фолды по исследованиям, общие снимки в одной группе, пороги только на обучающей части.');
 }
+
 
 // ------------------------------------------------------------------ 6. Таксономия нарушений
 {
@@ -165,41 +175,105 @@ function pageNo(s, n, dark = false) {
     { text: 'Несколько нарушений на снимке: ', options: { bold: true, color: C.ink } },
     { text: 'quality_class = 1, если сработала любая проверка; violation_type перечисляет все коды через «;»; в графе решения каждая проверка — отдельный узел с измерением и нормой, поэтому видно, что именно не так.', options: { color: C.ink2 } },
   ], { x: 0.75, y: 3.95, w: 8.5, h: 1.0, fontFace: B, fontSize: 12.5, margin: 0, valign: 'middle', isTextBox: true });
-  pageNo(s, 6);
+  pageNo(s);
   s.addNotes('Пять кодов нарушений по ТЗ. Если нарушений несколько, снимок получает класс 1 и все коды; граф решения показывает каждое отдельно.');
 }
 
-// ------------------------------------------------------------------ 7–11. Обязательные слайды шаблона
-for (let n = 7; n <= 11; n++) {
-  const s = pres.addSlide(); s.background = { color: 'EEF1F5' };
-  s.addText(`Слайд ${n} — обязательный, по шаблону организаторов`, { x: 0.5, y: 2.2, w: 9, h: 0.6, fontFace: H, fontSize: 24, bold: true, color: C.ink3, align: 'center', margin: 0, isTextBox: true });
-  s.addText('Переносится из шаблона без изменения сетки и оформления; содержание — в заметках к слайду', { x: 0.5, y: 2.85, w: 9, h: 0.4, fontFace: B, fontSize: 13, color: C.ink3, align: 'center', margin: 0, isTextBox: true });
-  s.addNotes('Место обязательного слайда шаблона ЛЦТ. Заполнить в файле шаблона, не меняя дизайн.');
-}
 
-// ------------------------------------------------------------------ 12. Метрики
-{
-  const s = pres.addSlide(); s.background = { color: C.white };
-  title(s, 'Качество: честная кросс-валидация', 'ROC-AUC по критериям; F1 — при пороге, подобранном только на обучающей части');
-  s.addChart(pres.charts.BAR, [{ name: 'ROC-AUC', labels: ['Поясница, итог', 'Посторонние предметы', 'Охват', 'Наклон оси', 'Бедро, итог', 'Укладка бедра', 'Поля зоны интереса'],
-                                 values: [0.75, 0.85, 0.88, 0.75, 0.66, 0.62, 0.80] }], {
-    x: 0.4, y: 1.35, w: 5.3, h: 3.9, barDir: 'bar', chartColors: [C.blue], showValue: true, dataLabelPosition: 'outEnd',
-    dataLabelFormatCode: '0.00', dataLabelColor: C.ink, dataLabelFontSize: 11, valAxisMinVal: 0.5, valAxisMaxVal: 1.0,
-    valAxisLabelColor: C.ink3, catAxisLabelColor: C.ink2, catAxisLabelFontSize: 11, valGridLine: { color: 'E3E7ED', size: 0.5 },
-    catGridLine: { style: 'none' }, showLegend: false, showTitle: true, title: 'ROC-AUC', titleFontSize: 12, titleColor: C.ink2, catAxisOrientation: 'maxMin' });
-  const head = { bold: true, color: C.white, fill: { color: C.navy2 }, fontSize: 11 };
-  s.addTable([
-    [{ text: 'Критерий', options: head }, { text: 'F1 (95 % ДИ)', options: head }],
-    ['Поясница, итог', '0,58 (0,46–0,74)'], ['Охват', '0,69'], ['Предметы', '0,55'], ['Наклон оси', '0,30'],
-    ['Бедро, итог', '0,47 · AUC 0,62–0,69'],
-  ], { x: 5.95, y: 1.45, w: 3.55, colW: [1.7, 1.85], fontFace: B, fontSize: 11, color: C.ink2, rowH: 0.34, border: { type: 'solid', pt: 0.75, color: 'E3E7ED' } });
-  card(s, 5.95, 3.7, 3.55, 1.45, C.ice);
-  s.addText([{ text: 'Итоговая фитнес-функция', options: { bold: true, color: C.ink, breakLine: true } },
-             { text: '0,570 (0,477–0,644)', options: { bold: true, color: C.blue, fontSize: 22, breakLine: true } },
-             { text: '0,35·F1 + 0,35·AUC по областям + 0,30·macro-F1 типов', options: { color: C.ink2, fontSize: 10.5 } }],
-    { x: 6.15, y: 3.78, w: 3.2, h: 1.3, fontFace: B, fontSize: 12, margin: 0, valign: 'middle', isTextBox: true });
-  pageNo(s, 12);
-  s.addNotes('Все цифры — кросс-валидация по исследованиям без утечки. Сильные стороны — охват и посторонние предметы (AUC 0,85–0,88). Слабое место — бедро и наклон оси: мы говорим об этом прямо.');
+// ------------------------------------------------------------------ 7–11. Обязательные слайды (содержание)
+function mandatoryTag(s, n) {
+  s.addText(`обязательный слайд ${n}`, { x: 7.3, y: 0.12, w: 2.4, h: 0.22, fontFace: B, fontSize: 9, color: 'A0A6B2', align: 'right', margin: 0, isTextBox: true });
+}
+{ // 7. Паспорт решения
+  const s = pres.addSlide(); s.background = { color: C.white }; mandatoryTag(s, 7);
+  title(s, 'DXA QC — паспорт решения', 'Кейс 04 · Департамент здравоохранения Москвы');
+  const rows = [['Задача', 'Автоматически оценивать качество снимков денситометрии (DXA) поясничного отдела и бедра по критериям ТЗ'],
+                ['Решение', 'Сервис определяет область, класс качества 0/1 и типы нарушений, показывает их на снимке и выгружает таблицу по ТЗ 2.5'],
+                ['Для кого', 'Рентгенолаборанты и врачи отделений денситометрии; руководители — отчёт о качестве'],
+                ['Ценность', 'Брак виден, пока пациент ещё в кабинете: меньше повторных исследований и ошибок в диагнозе остеопороза'],
+                ['Где работает', 'Локально: контейнер, приложение для Windows и Linux; стенд ltz2026.ru для демонстрации']];
+  rows.forEach(([h, t], i) => {
+    const y = 1.45 + i * 0.74;
+    card(s, 0.5, y, 9, 0.64);
+    s.addText(h, { x: 0.7, y, w: 1.8, h: 0.64, fontFace: H, fontSize: 14, bold: true, color: C.blue, margin: 0, valign: 'middle', isTextBox: true });
+    s.addText(t, { x: 2.5, y, w: 6.85, h: 0.64, fontFace: B, fontSize: 12.5, color: C.ink2, margin: 0, valign: 'middle', isTextBox: true });
+  });
+  pageNo(s);
+  s.addNotes('Обязательный слайд 7. Содержание подготовлено до получения файла шаблона: при переносе в шаблон вставить текст в его блоки, не меняя сетку.');
+}
+{ // 8. Соответствие ТЗ
+  const s = pres.addSlide(); s.background = { color: C.white }; mandatoryTag(s, 8);
+  title(s, 'Соответствие требованиям ТЗ', 'Обязательные функции, технические требования и дополнительный функционал');
+  const ok = (t) => [{ text: '✓', options: { color: C.ok, bold: true } }, { text: '  ' + t, options: { color: C.ink2 } }];
+  const part = (t) => [{ text: '◐', options: { color: C.warn, bold: true } }, { text: '  ' + t, options: { color: C.ink2 } }];
+  const no = (t) => [{ text: '✕', options: { color: C.bad, bold: true } }, { text: '  ' + t, options: { color: C.ink2 } }];
+  const colL = [ok('Область: поясничный отдел, левое и правое бедро'), ok('quality_class 0/1 и все типы нарушений через «;»'),
+                ok('Таблица CSV и XLSX по разделу 2.5'), ok('Контейнер: build.sh, run.sh, API пакетной обработки'),
+                ok('До 3 минут на исследование — 0,31 с на снимок'), ok('Без исключений: 100 % файлов, отказ — с причиной'),
+                ok('Воспроизводимость: повторный прогон побайтно совпадает'), ok('Локально, без передачи снимков вовне')];
+  const colR = [part('Визуализация нарушения: атласы PNG в ZIP, не DICOM-серия'), ok('Интерактивный веб-интерфейс: загрузка, просмотр, пакет'),
+                part('Коррекция врачом: правка вердикта и порогов, не контуров'), no('Текстовое описание в DICOM SR — в плане пилота')];
+  const put = (list, x, w, y0, head, step = 0.4) => {
+    s.addText(head, { x, y: y0, w, h: 0.32, fontFace: H, fontSize: 14, bold: true, color: C.ink, margin: 0, isTextBox: true });
+    list.forEach((runs, i) => s.addText(runs, { x, y: y0 + 0.4 + i * step, w, h: step - 0.04, fontFace: B, fontSize: 12, margin: 0, valign: 'middle', isTextBox: true }));
+  };
+  put(colL, 0.5, 4.6, 1.4, 'Обязательно (разделы 2, 2.7)');
+  card(s, 5.35, 1.35, 4.2, 3.55, C.card);
+  put(colR, 5.55, 3.85, 1.45, 'Дополнительно (раздел 2.6)', 0.72);
+  pageNo(s);
+  s.addNotes('Обязательный слайд 8. Все обязательные требования выполнены. Из дополнительных: веб-интерфейс полностью, визуализация — атласами PNG, коррекция — правкой вердикта, DICOM SR пока нет — честно говорим.');
+}
+{ // 9. Ключевые результаты
+  const s = pres.addSlide(); s.background = { color: C.white }; mandatoryTag(s, 9);
+  title(s, 'Ключевые результаты', 'Кросс-валидация по исследованиям на обучающем наборе организатора, 95 % ДИ');
+  const k = [['0,75', 'ROC-AUC, поясничный отдел', '95 % ДИ 0,64–0,84', C.blue], ['0,85', 'ROC-AUC, посторонние предметы', '0,76–0,94', C.blue],
+             ['0,88', 'ROC-AUC, охват', '0,58–1,00', C.blue], ['0,66', 'ROC-AUC, бедро', '0,62–0,69', C.warn],
+             ['0,31 с', 'на снимок, 2 ядра CPU', 'ТЗ: до 3 минут', C.ok], ['100 %', 'файлов обработано', 'без исключений', C.ok]];
+  k.forEach(([b, t, ci, col], i) => {
+    const x = 0.5 + (i % 3) * 3.05, y = 1.45 + Math.floor(i / 3) * 1.85;
+    card(s, x, y, 2.85, 1.65);
+    s.addText(b, { x: x + 0.22, y: y + 0.15, w: 2.5, h: 0.75, fontFace: H, fontSize: 36, bold: true, color: col, margin: 0, isTextBox: true });
+    s.addText([{ text: t, options: { color: C.ink, bold: true, breakLine: true } }, { text: ci, options: { color: C.ink3 } }],
+      { x: x + 0.22, y: y + 0.9, w: 2.5, h: 0.65, fontFace: B, fontSize: 12, margin: 0, valign: 'top', isTextBox: true });
+  });
+  pageNo(s);
+  s.addNotes('Обязательный слайд 9. Главные цифры: позвоночник AUC 0,75, посторонние предметы 0,85, охват 0,88, бедро 0,66; 0,31 секунды на снимок и 100 % обработанных файлов.');
+}
+{ // 10. Команда
+  const s = pres.addSlide(); s.background = { color: C.white }; mandatoryTag(s, 10);
+  title(s, 'Команда «Квантовый Скачок»', '');
+  const team = [['ЮК', 'Юрий Коноплёв', 'капитан команды', '', '@bimodaling'],
+                ['АЧ', 'Алексей Чуркин', 'участник команды', '', '@lesha_cfc']];
+  team.forEach(([ini, name, role, what, tg], i) => {
+    const x = 1.2 + i * 4.0;
+    card(s, x, 1.3, 3.6, 3.7);
+    s.addShape(pres.shapes.OVAL, { x: x + 1.2, y: 1.6, w: 1.2, h: 1.2, fill: { color: i ? C.navy2 : C.blue } });
+    s.addText(ini, { x: x + 1.2, y: 1.6, w: 1.2, h: 1.2, fontFace: H, fontSize: 28, bold: true, color: C.white, align: 'center', valign: 'middle', margin: 0, isTextBox: true });
+    s.addText(name, { x: x + 0.2, y: 3.0, w: 3.2, h: 0.42, fontFace: H, fontSize: 20, bold: true, color: C.ink, align: 'center', margin: 0, isTextBox: true });
+    s.addText(role, { x: x + 0.2, y: 3.42, w: 3.2, h: 0.32, fontFace: B, fontSize: 13, color: C.blue, align: 'center', margin: 0, isTextBox: true });
+    s.addText(what, { x: x + 0.3, y: 3.78, w: 3.0, h: 0.6, fontFace: B, fontSize: 12, color: C.ink2, align: 'center', margin: 0, valign: 'top', isTextBox: true });
+    s.addText('Telegram ' + tg, { x: x + 0.2, y: 4.45, w: 3.2, h: 0.3, fontFace: B, fontSize: 12, color: C.ink3, align: 'center', margin: 0, isTextBox: true });
+  });
+  pageNo(s);
+  s.addNotes('Обязательный слайд 10. В шаблоне оставить две карточки, лишние удалить целиком. Роли уточнить у команды перед сдачей.');
+}
+{ // 11. Материалы решения
+  const s = pres.addSlide(); s.background = { color: C.white }; mandatoryTag(s, 11);
+  title(s, 'Материалы решения', 'Всё, что передаём на проверку');
+  const items = [['Стенд', 'ltz2026.ru — загрузка DICOM, дашборд, готовые примеры'], ['Контейнер', 'build.sh · run.sh · serve.sh, запуск без сети'],
+                 ['API', 'пакетная обработка архива, документация ltz2026.ru/docs'], ['Приложение', '.exe · .msi · .deb, версия 1.0-Beta, ltz2026.ru/download'],
+                 ['Документация', 'README: сборка, запуск, API, форматы, ограничения'], ['Исходный код', 'репозиторий проекта — в комплекте сдачи']];
+  items.forEach(([h, t], i) => {
+    const y = 1.45 + i * 0.6;
+    num(s, i + 1, 0.5, y + 0.02, C.navy2);
+    s.addText([{ text: h + ' — ', options: { bold: true, color: C.ink } }, { text: t, options: { color: C.ink2 } }],
+      { x: 1.05, y, w: 5.6, h: 0.46, fontFace: B, fontSize: 13, margin: 0, valign: 'middle', isTextBox: true });
+  });
+  card(s, 7.0, 1.45, 2.55, 3.1);
+  img(s, 'qr.png', 7.3, 1.62, 1.95, 1.0);
+  s.addText('ltz2026.ru', { x: 7.0, y: 3.72, w: 2.55, h: 0.4, fontFace: H, fontSize: 16, bold: true, color: C.blue, align: 'center', margin: 0, isTextBox: true });
+  pageNo(s);
+  s.addNotes('Обязательный слайд 11. Ссылки на все материалы сдачи; QR ведёт на стенд.');
 }
 
 // ------------------------------------------------------------------ 13. Эксперименты и ошибки
@@ -223,8 +297,35 @@ for (let n = 7; n <= 11; n++) {
     s.addText(h, { x: 5.95, y: y + 0.1, w: 3.45, h: 0.35, fontFace: H, fontSize: 13, bold: true, color: C.ink, margin: 0, isTextBox: true });
     s.addText(t, { x: 5.95, y: y + 0.45, w: 3.45, h: 0.55, fontFace: B, fontSize: 11, color: C.ink2, margin: 0, valign: 'top', isTextBox: true });
   });
-  pageNo(s, 13);
+  pageNo(s);
   s.addNotes('Сравнили шесть подходов для бедра — выбрали ExtraTrees. Главная победа — детектор посторонних предметов: AUC вырос с 0,55 до 0,85. Ошибки по оси связаны со сколиозом.');
+}
+
+
+// ------------------------------------------------------------------ 13. Метрики с доверительными интервалами
+{
+  const s = pres.addSlide(); s.background = { color: C.white };
+  title(s, 'Метрики качества и 95 % ДИ', 'Кросс-валидация: 5 фолдов по исследованиям × 50 повторов; порог — только на обучающей части');
+  const hd = (t) => ({ text: t, options: { bold: true, color: C.white, fill: { color: C.navy2 }, fontSize: 10.5, align: 'center' } });
+  const L = (t, b) => ({ text: t, options: { align: 'left', bold: !!b, color: b ? C.ink : C.ink2 } });
+  const rows = [
+    [hd('Критерий'), hd('Брак / всего'), hd('Чувствит.'), hd('Специф.'), hd('Сбаланс. точность'), hd('F1 (95 % ДИ)'), hd('ROC-AUC (95 % ДИ)')],
+    [L('Поясничный отдел, итог', 1), '32 / 99', '0,69', '0,67', '0,68', '0,58 (0,46–0,74)', '0,75 (0,64–0,84)'],
+    [L('   охват'), '6 / 99', '0,67', '0,98', '0,82', '0,69 (0,40–0,93)', '0,88 (0,58–1,00)'],
+    [L('   наклон оси'), '10 / 99', '0,41', '0,86', '0,63', '0,30 (0,11–0,60)', '0,75 (0,55–0,91)'],
+    [L('   посторонние предметы'), '17 / 99', '0,68', '0,84', '0,76', '0,55 (0,34–0,72)', '0,85 (0,76–0,94)'],
+    [L('Бедро, итог', 1), '41 / 150', '0,65', '0,57', '0,61', '0,47', '0,66 (0,62–0,69)'],
+    [L('   укладка и ротация'), '36 / 150', '—', '—', '—', '—', '0,62'],
+    [L('   поля зоны интереса'), '7 / 150', '—', '—', '—', '—', '0,80'],
+  ];
+  s.addTable(rows, { x: 0.5, y: 1.4, w: 9, colW: [2.2, 1.0, 0.9, 0.9, 1.1, 1.45, 1.45], fontFace: B, fontSize: 11, color: C.ink2, align: 'center',
+                     rowH: 0.34, valign: 'middle', border: { type: 'solid', pt: 0.75, color: 'E3E7ED' } });
+  card(s, 0.5, 4.3, 9, 0.8, C.ice);
+  s.addText([{ text: 'Сводная фитнес-функция 0,58 ', options: { bold: true, color: C.ink } },
+             { text: '= 0,35·F1 + 0,35·ROC-AUC по областям + 0,30·macro-F1 типов нарушений; базовая линия 0,570 (0,477–0,644). Время и доля обработанных файлов — на следующем слайде.', options: { color: C.ink2 } }],
+    { x: 0.7, y: 4.33, w: 8.6, h: 0.74, fontFace: B, fontSize: 11.5, margin: 0, valign: 'middle', isTextBox: true });
+  pageNo(s);
+  s.addNotes('Метрики — как просит раздел 8.4 ТЗ: по областям и типам нарушений, чувствительность, специфичность, сбалансированная точность, F1 и ROC-AUC с 95 % ДИ. Сильные стороны — охват и посторонние предметы, слабые — наклон оси из-за сколиоза и бедро.');
 }
 
 // ------------------------------------------------------------------ 14. Скорость и требования
@@ -244,9 +345,10 @@ for (let n = 7; n <= 11; n++) {
     s.addText(h, { x: 0.5, y, w: 2.0, h: 0.38, fontFace: H, fontSize: 13, bold: true, color: C.white, margin: 0, valign: 'middle', isTextBox: true });
     s.addText(t, { x: 2.5, y, w: 7.0, h: 0.38, fontFace: B, fontSize: 12.5, color: 'CADCFC', margin: 0, valign: 'middle', isTextBox: true });
   });
-  pageNo(s, 14, true);
+  pageNo(s, 0, true);
   s.addNotes('На слабой машине без видеокарты — 0,31 секунды на снимок, весь набор за 80 секунд, 191 мегабайт памяти. Сеть не нужна, результаты воспроизводимы.');
 }
+
 
 // ------------------------------------------------------------------ 15. Кейс: галерея снимков и граф решения
 {
@@ -266,9 +368,10 @@ for (let n = 7; n <= 11; n++) {
   card(s, 6.4, 1.4, 3.15, 3.75);
   img(s, 'graph.png', 6.5, 1.55, 2.95, 1.176);
   s.addText('Граф решения: измерение против нормы по каждой проверке ТЗ → вердикт. Сворачивается в текст.', { x: 6.5, y: 4.15, w: 2.95, h: 0.85, fontFace: B, fontSize: 11, color: C.ink2, margin: 0, valign: 'top', isTextBox: true });
-  pageNo(s, 15);
+  pageNo(s);
   s.addNotes('Живой кейс на синтетическом фантоме: застёжка рядом с позвоночником. Результат видно сразу в галерее снимков: красная рамка и причина. Нажатие открывает карточку, граф показывает измеренный контраст против нормы 55 — брак.');
 }
+
 
 // ------------------------------------------------------------------ 16. Всё — на самом снимке
 {
@@ -286,16 +389,17 @@ for (let n = 7; n <= 11; n++) {
     s.addText(h, { x: 7.3, y, w: 2.25, h: 0.32, fontFace: H, fontSize: 14, bold: true, color: C.ink, margin: 0, isTextBox: true });
     s.addText(t, { x: 7.3, y: y + 0.32, w: 2.25, h: 0.55, fontFace: B, fontSize: 11, color: C.ink2, margin: 0, valign: 'top', isTextBox: true });
   });
-  pageNo(s, 16);
+  pageNo(s);
   s.addNotes('Результаты показываем только на снимках: атлас с разметкой позвонков, оси и найденного предмета, рядом — карточка снимка с проверками по ТЗ. Врач смотрит на то же изображение, что получил с аппарата.');
 }
+
 
 // ------------------------------------------------------------------ 17. Продукт и поставка
 {
   const s = pres.addSlide(); s.background = { color: C.white };
   title(s, 'Готово к использованию уже сейчас', 'Стенд, API и настольное приложение DXA QC 1.0-Beta');
   card(s, 0.45, 1.4, 5.2, 3.75);
-  img(s, 'download_c.png', 0.55, 1.55, 5.0, 1.72);
+  img(s, 'download2.png', 0.55, 1.55, 5.0, 1.714);
   const items = [['Веб-стенд', 'ltz2026.ru — загрузка, дашборд, пример'], ['Приложение', '.exe · .msi · .deb, офлайн, подписанные суммы'],
                  ['Контейнер', 'сборка и запуск одной командой, как в ТЗ'], ['Интеграции', 'HTTP API · MCP · Telegram-бот'],
                  ['Если файл не тот', 'сервис объяснит, что загружено и что делать']];
@@ -305,8 +409,28 @@ for (let n = 7; n <= 11; n++) {
     s.addText(h, { x: 6.45, y, w: 3.1, h: 0.3, fontFace: H, fontSize: 13.5, bold: true, color: C.ink, margin: 0, isTextBox: true });
     s.addText(t, { x: 6.45, y: y + 0.3, w: 3.1, h: 0.38, fontFace: B, fontSize: 11, color: C.ink2, margin: 0, valign: 'top', isTextBox: true });
   });
-  pageNo(s, 17);
+  pageNo(s);
   s.addNotes('Продукт можно попробовать прямо сейчас: стенд ltz2026.ru, приложение для Windows и Linux со страницы загрузки, контейнер по ТЗ.');
+}
+
+
+// ------------------------------------------------------------------ 18. Сценарий демонстрации
+{
+  const s = pres.addSlide(); s.background = { color: C.navy };
+  title(s, 'Демонстрация: 2 минуты', 'Сценарий показа на защите — на синтетических фантомах, без данных пациентов', true);
+  const steps = [['Загрузка', 'на главной ltz2026.ru перетаскиваем архив DICOM или выбираем готовый пример'],
+                 ['Дашборд', 'сводка: исследования, годные, с нарушениями, время на снимок'],
+                 ['Снимок с браком', 'в галерее красная рамка — открываем карточку: предмет в рамке на атласе'],
+                 ['Пояснение', 'граф решения: контраст против нормы → вердикт; переключаем в текст'],
+                 ['Выгрузка', 'таблица XLSX по ТЗ 2.5 и ZIP с атласами; то же — в приложении без интернета']];
+  steps.forEach(([h, t], i) => {
+    const y = 1.45 + i * 0.73;
+    num(s, i + 1, 0.5, y + 0.05, C.blue);
+    s.addText(h, { x: 1.1, y, w: 2.2, h: 0.52, fontFace: H, fontSize: 15, bold: true, color: C.white, margin: 0, valign: 'middle', isTextBox: true });
+    s.addText(t, { x: 3.3, y, w: 6.2, h: 0.52, fontFace: B, fontSize: 13, color: 'CADCFC', margin: 0, valign: 'middle', isTextBox: true });
+  });
+  pageNo(s, 0, true);
+  s.addNotes('Сценарий живой демонстрации: загрузка, дашборд, снимок с браком, пояснение, выгрузка. Всё на синтетических фантомах.');
 }
 
 // ------------------------------------------------------------------ 18. Ограничения и внедрение
@@ -327,26 +451,27 @@ for (let n = 7; n <= 11; n++) {
     s.addText(h, { x: 5.6, y, w: 3.9, h: 0.32, fontFace: H, fontSize: 14, bold: true, color: C.ink, margin: 0, isTextBox: true });
     s.addText(t, { x: 5.6, y: y + 0.32, w: 3.9, h: 0.55, fontFace: B, fontSize: 11.5, color: C.ink2, margin: 0, valign: 'top', isTextBox: true });
   });
-  pageNo(s, 18);
+  pageNo(s);
   s.addNotes('Ограничения мы называем открыто. План: пилот в отделениях, сбор уточнённой разметки прямо в интерфейсе, дообучение бедра и Th12, затем интеграция с PACS и ЕРИС.');
 }
 
-// ------------------------------------------------------------------ 19. Финал
+
+// ------------------------------------------------------------------ 20. Финал
 {
   const s = pres.addSlide(); s.background = { color: C.navy };
-  s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 5.55, y: 0.45, w: 4.0, h: 4.7, fill: { color: C.white }, rectRadius: 0.25, line: { color: C.white } });
-  img(s, 'bone.jpg', 5.6, 0.55, 3.9, 1.0);
-  s.addText('Попробуйте сами', { x: 0.55, y: 1.0, w: 4.8, h: 0.7, fontFace: H, fontSize: 36, bold: true, color: C.white, margin: 0, isTextBox: true });
-  s.addText('ltz2026.ru', { x: 0.55, y: 1.75, w: 4.8, h: 0.6, fontFace: H, fontSize: 28, bold: true, color: '7FB2F0', margin: 0, isTextBox: true });
+  card(s, 6.3, 1.0, 3.0, 3.55, C.white);
+  img(s, 'qr.png', 6.55, 1.2, 2.5, 1.0);
+  s.addText('ltz2026.ru', { x: 6.3, y: 3.85, w: 3.0, h: 0.5, fontFace: H, fontSize: 20, bold: true, color: C.navy, align: 'center', margin: 0, isTextBox: true });
+  s.addText('Попробуйте сами', { x: 0.55, y: 1.0, w: 5.4, h: 0.7, fontFace: H, fontSize: 36, bold: true, color: C.white, margin: 0, isTextBox: true });
   s.addText([
-    { text: 'Проверка снимка · готовые примеры · приложение для Windows и Linux', options: { breakLine: true } },
-    { text: 'Работает без интернета — снимки не покидают клинику' },
-  ], { x: 0.55, y: 2.45, w: 4.8, h: 0.8, fontFace: B, fontSize: 13, color: 'B9C6DA', margin: 0, paraSpaceAfter: 4, isTextBox: true });
+    { text: 'Проверка снимка, готовые примеры, приложение для Windows и Linux.', options: { breakLine: true } },
+    { text: 'Работает без интернета — снимки не покидают медорганизацию.' },
+  ], { x: 0.55, y: 1.85, w: 5.4, h: 0.9, fontFace: B, fontSize: 14, color: 'B9C6DA', margin: 0, paraSpaceAfter: 4, isTextBox: true });
   s.addText([
     { text: 'Команда «Квантовый Скачок»', options: { bold: true, color: C.white, breakLine: true } },
     { text: 'Юрий Коноплёв · Алексей Чуркин', options: { color: 'CADCFC', breakLine: true } },
     { text: 'Telegram: @bimodaling · @lesha_cfc', options: { color: '8FA3C2' } },
-  ], { x: 0.55, y: 3.75, w: 4.8, h: 1.0, fontFace: B, fontSize: 13, margin: 0, isTextBox: true });
+  ], { x: 0.55, y: 3.45, w: 5.4, h: 1.0, fontFace: B, fontSize: 14, margin: 0, isTextBox: true });
   s.addNotes('Спасибо! Всё можно попробовать на ltz2026.ru. Готовы ответить на вопросы.');
 }
 

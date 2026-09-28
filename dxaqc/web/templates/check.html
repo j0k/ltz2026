@@ -111,7 +111,8 @@
 </div>
 {% endif %}
 
-<h2 class="d-h2">Снимки</h2>
+<div class="d-h2-row"><h2 class="d-h2">Снимки</h2>
+  <span class="pic-sw all" role="group" aria-label="вид всех снимков"><span class="faint">все:</span><button type="button" data-p="atlas" aria-pressed="true">атлас с разметкой</button><button type="button" data-p="raw" aria-pressed="false">чистый снимок</button></span></div>
 {% for study in dash.studies %}
 <section class="d-study">
   <div class="d-study-h">
@@ -123,7 +124,12 @@
     {% set kind = 'bad' if r.quality_class == 1 else 'ok' if r.quality_class == 0 else 'na' %}
     {% set viol = r.violation_list or [] %}
     <article class="d-img {{ kind }}" id="{{ r.key }}">
-      <div class="pic"><img src="/runs/{{ run_id }}/files/{{ r.overlay_png }}" alt="атлас: {{ region_ru.get(r.anatomical_region, '') }}" loading="lazy"></div>
+      {% set atlas_url = '/runs/' ~ run_id ~ '/files/' ~ r.overlay_png %}
+      {% set raw_url = ('/runs/' ~ run_id ~ '/files/' ~ r.original_png) if r.original_png else '' %}
+      <div class="pic" data-atlas="{{ atlas_url }}" data-raw="{{ raw_url }}" data-view="atlas">
+        <a href="{{ atlas_url }}" target="_blank" rel="noopener" title="открыть во весь размер"><img src="{{ atlas_url }}" alt="атлас: {{ region_ru.get(r.anatomical_region, '') }}" loading="lazy"></a>
+        {% if raw_url %}<span class="pic-sw" role="group" aria-label="вид снимка"><button type="button" data-p="atlas" aria-pressed="true">атлас</button><button type="button" data-p="raw" aria-pressed="false">снимок</button></span>{% endif %}
+      </div>
       <div class="body">
         <div class="d-img-h"><h3>{{ region_ru.get(r.anatomical_region, 'снимок')|capitalize }}</h3>
           <span class="pill {{ kind }}">{{ 'нарушение' if kind == 'bad' else 'годен' if kind == 'ok' else 'не оценено' }}</span></div>
@@ -228,6 +234,29 @@
   }
   document.querySelectorAll('.xg-sw button').forEach(x => x.addEventListener('click', () => set(x.dataset.v)));
   try { const v = localStorage.getItem(KEY); if (v === 'text') set('text'); } catch (e) {}
+})();
+</script>
+<script>
+(function () {   // снимок: атлас с разметкой ⇄ чистый рентгеновский снимок; общий выбор запоминается
+  const KEY = 'dxaqc_pic_view';
+  function one(pic, view) {
+    const url = view === 'raw' && pic.dataset.raw ? pic.dataset.raw : pic.dataset.atlas;
+    pic.dataset.view = url === pic.dataset.raw ? 'raw' : 'atlas';
+    const img = pic.querySelector('img'), a = pic.querySelector('a');
+    img.src = url; a.href = url;
+    img.alt = (pic.dataset.view === 'raw' ? 'снимок без разметки' : 'атлас с разметкой');
+    pic.querySelectorAll('.pic-sw button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.p === pic.dataset.view)));
+  }
+  function all(view) {
+    document.querySelectorAll('.d-img .pic').forEach(p => one(p, view));
+    document.querySelectorAll('.pic-sw.all button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.p === view)));
+    try { localStorage.setItem(KEY, view); } catch (e) {}
+  }
+  document.querySelectorAll('.d-img .pic-sw button').forEach(x => x.addEventListener('click', (e) => {
+    e.preventDefault(); one(x.closest('.pic'), x.dataset.p);
+  }));
+  document.querySelectorAll('.pic-sw.all button').forEach(x => x.addEventListener('click', () => all(x.dataset.p)));
+  try { if (localStorage.getItem(KEY) === 'raw') all('raw'); } catch (e) {}
 })();
 </script>
 {% endif %}

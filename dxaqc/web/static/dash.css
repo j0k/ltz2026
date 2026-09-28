@@ -193,3 +193,15 @@
 .k-bone .k-bone-canvas{position:absolute;inset:0;width:100%!important;height:100%!important;opacity:0;transition:opacity .6s;cursor:grab}
 .k-bone.ready .k-bone-canvas{opacity:1}.k-bone.ready .k-bone-poster{opacity:0}
 @media (max-width:760px){.k-bone{height:min(100vw,420px)}}
+
+/* снимок: атлас ⇄ чистый рентген (Юрий, 28.09) */
+.d-h2-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.pic-sw{display:inline-flex;align-items:center;gap:2px;padding:3px;border-radius:999px;background:rgba(12,18,32,.72);backdrop-filter:blur(4px)}
+.d-img .pic .pic-sw{position:absolute;left:10px;top:10px;z-index:2}
+.pic-sw button{border:0;background:none;color:#c9d3e3;font:inherit;font-size:12.5px;font-weight:600;padding:5px 11px;border-radius:999px;cursor:pointer}
+.pic-sw button[aria-pressed=true]{background:#fff;color:#0f1b2d}
+.pic-sw button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.pic-sw.all{background:#eceae5}.pic-sw.all .faint{padding:0 6px 0 8px;font-size:12.5px}
+.pic-sw.all button{color:var(--ink3,#6b7383)}.pic-sw.all button[aria-pressed=true]{background:#fff;color:var(--ink,#1a1f2b);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.d-img .pic a{display:flex;align-items:center;justify-content:center;width:100%;height:100%}
+.d-img .pic[data-view=raw] img{image-rendering:auto}

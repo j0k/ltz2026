@@ -74,3 +74,13 @@ def test_three_is_served_locally(client):
         assert client.get(f"/static/vendor/three/{f}").status_code == 200, f
     js = client.get("/static/body3d.js").text
     assert "from 'three'" in js and "http" not in js.split("import")[1].split(";")[0], "без CDN — работает без сети"
+
+
+def test_card_switches_to_plain_xray(client):
+    """28.09, Юрий: на карточке можно увидеть чистый рентгеновский снимок без разметки."""
+    fake_run("20260927-190000-aaaaaa", [SPINE, HIP])
+    check = client.get("/check/20260927-190000-aaaaaa").text
+    assert 'data-raw="/runs/20260927-190000-aaaaaa/files/s1_original.png"' in check
+    assert 'data-atlas="/runs/20260927-190000-aaaaaa/files/s1_overlay.png"' in check
+    assert check.count('class="pic-sw"') == 2 and 'class="pic-sw all"' in check and "чистый снимок" in check
+    assert "dxaqc_pic_view" in check, "общий выбор запоминается"

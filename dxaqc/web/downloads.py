@@ -19,7 +19,7 @@ ctx: dict = {}
 KINDS = {
     ".exe": dict(os="windows", title="Windows — установщик .exe", hint="Для Windows 10 и 11: установка для текущего пользователя, права администратора не нужны."),
     ".msi": dict(os="windows", title="Windows — пакет .msi", hint="Для администраторов и больниц: тихая установка msiexec /i … /qn на все компьютеры."),
-    ".deb": dict(os="linux", title="Linux — пакет .deb", hint="Ubuntu 22.04 и 24.04, Debian 12: sudo apt install ./dxaqc_….deb"),
+    ".deb": dict(os="linux", title="Linux — пакет .deb", hint="Ubuntu 22.04–26.04, Debian 12–13: sudo apt install ./dxaqc_….deb"),
 }
 
 

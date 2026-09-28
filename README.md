@@ -102,13 +102,13 @@ python3 -m venv .venv && .venv/bin/pip install -r infra/app/requirements.txt pyt
 |---|---|
 | Windows 10/11, для пользователя | `DXAQC-<версия>-setup.exe` |
 | Windows, на компьютер (тихо: `msiexec /i … /qn`) | `DXAQC-<версия>.msi` |
-| Ubuntu 22.04/24.04, Debian 12 | `dxaqc_<версия>_amd64.deb` |
+| Ubuntu 22.04–26.04, Debian 12–13 | `dxaqc_<версия>_amd64.deb` |
 
 Код приложения — `dxaqc/desktop/` и `dxaqc/web/desktop.py` (режим `DXAQC_MODE=desktop`). Сборка на Linux:
 
 ```bash
 packaging/build_windows.sh     # .exe (NSIS) и .msi (wixl): переносимый Python 3.12 + библиотеки win_amd64
-packaging/build_deb.sh         # .deb: библиотеки под Python 3.10–3.12, окно WebKitGTK
+packaging/build_deb.sh         # .deb: библиотеки под Python 3.10–3.14, окно WebKitGTK
 packaging/publish.sh           # SHA256SUMS, latest.json, каталог моделей для сайта
 python -m dxaqc.desktop --selftest   # самопроверка: анализ фантома, сервер, страницы, MCP
 ```

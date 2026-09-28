@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Сборка DXA QC для Linux (#158): .deb для Ubuntu 22.04/24.04 и Debian 12. Библиотеки под Python 3.10–3.12 внутри,
+# Сборка DXA QC для Linux (#158): .deb для Ubuntu 22.04–26.04 и Debian 12–13. Библиотеки под Python 3.10–3.14 внутри,
 # окно — системный WebKitGTK через pywebview; интернет при установке не нужен.
 #   packaging/build_deb.sh [папка сборки] [папка результатов]
 set -euo pipefail
@@ -15,13 +15,13 @@ PKG="$BUILD/deb/dxaqc_${FVER}_amd64"
 mkdir -p "$OUT"; cd "$BUILD"
 echo "[deb] версия $VER → $OUT"
 grep -v '^pywebview' "$REPO/packaging/requirements-desktop.txt" > req-lin.txt
-declare -A NUMPY=([3.10]=2.2.6 [3.11]=2.4.6 [3.12]=)
+declare -A NUMPY=([3.10]=2.2.6 [3.11]=2.4.6 [3.12]= [3.13]= [3.14]=)
 P="$BUILD/pure"; mkdir -p "$P"
 $PIP download -q --no-deps -d "$P" pywebview
 $PIP wheel -q --no-deps -w "$P" proxy_tools bottle
 rm -rf "$BUILD/deb"; mkdir -p "$PKG/DEBIAN" "$PKG/opt/dxaqc/app" "$PKG/usr/bin" "$PKG/usr/share/applications" \
-  "$PKG/usr/share/icons/hicolor/256x256/apps" "$PKG/usr/share/doc/dxaqc"
-for v in 3.10 3.11 3.12; do
+  "$PKG/usr/share/icons/hicolor/256x256/apps" "$PKG/usr/share/doc/dxaqc" "$PKG/usr/share/metainfo"
+for v in 3.10 3.11 3.12 3.13 3.14; do
   req=req-lin.txt
   if [ -n "${NUMPY[$v]}" ]; then sed "s/^numpy==.*/numpy==${NUMPY[$v]}/" req-lin.txt > req-lin-$v.txt; req=req-lin-$v.txt; fi
   # pip подбирает зависимости по условиям текущего Python, поэтому нужное только старым версиям — явно
@@ -43,7 +43,7 @@ cat > "$PKG/usr/bin/dxaqc" <<'SH'
 V=$(python3 -c 'import sys; print("%d%d" % sys.version_info[:2])' 2>/dev/null)
 LIB=/opt/dxaqc/lib/py$V
 if [ ! -d "$LIB" ]; then
-  echo "DXA QC: системный Python 3.${V#3} не поддерживается этим пакетом — нужен Python 3.10, 3.11 или 3.12" >&2
+  echo "DXA QC: системный Python 3.${V#3} не поддерживается этим пакетом — нужен Python от 3.10 до 3.14" >&2
   exit 1
 fi
 export PYTHONPATH="/opt/dxaqc/app:$LIB${PYTHONPATH:+:$PYTHONPATH}"
@@ -71,23 +71,49 @@ DXA QC $VER — контроль качества денситометрии DXA
 Программа для контроля качества снимков, не для постановки диагноза. Сайт: https://ltz2026.ru
 Сторонние компоненты и их лицензии — в программе, раздел «О программе».
 CP
+cat > "$PKG/usr/share/metainfo/ru.ltz2026.dxaqc.metainfo.xml" <<MI
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>ru.ltz2026.dxaqc</id>
+  <launchable type="desktop-id">dxaqc.desktop</launchable>
+  <name>DXA QC</name>
+  <name xml:lang="ru">DXA QC</name>
+  <summary>Quality control of DXA densitometry images</summary>
+  <summary xml:lang="ru">Контроль качества снимков денситометрии DXA</summary>
+  <developer id="ru.ltz2026"><name>Алексей Чуркин и Юрий Коноплёв</name></developer>
+  <developer_name>Алексей Чуркин и Юрий Коноплёв</developer_name>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>LicenseRef-proprietary</project_license>
+  <description>
+    <p>Checks DICOM images of lumbar spine and hip against DXA quality criteria. Works offline.</p>
+    <p xml:lang="ru">Проверяет снимки денситометрии DXA поясничного отдела и бедра по критериям ТЗ Департамента здравоохранения Москвы: область, вердикт и причина брака, разметка на атласе, пояснение решения, выгрузка таблиц CSV и XLSX.</p>
+    <p xml:lang="ru">Работает без интернета — снимки не покидают компьютер. Встроенная справка и локальный MCP-сервер для ИИ-ассистентов.</p>
+  </description>
+  <url type="homepage">https://ltz2026.ru</url>
+  <categories><category>Science</category><category>MedicalSoftware</category></categories>
+  <releases><release version="$DEBVER" date="$(date +%F)"/></releases>
+  <content_rating type="oars-1.1"/>
+</component>
+MI
 SIZE=$(du -sk "$PKG" | cut -f1)
 cat > "$PKG/DEBIAN/control" <<CT
 Package: dxaqc
 Version: $DEBVER
 Architecture: amd64
-Maintainer: DXA QC <support@ltz2026.ru>
+Maintainer: Alexey Churkin and Yuri Konoplev <support@ltz2026.ru>
 Installed-Size: $SIZE
-Depends: python3 (>= 3.10), python3 (<< 3.13), python3-gi, ca-certificates, gir1.2-gtk-3.0, gir1.2-webkit2-4.1 | gir1.2-webkit2-4.0
+Depends: python3 (>= 3.10), python3 (<< 3.15), python3-gi, ca-certificates, gir1.2-gtk-3.0, gir1.2-webkit2-4.1 | gir1.2-webkit2-4.0
 Recommends: xdg-utils
 Section: science
 Priority: optional
 Homepage: https://ltz2026.ru
-Description: DXA QC — контроль качества снимков денситометрии
- Проверяет качество снимков денситометрии DXA по критериям ТЗ ДепЗдрава:
- область, вердикт и причина брака, разметка на атласе, 3D-модель, пояснение
- решения, выгрузка таблиц. Работает без интернета; снимки не покидают компьютер.
- Встроенная справка и локальный MCP-сервер для ИИ-ассистентов.
+Description: DXA QC - quality control of DXA densitometry images
+ Checks DICOM images of lumbar spine and hip against the quality criteria
+ of the Moscow Healthcare Department: region, verdict, reason of rejection,
+ annotated atlas, explanation graph, CSV/XLSX export. Works offline: images
+ never leave the computer. Built-in help and a local MCP server.
+ Authors: Alexey Churkin, Yuri Konoplev (team Quantum Leap, LCT 2026).
+ Interface language: Russian.
 CT
 cat > "$PKG/DEBIAN/postinst" <<'PI'
 #!/bin/sh

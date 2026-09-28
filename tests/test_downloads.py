@@ -37,3 +37,13 @@ def test_download_page_has_screenshot_gallery(client):
     assert "DXA QC 1.0-Beta" in html
     js = client.get("/static/shots.js").text
     assert "prefers-reduced-motion" in js and "visibilitychange" in js
+
+
+def test_linux_install_command_uses_real_file_name(client):
+    """Алексей, 28.09: команда установки должна совпадать с именем файла (регистр важен в Linux)."""
+    import re
+    html = client.get("/download").text
+    names = re.findall(r'href="/downloads/[^"]+/([^"/]+\.deb)"', html)
+    if names:
+        assert f"sudo apt install ./{names[0]}" in html
+    assert "Алексей Чуркин и Юрий Коноплёв" in html

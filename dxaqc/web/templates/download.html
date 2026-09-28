@@ -67,12 +67,16 @@ sha256sum -c SHA256SUMS --ignore-missing</div>
   <section class="dk-card">
     <h2>Linux</h2>
     <ol>
-      <li>Скачайте <b>.deb</b>.</li>
-      <li>Установите: <code>sudo apt install ./dxaqc_{{ rel.version }}_amd64.deb</code> — система доставит нужные пакеты окна (WebKitGTK).</li>
+      {% set deb = (rel.files|selectattr('os', 'equalto', 'linux')|list or [dict(name='dxaqc_…_amd64.deb')])[0] %}
+      <li>Скачайте <b>{{ deb.name }}</b>.</li>
+      <li>В терминале, в папке с файлом: <code>sudo apt install ./{{ deb.name }}</code> — система доставит нужные пакеты окна (WebKitGTK).
+        Можно и двойным щелчком через «Центр приложений» Ubuntu; если он не справится — установите командой.</li>
       <li>Откройте <b>DXA QC</b> из меню приложений или командой <code>dxaqc</code>.</li>
       <li>Проверка установки: <code>dxaqc --selftest</code>.</li>
     </ol>
-    <p class="faint">Ubuntu 22.04 и 24.04, Debian 12 (Python 3.10–3.12). Удаление: <code>sudo apt remove dxaqc</code>.</p>
+    <p class="faint">Ubuntu 22.04–26.04, Debian 12 и 13 (Python 3.10–3.14). Удаление: <code>sudo apt remove dxaqc</code>.
+      Пакет не из магазина Ubuntu, поэтому «Центр приложений» может назвать издателя неизвестным: авторы — Алексей Чуркин и Юрий Коноплёв,
+      подлинность файла проверяется по SHA-256 и подписи ниже.</p>
   </section>
 </div>
 

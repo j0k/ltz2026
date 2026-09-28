@@ -19,7 +19,7 @@ needs_data = pytest.mark.skipif(not TEST_DIR.exists(), reason="нет данны
 def test_home_is_just_upload_and_3d(client):
     html = client.get("/").text
     assert 'id="v2Upload"' in html and 'action="/runs"' in html and 'name="ui" value="v2"' in html
-    assert 'class="b3d b3d-hero"' in html and "/static/body3d.js" in html, "справа 3D-кость"
+    assert 'id="bone3d"' in html and "/static/bone3d.js" in html and "/static/bone/poster.jpg" in html, "справа 3D-модель таза"
     for extra in ('href="/login"', 'href="/register"', 'href="/v1"', 'href="/tz/"', 'id="cookieBar"', "<footer>", "Подробнее"):
         assert extra not in html, f"на главной только загрузка: лишнее {extra}"
     old = client.get("/start").text
@@ -64,7 +64,7 @@ def test_upload_goes_to_new_result_page(client):
     assert html.count('<article class="d-img') == 1 and "Поясничный отдел" in html
     assert "годен" in html or "нарушение" in html
     assert 'class="d-kpis"' in html and 'class="d-checks"' in html and "Таблица результатов" in html, "дашборд по ТЗ"
-    assert 'class="d-fail"' in html and "photo.jpg" in html and "не DICOM" in html.replace("а не DICOM", "не DICOM"), "отказ с причиной"
+    assert 'class="d-card d-rej"' in html and "Что на картинке:" in html and "photo.jpg" in html and "не DICOM" in html.replace("а не DICOM", "не DICOM"), "отказ с причиной"
     for f in ("results.csv", "results.xlsx", "overlays.zip"):
         assert f'/runs/{rid}/files/{f}' in html, f
     assert f'/runs/{rid}/images/' in html and 'id="cookieBar"' not in html and 'href="/login"' not in html

@@ -410,3 +410,20 @@ def _t_analyze_paths(args, token):
             time.sleep(0.5)
         result.update(mcp.t_get_run({"run_id": run_id}, token))
     return result
+
+
+@router.post("/desktop/force/{run_id}")
+def force_picture(run_id: str, target: str = Form(...)):
+    """Приложение: разобрать отклонённую картинку сразу — пользователь сам себе админ (#168)."""
+    if not re.fullmatch(r"[A-Za-z0-9-]{1,64}", run_id):
+        raise HTTPException(404)
+    base = os.path.realpath(os.path.join(ctx["runs_dir"], run_id, "input"))
+    src = os.path.realpath(os.path.join(base, target))
+    if not src.startswith(base + os.sep) or not os.path.isfile(src):
+        raise HTTPException(404, "файл не найден")
+    new_id = ctx["new_run"](f"Принудительный анализ: {os.path.basename(target)}")
+    dst = os.path.join(ctx["runs_dir"], new_id, "input", os.path.basename(target))
+    shutil.copy2(src, dst)
+    ctx["write_status"](new_id, force=True, parent=run_id)
+    ctx["submit"](new_id)
+    return RedirectResponse(f"/check/{new_id}", status_code=303)

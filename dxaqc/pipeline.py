@@ -198,11 +198,18 @@ def run_batch(input_dir: str, out_dir: str, labels: dict | None = None, dataset:
              last=dict(name=os.path.basename(img.rel_path), region=base.get("anatomical_region"), quality_class=q,
                        violations=base.get("violation_list") or [], key=key if ok else ""))
 
-    for fl in failures:
-        rows.append(dict(path_to_study=fl.rel_path, study_uid="", image_uid="", key="", anatomical_region="unknown",
-                         quality_class=None, violation_type=f"error: {fl.error}"[:200], violation_list=[],
-                         processing_status="Failure", time_of_processing=0.0, explanations=[fl.error], measurements={},
-                         reject_code=fl.code, forceable=fl.forceable))
+    for n, fl in enumerate(failures):
+        row = dict(path_to_study=fl.rel_path, study_uid="", image_uid="", key="", anatomical_region="unknown",
+                   quality_class=None, violation_type=f"error: {fl.error}"[:200], violation_list=[],
+                   processing_status="Failure", time_of_processing=0.0, explanations=[fl.error], measurements={},
+                   reject_code=fl.code, forceable=fl.forceable)
+        if fl.code == "not_dicom":                       # картинка: что на ней и что делать — вместо тупика
+            from dxaqc.describe import describe_picture
+            name = f"reject{n:03d}_preview.png"
+            desc = describe_picture(os.path.join(input_dir, fl.rel_path), os.path.join(out_dir, name))
+            if desc:
+                row.update(described=desc, preview_png=name)
+        rows.append(row)
 
     rows.sort(key=lambda r: (r["processing_status"] != "Success", r["study_uid"], r["anatomical_region"], r["path_to_study"]))
     emit("tables", 0, 1, "results.csv, results.xlsx, overlays.zip")

@@ -93,14 +93,30 @@ def _load_picture(path: str, rel: str) -> DicomImage | LoadFailure:
             pixels = np.asarray(im.convert("L"), np.uint8)
     except Exception as exc:  # битая картинка
         return LoadFailure(rel, f"картинку не удалось открыть: {type(exc).__name__}", code="unreadable")
+    ext = os.path.splitext(path)[1].lstrip(".").upper()
+    study = os.path.basename(os.path.dirname(rel)) or "принудительно"
+    from dxaqc.describe import describe_picture
+    desc = describe_picture(path) or {}
+    if desc.get("kind") == "pelvis" and pixels.shape[1] >= 64:
+        # обзорный снимок таза: на DXA каждое бедро снимают отдельно — режем пополам и разбираем как два бедра.
+        # Пациент лежит лицом к нам: левая половина кадра — его правое бедро.
+        half, out = pixels.shape[1] // 2, []
+        for part, side in ((pixels[:, :half], "правое бедро — левая половина кадра"),
+                           (pixels[:, half:], "левое бедро — правая половина кадра")):
+            px = _shrink(np.ascontiguousarray(part))
+            sha = hashlib.sha1(px.tobytes()).hexdigest()
+            note = (f"Принудительный анализ: исходный файл — картинка {ext} {w}×{h} px, не DICOM: обычный рентген таза. "
+                    f"На денситометрии бедро снимают отдельно, поэтому снимок разрезан пополам; здесь {side}. "
+                    f"Масштаб приведён к DXA. Результат не гарантирован.")
+            out.append(DicomImage(path, f"{rel} · {side}", study, sha[:16], px, sha,
+                                  {"Modality": ext, "forced": "1", "forced_note": note}))
+        return out
     pixels = _shrink(pixels)
     if min(pixels.shape) < 32:
         return LoadFailure(rel, f"картинка слишком маленькая: {w}×{h} px", code="unreadable")
     sha = hashlib.sha1(pixels.tobytes()).hexdigest()
-    ext = os.path.splitext(path)[1].lstrip(".").upper()
     note = (f"Принудительный анализ: исходный файл — картинка {ext} {w}×{h} px, не DICOM; переведена в оттенки серого "
             f"и приведена к масштабу DXA. Результат не гарантирован.")
-    study = os.path.basename(os.path.dirname(rel)) or "принудительно"
     return DicomImage(path, rel, study, sha[:16], pixels, sha, {"Modality": ext, "forced": "1", "forced_note": note})
 
 
@@ -213,10 +229,11 @@ def collect(root: str, on_file=None, force: bool = False):
         if isinstance(res, LoadFailure):
             failures.append(res)
             continue
-        key = (res.study_uid, res.sha)
-        if key in seen:
-            dups += 1
-            continue
-        seen.add(key)
-        images.append(res)
+        for one in (res if isinstance(res, list) else [res]):   # обзорный таз при принудительном анализе — два снимка
+            key = (one.study_uid, one.sha)
+            if key in seen:
+                dups += 1
+                continue
+            seen.add(key)
+            images.append(one)
     return images, failures, dups

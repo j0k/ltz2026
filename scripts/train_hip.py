@@ -17,6 +17,7 @@ from dxaqc import __version__, analyze as AN, datasets, hipmodel as HM, io as di
 
 warnings.filterwarnings("ignore")
 PARAMS = dict(n_estimators=200, min_samples_leaf=3, max_features="sqrt", class_weight="balanced")
+PARAMS.update(json.loads(os.environ.get("DXAQC_HIP_PARAMS", "{}")))   # для подбора: {"min_samples_leaf": 10}
 
 
 def model(seed=0):

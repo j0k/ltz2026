@@ -62,13 +62,23 @@ def embed(name, recs):
         def run(x):
             o = m(pixel_values=x).last_hidden_state
             return torch.cat([o[:, 0], o[:, 1:].mean(1)], dim=1)          # CLS и среднее по патчам
-    vecs = []
+    # по частям: DXAQC_EMB_SECONDS — сколько считать за запуск; сделанное — в emb_<name>.part.npz, следующий запуск продолжит
+    part = os.path.join(OUT, f"emb_{name}.part.npz")
+    vecs = [np.load(part)["emb"]] if os.path.isfile(part) else []
+    start = sum(len(v) for v in vecs)
+    budget = float(os.environ.get("DXAQC_EMB_SECONDS", "1e9"))
     t0 = time.time()
     with torch.no_grad():
-        for i in range(0, len(recs), 8):
+        for i in range(start, len(recs), 8):
             x = torch.stack([prep(square(r["pixels"], cfg["size"])) for r in recs[i:i + 8]])
             vecs.append(run(x).numpy())
+            if time.time() - t0 > budget and i + 8 < len(recs):
+                np.savez(part, emb=np.concatenate(vecs))
+                print(f"{name}: {i + 8} из {len(recs)} за {time.time() - t0:.0f} с — продолжение следующим запуском", flush=True)
+                return None
     V = np.concatenate(vecs)
+    if os.path.isfile(part):
+        os.remove(part)
     print(f"{name}: {V.shape} за {time.time() - t0:.0f} с", flush=True)
     return V
 
@@ -85,4 +95,6 @@ if __name__ == "__main__":
         path = os.path.join(OUT, f"emb_{name}.npz")
         if os.path.isfile(path):
             print(f"{name}: уже есть"); continue
-        np.savez(path, emb=embed(name, recs))
+        V = embed(name, recs)
+        if V is not None:
+            np.savez(path, emb=V)

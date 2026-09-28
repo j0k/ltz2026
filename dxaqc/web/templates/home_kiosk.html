@@ -48,7 +48,13 @@
     {% endif %}
     {% if not desktop %}<a class="k-app" href="/download">⤓ приложение для Windows и Linux</a>{% endif %}
   </div>
-  <div class="k-right">{% set hero = True %}{% include "_b3d_stage.html" %}</div>
+  <div class="k-right">
+    <div class="k-bone" id="bone3d" data-v="{{ version }}" role="img" aria-label="3D-модель таза и тазобедренных суставов: гладкий кортикальный слой, губчатая трабекулярная структура на срезе шейки бедра">
+      <img class="k-bone-poster" src="/static/bone/poster.jpg?v={{ version }}" alt="" width="570" height="570">
+    </div>
+    <script type="importmap">{"imports": {"three": "/static/vendor/three/three.module.min.js"}}</script>
+    <script type="module" src="/static/bone3d.js?v={{ version }}"></script>
+  </div>
 </section>
 <script>
 (function () {
@@ -79,6 +85,7 @@
   const dlg = document.getElementById('kPresets'), open = document.getElementById('kPresetBtn');
   if (dlg && open) {
     open.addEventListener('click', () => dlg.showModal());
+    if (new URLSearchParams(location.search).get('presets') === '1') dlg.showModal();   // «Открыть готовый пример» с дашборда
     document.getElementById('kPresetClose').addEventListener('click', () => dlg.close());
     dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });   // клик по фону закрывает
     dlg.querySelectorAll('form').forEach(f => f.addEventListener('submit', () => f.querySelector('button').classList.add('busy')));

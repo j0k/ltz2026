@@ -33,8 +33,18 @@
 .d-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 18px}
 .d-card h2{font-size:16px;margin:0 0 10px}
 .d-card-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
-.d-3d .b3d{margin:6px 0 0;height:min(64vh,560px);min-height:420px}
-.d-3d-sub{margin:0}
+.d-gal-sub{margin:10px 0 6px;font-size:13px}
+.d-gal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:6px}
+.d-thumb{display:flex;flex-direction:column;border:2px solid var(--line);border-radius:12px;overflow:hidden;background:#fff;color:inherit;text-decoration:none;transition:transform .15s,box-shadow .15s}
+.d-thumb:hover,.d-thumb:focus-visible{transform:translateY(-2px);box-shadow:0 6px 18px rgba(20,30,50,.12)}
+.d-thumb.bad{border-color:var(--bad)} .d-thumb.ok{border-color:var(--ok)}
+.d-thumb img{display:block;width:100%;height:190px;object-fit:contain;background:#0d1220}
+.d-thumb .cap{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:7px 9px 2px;font-size:13.5px}
+.d-thumb .cap .pill{font-style:normal;font-size:11.5px}
+.d-thumb .why{padding:0 9px 8px;font-size:12px;color:var(--bad)}
+.d-thumb .cap:last-child{padding-bottom:8px}
+.d-img{scroll-margin-top:80px}
+.d-img:target{outline:3px solid var(--accent);outline-offset:3px}
 .d-side{display:grid;gap:16px}
 .d-bars{list-style:none;margin:0;padding:0;display:grid;gap:9px}
 .d-bars li{position:relative;display:flex;justify-content:space-between;gap:10px;padding:6px 10px;border-radius:8px;background:#f4f3f0;overflow:hidden;font-size:14px;color:var(--ink3)}

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ st.title or 'Проверка' }}{% endblock %}
-{% block head %}<link rel="stylesheet" href="/static/v2.css?v={{ version }}"><link rel="stylesheet" href="/static/body3d.css?v={{ version }}"><link rel="stylesheet" href="/static/dash.css?v={{ version }}">{% endblock %}
+{% block head %}<link rel="stylesheet" href="/static/v2.css?v={{ version }}"><link rel="stylesheet" href="/static/dash.css?v={{ version }}">{% endblock %}
 {% block header %}{% set new_check = True %}{% include "_kiosk_header.html" %}{% endblock %}
 {% block content %}
 {% set s = (man or {}).get('summary') or {} %}
@@ -64,13 +64,25 @@
   <div class="d-kpi"><b>{{ '%.1f'|format(s.wall_time or 0)|replace('.', ',') }} с</b><span>вся проверка</span></div>
 </div>
 
-{% if dash.scene %}
+{% if dash.studies %}
 <div class="d-main">
-  <section class="d-card d-3d">
-    <div class="d-card-h"><h2>3D-модель исследования</h2>
-      <a href="/runs/{{ run_id }}/3d?study={{ dash.focus.key|urlencode }}">во весь экран →</a></div>
-    <p class="faint d-3d-sub">{{ dash.focus.key }}{% if dash.studies|length > 1 %} · показано исследование с нарушениями первым, остальные — ниже{% endif %}</p>
-    {% set scene = dash.scene %}{% set hero = False %}{% include "_b3d_stage.html" %}
+  <section class="d-card d-gal">
+    <div class="d-card-h"><h2>Снимки исследования</h2><span class="faint">нажмите на снимок — откроется его карточка</span></div>
+    {% for study in dash.studies %}
+    {% if dash.studies|length > 1 %}<p class="faint d-gal-sub">Исследование {{ study.key }}{% if loop.first and study.verdict == 'bad' %} · с нарушениями показано первым{% endif %}</p>{% endif %}
+    <div class="d-gal-grid">
+      {% for r in study.rows %}
+      {% set kind = 'bad' if r.quality_class == 1 else 'ok' if r.quality_class == 0 else 'na' %}
+      <a class="d-thumb {{ kind }}" href="#{{ r.key }}">
+        <img src="/runs/{{ run_id }}/files/{{ r.overlay_png }}" alt="{{ region_ru.get(r.anatomical_region, 'снимок') }}" loading="lazy">
+        <span class="cap"><b>{{ region_ru.get(r.anatomical_region, 'снимок')|capitalize }}</b>
+          <i class="pill {{ kind }}">{{ 'нарушение' if kind == 'bad' else 'годен' if kind == 'ok' else 'не оценено' }}</i></span>
+        {% set viol = (r.violation_list or [])|reject('equalto', 'hip_not_evaluated_v0')|list %}
+        {% if viol %}<span class="why">{{ viol|map('replace', 'hip_positioning', 'укладка бедра')|map('replace', 'hip_roi', 'поля зоны интереса')|map('replace', 'axis_tilt', 'наклон оси')|map('replace', 'coverage', 'неполный охват')|map('replace', 'artifact', 'посторонний предмет')|join(' · ') }}</span>{% endif %}
+      </a>
+      {% endfor %}
+    </div>
+    {% endfor %}
   </section>
   <div class="d-side">
     <section class="d-card">
@@ -105,15 +117,13 @@
   <div class="d-study-h">
     <span class="pill {{ study.verdict if study.verdict in ('ok', 'bad') else 'na' }}">{{ '✕ есть нарушение' if study.verdict == 'bad' else '✓ качественное' if study.verdict == 'ok' else 'не оценено' }}</span>
     <b>Исследование {{ study.key }}</b><span class="faint">{{ study.uid }}</span>
-    <a class="d-study-3d" href="/runs/{{ run_id }}/3d?study={{ study.key|urlencode }}">🧍 3D</a>
   </div>
   <div class="d-imgs">
   {% for r in study.rows %}
     {% set kind = 'bad' if r.quality_class == 1 else 'ok' if r.quality_class == 0 else 'na' %}
     {% set viol = r.violation_list or [] %}
     <article class="d-img {{ kind }}" id="{{ r.key }}">
-      <div class="pic"><img src="/runs/{{ run_id }}/files/{{ r.overlay_png }}" alt="атлас: {{ region_ru.get(r.anatomical_region, '') }}" loading="lazy">
-        <a class="v2-to3d" href="/runs/{{ run_id }}/3d?study={{ (r.study_key or '')|urlencode }}&amp;focus={{ r.anatomical_region }}&amp;view=xray&amp;play=1">⇄ 3D</a></div>
+      <div class="pic"><img src="/runs/{{ run_id }}/files/{{ r.overlay_png }}" alt="атлас: {{ region_ru.get(r.anatomical_region, '') }}" loading="lazy"></div>
       <div class="body">
         <div class="d-img-h"><h3>{{ region_ru.get(r.anatomical_region, 'снимок')|capitalize }}</h3>
           <span class="pill {{ kind }}">{{ 'нарушение' if kind == 'bad' else 'годен' if kind == 'ok' else 'не оценено' }}</span></div>

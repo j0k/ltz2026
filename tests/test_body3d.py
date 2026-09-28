@@ -56,19 +56,17 @@ def fake_run(run_id, rows):
         json.dump(dict(summary=dict(images=len(rows), bad=1, good=0, studies=1), rows=rows), f)
 
 
-def test_page_renders_tags_and_data(client):
+def test_results_only_on_images(client):
+    """28.09, Алексей: результаты — только на снимках; 3D-вид исследования и выбор на нём убраны."""
     fake_run("20260927-190000-aaaaaa", [SPINE, HIP, dict(HIP, key="h2", study_key="st2", quality_class=0, violation_list=[])])
-    html = client.get("/runs/20260927-190000-aaaaaa/3d").text
-    assert 'id="b3dData"' in html and "/static/vendor/three/three.module.min.js" in html and "/static/body3d.js" in html
-    assert 'b3d-tag tl bad' in html and 'b3d-tag right bad' in html and 'b3d-tag left absent' in html
-    assert "Модель схематичная" in html and 'name="study"' in html, "честная подпись и выбор исследования"
-    one = client.get("/runs/20260927-190000-aaaaaa/3d?study=st2").text
-    assert 'b3d-tag right ok' in one and 'b3d-tag tl absent' in one
-    assert client.get("/runs/nope-run/3d").status_code == 404
-    assert 'id="b3dMix"' in html and 'id="b3dToggle"' in html, "переключатель рентген ⇄ 3D"
+    r = client.get("/runs/20260927-190000-aaaaaa/3d?study=st2", follow_redirects=False)
+    assert r.status_code == 302 and r.headers["location"] == "/check/20260927-190000-aaaaaa", "старые ссылки — на результат"
+    assert client.get("/runs/nope-run/3d", follow_redirects=False).status_code == 404
     check = client.get("/check/20260927-190000-aaaaaa").text
-    assert 'href="/runs/20260927-190000-aaaaaa/3d?study=st1"' in check and 'id="b3dData"' in check, "3D исследования на дашборде"
-    assert "3d?study=st1&amp;focus=lumbar_spine&amp;view=xray&amp;play=1" in check, "кнопка «⇄ 3D» на снимке"
+    assert "/3d" not in check and 'id="b3dData"' not in check and "body3d" not in check, "на дашборде нет 3D"
+    assert "Снимки исследования" in check and check.count('class="d-thumb') == 3, "галерея снимков"
+    assert f'href="#{SPINE["key"]}"' in check and f'id="{SPINE["key"]}"' in check, "снимок в галерее ведёт к своей карточке"
+    assert 'class="d-thumb bad"' in check and 'class="d-thumb ok"' in check
 
 
 def test_three_is_served_locally(client):

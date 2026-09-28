@@ -532,7 +532,7 @@ CHECKS = {
 
 
 def _dashboard(run_id: str, rows: list[dict]) -> dict:
-    """Сводка для дашборда результата: исследования, 3D худшего исследования, нарушения по типам и по областям."""
+    """Сводка для дашборда результата: исследования (с нарушениями — первыми), нарушения по типам и по областям."""
     from collections import Counter
     from dxaqc.web import body3d
     ok_rows = [r for r in rows if r.get("processing_status") == "Success"]
@@ -560,7 +560,7 @@ def _dashboard(run_id: str, rows: list[dict]) -> dict:
         r["_graph"] = explain.graph(r, params.get("params"), hm["meta"]["thresholds"] if hm else None)
     judged = [r for r in ok_rows if (r.get("expert") or {}).get("bad") in (0, 1) and r.get("quality_class") in (0, 1)]
     agree = sum(1 for r in judged if r["expert"]["bad"] == r["quality_class"])
-    return dict(studies=studies, focus=focus, scene=body3d.scene(run_id, focus["rows"]) if focus else None,
+    return dict(studies=studies, focus=focus,
                 violations=[(code, VIOLATION_RU.get(code, code), viol.get(code, 0)) for code in
                             ("coverage", "axis_tilt", "artifact", "hip_positioning", "hip_roi")],
                 viol_max=max(viol.values()) if viol else 0, regions=regions,
@@ -587,22 +587,13 @@ def check_page(request: Request, run_id: str):
         og_title=f"{st.get('title') or 'Проверка'} · DXA QC", og_image=f"/runs/{run_id}/og.jpg"))
 
 
-@app.get("/runs/{run_id}/3d", response_class=HTMLResponse)
-def body3d_page(request: Request, run_id: str, study: str = ""):
-    """3D-вид исследования: схематичный скелет на подиуме, области окрашены по вердикту, выноски с цифрами."""
-    from dxaqc.web import body3d
-    st = _read(run_id, "status.json")
-    man = _read(run_id, os.path.join("out", "manifest.json"))
-    if not st or not man:
-        raise HTTPException(404, "проверка не найдена или ещё идёт")
-    groups = body3d.studies(man["rows"])
-    if not groups:
-        raise HTTPException(404, "в проверке нет снимков позвоночника или бедра")
-    key = study if study in groups else next(iter(groups))
-    items = [dict(key=k, scene=body3d.scene(run_id, rs), n=len(rs)) for k, rs in groups.items()]
-    return templates.TemplateResponse(request, "body3d.html", dict(
-        run_id=run_id, st=st, study=key, scene=body3d.scene(run_id, groups[key]), studies=items, version=__version__,
-        example_id=EXAMPLE_ID, og_title=f"3D-модель исследования · {st.get('title') or 'DXA QC'}", og_image=f"/runs/{run_id}/og.jpg"))
+@app.get("/runs/{run_id}/3d")
+def body3d_page(run_id: str):
+    """Бывший 3D-вид исследования. По просьбе Алексея (28.09) результаты показываем только на снимках:
+    старые ссылки ведут на страницу результата."""
+    if not _read(run_id, "status.json"):
+        raise HTTPException(404, "проверка не найдена")
+    return RedirectResponse(f"/check/{run_id}", status_code=302)
 
 
 @app.post("/runs")

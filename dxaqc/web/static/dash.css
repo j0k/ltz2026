@@ -34,13 +34,13 @@
 .d-card h2{font-size:16px;margin:0 0 10px}
 .d-card-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
 .d-gal-sub{margin:10px 0 6px;font-size:13px}
-.d-gal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:6px}
+.d-gal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-top:6px}
 .d-thumb{display:flex;flex-direction:column;border:2px solid var(--line);border-radius:12px;overflow:hidden;background:#fff;color:inherit;text-decoration:none;transition:transform .15s,box-shadow .15s}
 .d-thumb:hover,.d-thumb:focus-visible{transform:translateY(-2px);box-shadow:0 6px 18px rgba(20,30,50,.12)}
 .d-thumb.bad{border-color:var(--bad)} .d-thumb.ok{border-color:var(--ok)}
 .d-thumb img{display:block;width:100%;height:190px;object-fit:contain;background:#0d1220}
-.d-thumb .cap{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:7px 9px 2px;font-size:13.5px}
-.d-thumb .cap .pill{font-style:normal;font-size:11.5px}
+.d-thumb .cap{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:4px 6px;padding:7px 9px 2px;font-size:13.5px}
+.d-thumb .cap .pill{font-style:normal;font-size:11.5px;white-space:nowrap}
 .d-thumb .why{padding:0 9px 8px;font-size:12px;color:var(--bad)}
 .d-thumb .cap:last-child{padding-bottom:8px}
 .d-img{scroll-margin-top:80px}

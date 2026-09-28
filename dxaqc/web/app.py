@@ -26,7 +26,7 @@ from starlette.concurrency import run_in_threadpool
 
 from dxaqc import __version__, atlas, datasets, pipeline, voice
 from dxaqc import params as P
-from dxaqc.io import safe_extract
+from dxaqc.io import safe_extract, unpack_archives
 from dxaqc.web import accounts, activity, analysis, ask, cabinet, control, datastats, desktop, downloads, gallery, mcp, og, progress, showcase, tgbot, tz, violations
 
 DATA = os.environ.get("DXAQC_DATA", "/data")
@@ -191,17 +191,11 @@ def _process(run_id, stop: threading.Event | None = None):
         _write_status(run_id, state="running", started=time.time())
         input_dir = os.path.join(base, "input")
         # архивы распаковываются здесь, в фоне, а не в запросе загрузки: страница не подвисает и видит этап
-        archives = sorted(f for f in os.listdir(input_dir) if f.lower().endswith(".zip") and os.path.isfile(os.path.join(input_dir, f)))
+        # битый архив не срывает проверку: по нему будет строка отказа, остальные файлы проверяются
+        archives = [f for _, _, fs in os.walk(input_dir) for f in fs if f.lower().endswith(".zip")]
         if archives:
             tracker.start("unpack", total=len(archives), detail=archives[0])
-            for i, name in enumerate(archives):
-                path = os.path.join(input_dir, name)
-                try:
-                    safe_extract(path, os.path.join(input_dir, os.path.splitext(name)[0]))
-                except Exception as exc:
-                    raise RuntimeError(f"архив {name} не распакован: {exc}") from exc
-                os.remove(path)
-                tracker("unpack", i + 1, len(archives), name)
+            unpack_archives(input_dir, on_archive=lambda i, n, rel: tracker("unpack", i, n, rel))
         ds = st.get("dataset")
         pipeline.run_batch(input_dir, os.path.join(base, "out"),
                            labels=datasets.load_labels(ds) if ds else None, dataset=ds, params=st.get("params"), force=bool(st.get("force")),

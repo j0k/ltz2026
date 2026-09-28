@@ -57,10 +57,13 @@ def test_upload_is_unpacked_in_background_with_milestones(client):
 
 
 @needs_data
-def test_broken_archive_is_reported_as_error(client):
+def test_broken_archive_is_reported_as_failure_row(client):
+    """28.09: битый архив не срывает проверку — она завершается, по архиву строка отказа с причиной."""
     rid = run_id_from(client.post("/runs", files={"files": ("bad.zip", b"not a zip at all", "application/zip")}, follow_redirects=False))
     p = wait_state(client, rid)
-    assert p["state"] == "error" and "архив bad.zip не распакован" in p["error"]
+    assert p["state"] == "done", p
+    m = client.get(f"/runs/{rid}/files/manifest.json").json()
+    assert m["summary"]["failures"] == 1 and "архив zip не распакован" in m["rows"][0]["explanations"][0]
 
 
 @needs_data

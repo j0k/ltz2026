@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import shutil
 import warnings
 import zipfile
 from dataclasses import dataclass, field
@@ -53,25 +54,90 @@ SKIP_EXT = (".xlsx", ".xls", ".csv", ".txt", ".pdf", ".doc", ".docx", ".json", "
 FORCE_MAX_SIDE = 320   # принудительный анализ приводит кадр к масштабу DXA, около 300 px
 NON_DXA_MODALITY = {"CT": "компьютерная томография", "MR": "МРТ", "US": "УЗИ", "PT": "ПЭТ", "NM": "радионуклидное исследование",
                     "MG": "маммография", "XA": "ангиография", "RF": "рентгеноскопия", "ES": "эндоскопия", "OP": "офтальмология",
-                    "IO": "внутриротовой снимок", "PX": "панорамный снимок зубов", "SM": "микроскопия", "ECG": "ЭКГ"}
+                    "IO": "внутриротовой снимок", "PX": "панорамный снимок зубов", "SM": "микроскопия", "ECG": "ЭКГ",
+                    "RTDOSE": "дозовое распределение лучевой терапии", "RTPLAN": "план лучевой терапии",
+                    "RTSTRUCT": "контуры лучевой терапии", "RTIMAGE": "снимок лучевой терапии", "SR": "структурированный отчёт",
+                    "SEG": "сегментация", "PR": "состояние отображения", "KO": "отметка ключевых снимков",
+                    "REG": "совмещение изображений", "DOC": "документ", "AU": "аудиозапись", "HD": "гемодинамика"}
 DXA_WORDS = ("dxa", "dexa", "densit", "денсит", "bmd", "lunar", "prodigy", "hologic", "horizon", "norland", "stratos",
              "osteosys", "primus", "medix")
 
 
-def dxa_problem(ds, shape) -> str | None:
-    """Причина считать DICOM не денситометрией DXA или None. Признаки денситометра в описании снимают подозрения."""
+def _dxa_named(ds) -> bool:
+    """В описании серии, у производителя или модели есть признаки денситометра."""
     text = " ".join(str(ds.get(k, "")) for k in ("SeriesDescription", "StudyDescription", "ProtocolName", "Manufacturer",
                                                  "ManufacturerModelName", "BodyPartExamined", "ImageType")).lower()
-    if any(w in text for w in DXA_WORDS):
+    return any(w in text for w in DXA_WORDS)
+
+
+def _is_colour(ds) -> bool:
+    pi = str(ds.get("PhotometricInterpretation", "")).upper()
+    return int(ds.get("SamplesPerPixel", 1) or 1) > 1 or pi.startswith(("RGB", "YBR", "PALETTE"))
+
+
+def dxa_problem(ds, shape) -> str | None:
+    """Причина считать DICOM не денситометрией DXA или None. Признаки денситометра в описании снимают подозрения
+    (отчёт денситометра разбирается отдельно — см. find_scan_panel)."""
+    if _dxa_named(ds):
         return None
-    modality = str(ds.get("Modality", "")).upper()
+    modality = str(ds.get("Modality", "") or "").upper().strip()
+    if not modality:
+        return ("в файле не указана модальность и нет признаков денситометра — похоже на тестовую или служебную "
+                "картинку, а не снимок исследования")
     if modality in NON_DXA_MODALITY:
         return f"модальность {modality} ({NON_DXA_MODALITY[modality]}) — это не денситометрия DXA"
+    if int(ds.get("BitsStored", 8) or 8) == 1:
+        return "однобитное изображение — это маска или разметка, а не снимок"
+    if _is_colour(ds):
+        return (f"цветное изображение ({str(ds.get('PhotometricInterpretation', '')) or 'цвет'}) — снимки DXA "
+                "в оттенках серого, а признаков денситометра в файле нет")
+    if modality == "OT":
+        return ("вторичный захват (Modality OT) без признаков денситометра — это скриншот или служебная картинка, "
+                "а не снимок DXA")
     h, w = shape[:2]
     if max(h, w) > 1024:
         return (f"кадр {w}×{h} px похож на обычный рентген: снимки DXA около 300×300 px, "
                 "а в описании серии и у производителя нет признаков денситометра")
     return None
+
+
+def find_scan_panel(gray: np.ndarray) -> tuple[int, int, int, int] | None:
+    """Отчёт денситометра (страница с таблицами и графиком): найти на нём сам снимок — самую крупную тёмную
+    прямоугольную панель. Возвращает (y0, y1, x0, x1) в пикселях страницы или None."""
+    h, w = gray.shape
+    k = max(1, min(h, w) // 300)                       # грубая сетка: ~300 клеток по короткой стороне
+    hh, ww = h // k, w // k
+    dark = gray[:hh * k, :ww * k].reshape(hh, k, ww, k).mean(axis=(1, 3)) < 45
+    seen = np.zeros_like(dark, bool)
+    boxes = []                                         # (клеток, y0, y1, x0, x1) каждого тёмного куска
+    for sy, sx in zip(*np.nonzero(dark)):
+        if seen[sy, sx]:
+            continue
+        stack, n, y0, y1, x0, x1 = [(sy, sx)], 0, sy, sy, sx, sx
+        seen[sy, sx] = True
+        while stack:
+            y, x = stack.pop()
+            n += 1
+            y0, y1, x0, x1 = min(y0, y), max(y1, y), min(x0, x), max(x1, x)
+            for ny, nx in ((y + 1, x), (y - 1, x), (y, x + 1), (y, x - 1)):
+                if 0 <= ny < hh and 0 <= nx < ww and dark[ny, nx] and not seen[ny, nx]:
+                    seen[ny, nx] = True
+                    stack.append((ny, nx))
+        boxes.append((n, y0, y1 + 1, x0, x1 + 1))
+    if not boxes:
+        return None
+    # панель снимка разрезана светлой костью и линиями разметки на вертикальные куски с общими верхом и низом —
+    # собираем их вместе с самым крупным куском
+    _, y0, y1, x0, x1 = max(boxes)
+    tol = max(2, (y1 - y0) // 20)
+    for n, by0, by1, bx0, bx1 in boxes:
+        if n >= 10 and abs(by0 - y0) <= tol and abs(by1 - y1) <= tol and min(abs(bx0 - x1), abs(x0 - bx1)) <= (y1 - y0):
+            x0, x1 = min(x0, bx0), max(x1, bx1)
+    bh, bw = y1 - y0, x1 - x0
+    share = bh * bw / (hh * ww)
+    if not (0.02 <= share <= 0.6) or not (0.5 <= bw / bh <= 2.0) or min(bh, bw) * k < 64:
+        return None                                    # не похоже на панель снимка
+    return y0 * k, y1 * k, x0 * k, x1 * k
 
 
 def _shrink(pixels: np.ndarray) -> np.ndarray:
@@ -148,6 +214,36 @@ def safe_extract(zip_path: str, dest: str) -> list[str]:
     return out
 
 
+def unpack_archives(root: str, on_archive=None, max_depth: int = 3) -> int:
+    """Распаковать все zip в папке на месте, включая вложенные (до max_depth уровней): архив → папка с его именем.
+    Распакованный архив удаляется. Битый, пустой или слишком большой архив остаётся как есть — при чтении по нему
+    будет строка отказа с причиной, а проверка остальных файлов продолжится. Возвращает число распакованных архивов.
+    on_archive(номер, всего, относительный путь) — для прогресса."""
+    done, bad = 0, set()
+    for _ in range(max_depth):
+        zips = sorted(os.path.join(d, f) for d, _, fs in os.walk(root) for f in fs
+                      if f.lower().endswith(".zip") and os.path.join(d, f) not in bad)
+        if not zips:
+            break
+        for i, z in enumerate(zips):
+            target = os.path.splitext(z)[0]
+            try:
+                safe_extract(z, target)
+                os.remove(z)
+                done += 1
+            except Exception as exc:  # noqa: BLE001 — архив не должен ронять проверку остальных файлов
+                shutil.rmtree(target, ignore_errors=True)
+                bad.add(z)
+                BAD_ARCHIVES[os.path.realpath(z)] = f"{type(exc).__name__}: {exc}"
+            if on_archive:
+                on_archive(i + 1, len(zips), os.path.relpath(z, root))
+    return done
+
+
+# причины, по которым архив не распакован: путь → текст; читает load_image для строки отказа
+BAD_ARCHIVES: dict[str, str] = {}
+
+
 def iter_candidate_files(root: str):
     for dirpath, _, files in os.walk(root, followlinks=True):   # наборы подключаются ссылками
         for f in sorted(files):
@@ -171,14 +267,26 @@ def _to_uint8(ds, arr: np.ndarray) -> np.ndarray:
 def load_image(path: str, root: str, force: bool = False) -> DicomImage | LoadFailure:
     rel = os.path.relpath(path, root)
     ext = os.path.splitext(path)[1].lower()
+    if ext == ".zip":
+        why = BAD_ARCHIVES.get(os.path.realpath(path), "")
+        return LoadFailure(rel, "архив zip не распакован: он повреждён, пуст, защищён паролем или слишком большой"
+                                + (f" ({why})" if why else "") + ". Проверьте архив и загрузите его заново", code="unreadable")
     if ext in IMAGE_EXT:
         if force:
             return _load_picture(path, rel)
         return LoadFailure(rel, f"файл {ext.lstrip('.').upper()} — это картинка, а не DICOM. Сервис проверяет DICOM денситометрии DXA: "
                                 "поясничный отдел и бедро", code="not_dicom", forceable=True)
     try:
+        size = os.path.getsize(path)
+        if size == 0:
+            return LoadFailure(rel, "файл пустой (0 байт) — скорее всего, он не докачался или не скопировался")
+        with open(path, "rb") as fh:
+            has_magic = fh.read(132)[128:132] == b"DICM"
         # сначала только заголовок: модальность видно сразу, и чужое исследование отсекается без распаковки пикселей
         head = pydicom.dcmread(path, force=True, stop_before_pixels=True)
+        if not has_magic and not any(k in head for k in ("SOPClassUID", "Modality", "StudyInstanceUID", "Rows")):
+            return LoadFailure(rel, "это не DICOM: в файле нет ни заголовка DICOM, ни тегов снимка. Сервис проверяет "
+                                    "DICOM денситометрии DXA", code="not_dicom")
         early = dxa_problem(head, (int(head.get("Rows", 0) or 0), int(head.get("Columns", 0) or 0)))
         if early and not force:
             return LoadFailure(rel, f"DICOM не похож на денситометрию DXA: {early}", code="not_dxa", forceable=True)
@@ -187,14 +295,32 @@ def load_image(path: str, root: str, force: bool = False) -> DicomImage | LoadFa
             return LoadFailure(rel, "в файле нет изображения")
         try:
             raw = ds.pixel_array
-        except Exception as exc:                      # сжатый DICOM, который нечем разжать
+        except Exception as exc:                      # сжатый DICOM, который нечем разжать, или повреждённые пиксели
             syntax = getattr(getattr(ds, "file_meta", None), "TransferSyntaxUID", None)
             how = getattr(syntax, "name", None) or (str(syntax) if syntax else "неизвестный метод")
-            return LoadFailure(rel, f"файл сжат ({how}) и не разжимается этим сервисом: {type(exc).__name__}. "
-                                    "Пришлите тот же снимок без сжатия", code="unreadable")
+            if syntax is not None and getattr(syntax, "is_compressed", False):
+                return LoadFailure(rel, f"файл сжат ({how}) и не разжимается этим сервисом: {type(exc).__name__}. "
+                                        "Пришлите тот же снимок без сжатия", code="unreadable")
+            return LoadFailure(rel, f"изображение в файле повреждено и не читается ({type(exc).__name__}: {str(exc)[:120]}). "
+                                    "Выгрузите снимок из аппарата заново", code="unreadable")
         pixels = _to_uint8(ds, raw)
-        if pixels.ndim != 2 or min(pixels.shape) < 32:
-            return LoadFailure(rel, f"неподдерживаемая форма изображения {pixels.shape}")
+        if pixels.ndim != 2:
+            return LoadFailure(rel, f"неподдерживаемая форма изображения {pixels.shape}: ожидается один плоский снимок")
+        if min(pixels.shape) < 32:
+            return LoadFailure(rel, f"изображение слишком маленькое: {pixels.shape[1]}×{pixels.shape[0]} px — "
+                                    "снимки DXA около 300×300 px")
+        report_note = ""
+        if _dxa_named(ds) and (_is_colour(ds) or max(pixels.shape) > 1024):
+            # отчёт денситометра (скриншот страницы с таблицами): проверяем только вырезанный из него снимок
+            box = find_scan_panel(pixels)
+            if not box:
+                return LoadFailure(rel, "это отчёт денситометра (страница с таблицами), а снимка на нём найти не удалось. "
+                                        "Выгрузите из денситометра исходный снимок DICOM", code="not_dxa", forceable=True)
+            y0, y1, x0, x1 = box
+            pixels = _shrink(np.ascontiguousarray(pixels[y0:y1, x0:x1]))
+            report_note = (f"Снимок вырезан из отчёта денситометра {str(ds.get('Manufacturer', '') or '').strip()} "
+                           f"(область {x1 - x0}×{y1 - y0} px). Критерии рассчитаны на исходный снимок GE Lunar — "
+                           "результат ориентировочный.")
         problem = dxa_problem(ds, pixels.shape)
         if problem and not force:
             return LoadFailure(rel, f"DICOM не похож на денситометрию DXA: {problem}", code="not_dxa", forceable=True)
@@ -207,8 +333,8 @@ def load_image(path: str, root: str, force: bool = False) -> DicomImage | LoadFa
         sha = hashlib.sha1(pixels.tobytes()).hexdigest()
         meta = {k: str(ds.get(k, "")) for k in ("Modality", "Manufacturer", "ManufacturerModelName",
                                               "SeriesDescription", "Rows", "Columns")}
-        if forced_note:
-            meta.update(forced="1", forced_note=forced_note)
+        if forced_note or report_note:
+            meta.update(forced="1", forced_note=" ".join(x for x in (report_note, forced_note) if x))
         study = str(ds.get("StudyInstanceUID", "") or "") or os.path.basename(os.path.dirname(path))
         image = str(ds.get("SOPInstanceUID", "") or "") or sha[:16]
         return DicomImage(path, rel, study, image, pixels, sha, meta)

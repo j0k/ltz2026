@@ -280,20 +280,28 @@ def apply_overrides(out_dir: str, overrides: dict) -> dict:
 
 
 def _unpack_inputs(src: str, work: str) -> str:
-    """Вход — папка или zip. Архивы (сам вход и zip внутри папки) распаковываются во временную папку,
-    исходные данные не меняются — их можно смонтировать только на чтение."""
-    from dxaqc.io import safe_extract
-    if os.path.isfile(src) and src.lower().endswith(".zip"):
-        safe_extract(src, os.path.join(work, "input"))
-        return os.path.join(work, "input")
-    zips = [os.path.join(d, f) for d, _, fs in os.walk(src) for f in fs if f.lower().endswith(".zip")]
-    if not zips:
+    """Вход — папка или zip. Архивы (сам вход и zip внутри папки, в том числе вложенные) распаковываются во временную
+    папку, исходные данные не меняются — их можно смонтировать только на чтение. Битый архив не останавливает
+    прогон: по нему будет строка отказа с причиной."""
+    from dxaqc.io import BAD_ARCHIVES, safe_extract, unpack_archives
+    dest = os.path.join(work, "input")
+    if os.path.isfile(src):
+        os.makedirs(dest, exist_ok=True)
+        try:                                   # сам вход — архив: пути в таблице — от его содержимого, без имени архива
+            safe_extract(src, dest)
+        except Exception as exc:  # noqa: BLE001 — битый архив: строка отказа вместо падения
+            shutil.rmtree(dest, ignore_errors=True)
+            os.makedirs(dest)
+            bad = os.path.join(dest, os.path.basename(src))
+            shutil.copy2(src, bad)
+            BAD_ARCHIVES[os.path.realpath(bad)] = f"{type(exc).__name__}: {exc}"
+            return dest
+    elif any(f.lower().endswith(".zip") for _, _, fs in os.walk(src) for f in fs):
+        shutil.copytree(src, dest, symlinks=False)
+    else:
         return src
-    shutil.copytree(src, os.path.join(work, "input"), ignore=shutil.ignore_patterns("*.zip", "*.ZIP"))
-    for z in zips:
-        rel = os.path.splitext(os.path.relpath(z, src))[0]
-        safe_extract(z, os.path.join(work, "input", rel))
-    return os.path.join(work, "input")
+    unpack_archives(dest)
+    return dest
 
 
 def main(argv=None):

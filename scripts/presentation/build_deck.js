@@ -1,7 +1,7 @@
-// Презентация DXA QC для ЛЦТ 2026 (задача 04), структура — по разделу 4 ТЗ и критериям раздела 8.
+// Презентация Kostik для ЛЦТ 2026 (задача 04), структура — по разделу 4 ТЗ и критериям раздела 8.
 // Слайды 1–6 и 12+ — свободная часть; 7–11 — содержание обязательных слайдов, до получения файла шаблона
 // в нейтральной вёрстке (при переносе в шаблон — только текст, сетку шаблона не менять). 3D-моделей нет: только снимки.
-// Запуск: node build_deck.js → DXA_QC_presentation.pptx
+// Запуск: node build_deck.js → Kostik_presentation.pptx
 const pptxgen = require('pptxgenjs');
 const path = require('path');
 const A = (f) => path.join(__dirname, 'assets', f);
@@ -12,7 +12,7 @@ const H = 'Calibri', B = 'Calibri';
 
 const pres = new pptxgen();
 pres.layout = 'LAYOUT_16x9';                // 10 × 5.625 дюйма
-pres.title = 'DXA QC — контроль качества денситометрии';
+pres.title = 'Kostik — контроль качества денситометрии';
 pres.company = 'команда «Квантовый Скачок»';
 
 const W = 10, HH = 5.625;
@@ -43,7 +43,7 @@ function pageNo(s, _n, dark = false) {
   img(s, 'atlas.png', 5.5, 0.68, 3.9, 1.314);
   s.addText('Атлас снимка поясничного отдела: позвонки Th12–L5, ось, найденный предмет (синтетический фантом)',
     { x: 5.4, y: 4.1, w: 4.1, h: 0.5, fontFace: B, fontSize: 10.5, color: '8FA3C2', margin: 0, isTextBox: true });
-  s.addText('DXA QC', { x: 0.55, y: 0.95, w: 4.6, h: 0.9, fontFace: H, fontSize: 54, bold: true, color: C.white, margin: 0, isTextBox: true });
+  s.addText('Kostik', { x: 0.55, y: 0.95, w: 4.6, h: 0.9, fontFace: H, fontSize: 54, bold: true, color: C.white, margin: 0, isTextBox: true });
   s.addText('Сервис ИИ для контроля качества снимков денситометрии', { x: 0.55, y: 1.85, w: 4.6, h: 0.9, fontFace: H, fontSize: 22, color: 'CADCFC', margin: 0, isTextBox: true });
   s.addText([
     { text: 'Поясничный отдел и бедро: область, вердикт, тип нарушения и пояснение на самом снимке.', options: { breakLine: true } },
@@ -51,7 +51,7 @@ function pageNo(s, _n, dark = false) {
   ], { x: 0.55, y: 2.95, w: 4.6, h: 0.9, fontFace: B, fontSize: 14, color: 'B9C6DA', margin: 0, paraSpaceAfter: 4, isTextBox: true });
   s.addText('ЛЦТ 2026 · задача 04 Департамента здравоохранения Москвы · команда «Квантовый Скачок»',
     { x: 0.55, y: 4.75, w: 4.7, h: 0.4, fontFace: B, fontSize: 11, color: '8FA3C2', margin: 0, isTextBox: true });
-  s.addNotes('Мы — команда «Квантовый Скачок». DXA QC проверяет качество снимков денситометрии сразу после исследования: область, вердикт, тип нарушения и объяснение прямо на снимке. Работает локально, без интернета.');
+  s.addNotes('Мы — команда «Квантовый Скачок». Наш продукт — Kostik: имя от слова «кость». Kostik проверяет качество снимков денситометрии сразу после исследования: область, вердикт, тип нарушения и объяснение прямо на снимке. Работает локально, без интернета.');
 }
 
 // ------------------------------------------------------------------ 2. Проблема
@@ -186,7 +186,7 @@ function mandatoryTag(s, n) {
 }
 { // 7. Паспорт решения
   const s = pres.addSlide(); s.background = { color: C.white }; mandatoryTag(s, 7);
-  title(s, 'DXA QC — паспорт решения', 'Кейс 04 · Департамент здравоохранения Москвы');
+  title(s, 'Kostik — паспорт решения', 'Кейс 04 · Департамент здравоохранения Москвы');
   const rows = [['Задача', 'Автоматически оценивать качество снимков денситометрии (DXA) поясничного отдела и бедра по критериям ТЗ'],
                 ['Решение', 'Сервис определяет область, класс качества 0/1 и типы нарушений, показывает их на снимке и выгружает таблицу по ТЗ 2.5'],
                 ['Для кого', 'Рентгенолаборанты и врачи отделений денситометрии; руководители — отчёт о качестве'],
@@ -397,7 +397,7 @@ function mandatoryTag(s, n) {
 // ------------------------------------------------------------------ 17. Продукт и поставка
 {
   const s = pres.addSlide(); s.background = { color: C.white };
-  title(s, 'Готово к использованию уже сейчас', 'Стенд, API и настольное приложение DXA QC 1.0-Beta');
+  title(s, 'Готово к использованию уже сейчас', 'Стенд, API и настольное приложение Kostik 1.0-Beta');
   card(s, 0.45, 1.4, 5.2, 3.75);
   img(s, 'download2.png', 0.55, 1.55, 5.0, 1.714);
   const items = [['Веб-стенд', 'ltz2026.ru — загрузка, дашборд, пример'], ['Приложение', '.exe · .msi · .deb, офлайн, подписанные суммы'],
@@ -475,4 +475,4 @@ function mandatoryTag(s, n) {
   s.addNotes('Спасибо! Всё можно попробовать на ltz2026.ru. Готовы ответить на вопросы.');
 }
 
-pres.writeFile({ fileName: path.join(__dirname, 'DXA_QC_presentation.pptx') }).then(f => console.log('готово:', f));
+pres.writeFile({ fileName: path.join(__dirname, 'Kostik_presentation.pptx') }).then(f => console.log('готово:', f));

@@ -1,0 +1,34 @@
+{# Галерея скриншотов приложения на странице загрузки: автопролистывание, подписи, свайп, клавиатура. #}
+{% set shots = [
+  ('home', 'Главная — одна кнопка', 'Перетащите DICOM-файлы, zip-архив или папку исследований — или выберите готовый синтетический пример.'),
+  ('dashboard', 'Дашборд проверки', 'Сводка по ТЗ: сколько снимков годны и с нарушениями, какие нарушения, время; галерея снимков с вердиктами.'),
+  ('card', 'Карточка снимка и граф решения', 'Атлас с разметкой позвонков, проверки по критериям ТЗ и граф: измерение против нормы → вердикт.'),
+  ('text', 'Пояснение словами', 'Граф одним нажатием сворачивается в текст: почему снимок годен или где брак.'),
+  ('control', 'Пульт анализа', 'Очередь проверок и пороги критериев: перезапуск с другими параметрами без программиста.'),
+  ('help', 'Справка внутри', '15 разделов с поиском — открываются без интернета.'),
+  ('mcp', 'Локальный MCP-сервер', 'ИИ-ассистенты с поддержкой MCP (Cursor, VS Code и другие) проверяют снимки через приложение — на этом же компьютере.'),
+  ('models', 'Модели', 'Дополнительные модели скачиваются с сайта с проверкой контрольной суммы или импортируются из файла.'),
+  ('history', 'История проверок', 'Все проверки хранятся локально: открыть снова, найти по названию, удалить.'),
+] %}
+<section class="sh" id="shots" aria-roledescription="карусель" aria-label="Скриншоты приложения">
+  <div class="sh-win">
+    <div class="sh-bar" aria-hidden="true"><i></i><i></i><i></i><span>DXA QC {{ app_version or '' }}</span></div>
+    <div class="sh-stage">
+      {% for key, t, d in shots %}
+      <figure class="sh-slide{{ ' on' if loop.first }}" aria-roledescription="слайд" aria-label="{{ loop.index }} из {{ shots|length }}: {{ t }}"{{ '' if loop.first else ' aria-hidden="true"' }}>
+        <img {{ 'src' if loop.first else 'data-src' }}="/static/shots/{{ key }}.webp?v={{ version }}" alt="{{ t }}: {{ d }}" width="1600" height="1018">
+      </figure>
+      {% endfor %}
+      <button type="button" class="sh-nav prev" aria-label="предыдущий скриншот">‹</button>
+      <button type="button" class="sh-nav next" aria-label="следующий скриншот">›</button>
+    </div>
+  </div>
+  <div class="sh-cap" aria-live="polite">
+    {% for key, t, d in shots %}<div class="sh-text{{ ' on' if loop.first }}"><b>{{ t }}</b><span>{{ d }}</span></div>{% endfor %}
+  </div>
+  <div class="sh-dots" role="tablist" aria-label="выбор скриншота">
+    {% for key, t, d in shots %}<button type="button" role="tab" aria-label="{{ t }}" aria-selected="{{ 'true' if loop.first else 'false' }}"><i></i></button>{% endfor %}
+    <button type="button" class="sh-play" aria-label="пауза" data-state="play">❚❚</button>
+  </div>
+</section>
+<script src="/static/shots.js?v={{ version }}" defer></script>

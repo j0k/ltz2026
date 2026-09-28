@@ -65,7 +65,13 @@ def download_page(request: Request):
     ua = (request.headers.get("user-agent") or "").lower()
     guess = "windows" if "windows" in ua else "linux" if ("linux" in ua and "android" not in ua) else "other"
     return ctx["templates"].TemplateResponse(request, "download.html", dict(rel=latest(), guess=guess,
+                                                                            app_version=_app_version(),
                                                                             og_title="Скачать приложение DXA QC"))
+
+
+def _app_version() -> str:
+    from dxaqc.desktop import APP_VERSION
+    return APP_VERSION
 
 
 @router.api_route("/downloads/{path:path}", methods=["GET", "HEAD"])

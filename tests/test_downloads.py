@@ -24,3 +24,16 @@ def test_download_page_and_files(client):
     assert client.get("/downloads/../app.db").status_code == 404
     assert client.get("/downloads/latest.json").json()["version"] == "9.9.9"
     assert 'href="/download"' in client.get("/").text, "тихая ссылка на главной"
+
+
+def test_download_page_has_screenshot_gallery(client):
+    """Юрий, 28.09: на странице загрузки — галерея скриншотов с подписями и автопролистыванием."""
+    html = client.get("/download").text
+    assert 'id="shots"' in html and "/static/shots.js" in html
+    assert html.count('class="sh-slide') == 9 and html.count('class="sh-text') == 9, "9 скриншотов с подписями"
+    assert 'src="/static/shots/home.webp' in html and 'data-src="/static/shots/dashboard.webp' in html, "первый сразу, остальные лениво"
+    for key in ("home", "dashboard", "card", "text", "control", "help", "mcp", "models", "history"):
+        assert client.get(f"/static/shots/{key}.webp").status_code == 200, key
+    assert "DXA QC 1.0-Beta" in html
+    js = client.get("/static/shots.js").text
+    assert "prefers-reduced-motion" in js and "visibilitychange" in js

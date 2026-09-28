@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-"""Настольное приложение DXA QC: тот же сервис, что на стенде, локально и без сети (эпики D1–D7, #138–#170).
+"""Настольное приложение Kostik: тот же сервис, что на стенде, локально и без сети (эпики D1–D7, #138–#170).
 
 Окно — pywebview (WebView2 в Windows, WebKitGTK в Linux) или браузер в режиме приложения; внутри — сервер FastAPI
 на 127.0.0.1. Режим DXAQC_MODE=desktop убирает аккаунты, админку, Telegram-бота, вопросы Claude и cookie.
 """
 from __future__ import annotations
 
-APP_NAME = "DXA QC"
+APP_NAME = "Kostik"
 APP_VERSION = "1.0-Beta"          # версия приложения; версия анализа — dxaqc.__version__
 WIN_VERSION = "1.0.0"             # Windows (MSI, свойства .exe): только цифры
 DEB_VERSION = "1.0~beta"          # Debian: «~» — раньше будущей 1.0
@@ -24,4 +24,4 @@ CONTACTS = [
     dict(kind="Telegram · Юрий Коноплёв", value="@bimodaling", url="https://t.me/bimodaling"),
     dict(kind="Telegram · Алексей Чуркин", value="@lesha_cfc", url="https://t.me/lesha_cfc"),
 ]
-LICENSE = "© 2026 авторы DXA QC. Все права защищены. Сервис для контроля качества снимков, не для постановки диагноза."
+LICENSE = "© 2026 авторы Kostik. Все права защищены. Сервис для контроля качества снимков, не для постановки диагноза."

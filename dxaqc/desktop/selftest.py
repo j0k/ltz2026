@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Проверка установки (#144): зависимости, папка данных, анализ фантома, сервер, страницы, MCP — отчёт и код возврата.
 
-Запускается командой dxaqc --selftest или ярлыком «DXA QC — проверка установки». Работает во временной папке
+Запускается командой dxaqc --selftest или ярлыком «Kostik — проверка установки». Работает во временной папке
 данных, чтобы не трогать проверки пользователя; сеть не нужна.
 """
 from __future__ import annotations
@@ -117,7 +117,7 @@ def run() -> int:
         state["srv"].should_exit = True
     ok = all(r[1] for r in results)
     from dxaqc.desktop import APP_VERSION
-    lines = [f"DXA QC {APP_VERSION} (анализ {__version__}) — проверка установки: {'ВСЁ В ПОРЯДКЕ' if ok else 'ЕСТЬ ПРОБЛЕМЫ'}"]
+    lines = [f"Kostik {APP_VERSION} (анализ {__version__}) — проверка установки: {'ВСЁ В ПОРЯДКЕ' if ok else 'ЕСТЬ ПРОБЛЕМЫ'}"]
     lines += [f"  {'✓' if r[1] else '✕'} {r[0]}: {r[2]}" for r in results]
     report = "\n".join(lines)
     try:

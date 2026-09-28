@@ -1,4 +1,4 @@
-# Стенд DXA QC. Сборка из корня репозитория: docker build -f infra/app/Dockerfile .
+# Стенд Kostik. Сборка из корня репозитория: docker build -f infra/app/Dockerfile .
 # 3.12: зафиксированные версии numpy и остальных пакетов проверены на этой версии Python
 FROM python:3.12-slim
 

@@ -55,15 +55,15 @@ jobs:
             $bmp.Save("results\$file"); $g.Dispose(); $bmp.Dispose()
           }
           $os = (Get-CimInstance Win32_OperatingSystem)
-          $report.Add("# DXA QC на Windows — $($os.Caption) $($os.Version), $(Get-Date -Format 'yyyy-MM-dd HH:mm') UTC"); $report.Add("")
+          $report.Add("# Kostik на Windows — $($os.Caption) $($os.Version), $(Get-Date -Format 'yyyy-MM-dd HH:mm') UTC"); $report.Add("")
           $wv = Get-ItemProperty "HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}" -ErrorAction SilentlyContinue
           $report.Add("WebView2: $($wv.pv)"); $report.Add("")
 
           # ---------- .exe
           $setup = Get-ChildItem dist\*-setup.exe | Select-Object -First 1
           $t = Measure-Command { Start-Process -Wait $setup.FullName -ArgumentList "/S" }
-          $app = "$env:LOCALAPPDATA\Programs\DXA QC"
-          Step ".exe: тихая установка" (Test-Path "$app\DXA QC.exe") ("{0:N0} с, {1}" -f $t.TotalSeconds, $setup.Name)
+          $app = "$env:LOCALAPPDATA\Programs\Kostik"
+          Step ".exe: тихая установка" (Test-Path "$app\Kostik.exe") ("{0:N0} с, {1}" -f $t.TotalSeconds, $setup.Name)
           $st = & "$app\python\python.exe" -X utf8 -m dxaqc.desktop --selftest 2>&1 | Out-String
           $st | Out-File -Encoding utf8 results\selftest-exe.txt
           Step ".exe: самопроверка" ($LASTEXITCODE -eq 0) (($st -split "`n")[0].Trim())
@@ -71,7 +71,7 @@ jobs:
           Step ".exe: версия" ($ver -match "1.0") $ver.Trim()
 
           # настоящее окно: запускатель, ожидание сервера, запросы, скриншот
-          Start-Process "$app\DXA QC.exe"
+          Start-Process "$app\Kostik.exe"
           $data = "$env:LOCALAPPDATA\DXA QC"; $port = $null
           for ($i = 0; $i -lt 60 -and -not $port; $i++) { Start-Sleep 2; if (Test-Path "$data\instance.json") { $port = (Get-Content "$data\instance.json" | ConvertFrom-Json).port } }
           Step "окно: сервер программы запустился" ([bool]$port) "порт $port"
@@ -94,14 +94,14 @@ jobs:
 
           Get-Process python*, pythonw* -ErrorAction SilentlyContinue | Stop-Process -Force
           Start-Sleep 3
-          Start-Process -Wait "$app\Удалить DXA QC.exe" -ArgumentList "/S"; Start-Sleep 10
+          Start-Process -Wait "$app\Удалить Kostik.exe" -ArgumentList "/S"; Start-Sleep 10
           Step ".exe: удаление" (-not (Test-Path "$app\python")) "папка программы удалена"
 
           # ---------- .msi
           $msi = Get-ChildItem dist\*.msi | Select-Object -First 1
           $p = Start-Process -Wait -PassThru msiexec -ArgumentList "/i `"$($msi.FullName)`" /qn /l*v results\msi-install.log"
-          $pf = "$env:ProgramFiles\DXA QC"
-          Step ".msi: тихая установка" ($p.ExitCode -eq 0 -and (Test-Path "$pf\DXA QC.exe")) "код $($p.ExitCode)"
+          $pf = "$env:ProgramFiles\Kostik"
+          Step ".msi: тихая установка" ($p.ExitCode -eq 0 -and (Test-Path "$pf\Kostik.exe")) "код $($p.ExitCode)"
           $st = & "$pf\python\python.exe" -X utf8 -m dxaqc.desktop --selftest 2>&1 | Out-String
           $st | Out-File -Encoding utf8 results\selftest-msi.txt
           Step ".msi: самопроверка" ($LASTEXITCODE -eq 0) (($st -split "`n")[0].Trim())

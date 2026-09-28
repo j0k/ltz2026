@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Сборка DXA QC для Linux (#158): .deb для Ubuntu 22.04–26.04 и Debian 12–13. Библиотеки под Python 3.10–3.14 внутри,
+# Сборка Kostik для Linux (#158): .deb для Ubuntu 22.04–26.04 и Debian 12–13. Библиотеки под Python 3.10–3.14 внутри,
 # окно — системный WebKitGTK через pywebview; интернет при установке не нужен.
 #   packaging/build_deb.sh [папка сборки] [папка результатов]
 set -euo pipefail
@@ -11,7 +11,7 @@ DEBVER=$(sed -n 's/^DEB_VERSION = "\([^"]*\)".*/\1/p' "$REPO/dxaqc/desktop/__ini
 FVER=$(echo "$VER" | tr 'A-Z' 'a-z')                 # в именах файлов: 1.0-beta
 OUT=${2:-$REPO/../dist-desktop/$VER}
 PIP="$REPO/.venv/bin/pip"
-PKG="$BUILD/deb/dxaqc_${FVER}_amd64"
+PKG="$BUILD/deb/kostik_${FVER}_amd64"
 mkdir -p "$OUT"; cd "$BUILD"
 echo "[deb] версия $VER → $OUT"
 grep -v '^pywebview' "$REPO/packaging/requirements-desktop.txt" > req-lin.txt
@@ -19,8 +19,8 @@ declare -A NUMPY=([3.10]=2.2.6 [3.11]=2.4.6 [3.12]= [3.13]= [3.14]=)
 P="$BUILD/pure"; mkdir -p "$P"
 $PIP download -q --no-deps -d "$P" pywebview
 $PIP wheel -q --no-deps -w "$P" proxy_tools bottle
-rm -rf "$BUILD/deb"; mkdir -p "$PKG/DEBIAN" "$PKG/opt/dxaqc/app" "$PKG/usr/bin" "$PKG/usr/share/applications" \
-  "$PKG/usr/share/icons/hicolor/256x256/apps" "$PKG/usr/share/doc/dxaqc" "$PKG/usr/share/metainfo"
+rm -rf "$BUILD/deb"; mkdir -p "$PKG/DEBIAN" "$PKG/opt/kostik/app" "$PKG/usr/bin" "$PKG/usr/share/applications" \
+  "$PKG/usr/share/icons/hicolor/256x256/apps" "$PKG/usr/share/doc/kostik" "$PKG/usr/share/metainfo"
 for v in 3.10 3.11 3.12 3.13 3.14; do
   req=req-lin.txt
   if [ -n "${NUMPY[$v]}" ]; then sed "s/^numpy==.*/numpy==${NUMPY[$v]}/" req-lin.txt > req-lin-$v.txt; req=req-lin-$v.txt; fi
@@ -29,55 +29,56 @@ for v in 3.10 3.11 3.12 3.13 3.14; do
   W="$BUILD/wheels-lin/$v"; mkdir -p "$W"
   $PIP download -q --platform manylinux_2_28_x86_64 --platform manylinux_2_17_x86_64 --platform manylinux2014_x86_64 \
     --python-version $v --implementation cp --only-binary=:all: -d "$W" -r $req
-  $PIP install -q --no-deps --no-compile --target "$PKG/opt/dxaqc/lib/py${v/./}" --platform manylinux_2_28_x86_64 \
+  $PIP install -q --no-deps --no-compile --target "$PKG/opt/kostik/lib/py${v/./}" --platform manylinux_2_28_x86_64 \
     --platform manylinux_2_17_x86_64 --platform manylinux2014_x86_64 --python-version $v --implementation cp \
     --only-binary=:all: "$W"/*.whl "$P"/pywebview-*.whl "$P"/proxy_tools-*.whl "$P"/bottle-*.whl
 done
-find "$PKG/opt/dxaqc/lib" -depth \( -name __pycache__ -o -name tests -o -name testing \) -type d -exec rm -rf {} + 2>/dev/null || true
-rm -rf "$PKG"/opt/dxaqc/lib/*/bin
-rsync -a --exclude __pycache__ --exclude '*.pyc' "$REPO/dxaqc" "$PKG/opt/dxaqc/app/"
-python3 "$REPO/packaging/linux/dedupe.py" "$PKG/opt/dxaqc/lib"
-cat > "$PKG/usr/bin/dxaqc" <<'SH'
+find "$PKG/opt/kostik/lib" -depth \( -name __pycache__ -o -name tests -o -name testing \) -type d -exec rm -rf {} + 2>/dev/null || true
+rm -rf "$PKG"/opt/kostik/lib/*/bin
+rsync -a --exclude __pycache__ --exclude '*.pyc' "$REPO/dxaqc" "$PKG/opt/kostik/app/"
+python3 "$REPO/packaging/linux/dedupe.py" "$PKG/opt/kostik/lib"
+cat > "$PKG/usr/bin/kostik" <<'SH'
 #!/bin/sh
-# DXA QC — контроль качества денситометрии DXA: окно приложения, --selftest, --mcp-stdio
+# Kostik — контроль качества денситометрии DXA: окно приложения, --selftest, --mcp-stdio
 V=$(python3 -c 'import sys; print("%d%d" % sys.version_info[:2])' 2>/dev/null)
-LIB=/opt/dxaqc/lib/py$V
+LIB=/opt/kostik/lib/py$V
 if [ ! -d "$LIB" ]; then
-  echo "DXA QC: системный Python 3.${V#3} не поддерживается этим пакетом — нужен Python от 3.10 до 3.14" >&2
+  echo "Kostik: системный Python 3.${V#3} не поддерживается этим пакетом — нужен Python от 3.10 до 3.14" >&2
   exit 1
 fi
-export PYTHONPATH="/opt/dxaqc/app:$LIB${PYTHONPATH:+:$PYTHONPATH}"
+export PYTHONPATH="/opt/kostik/app:$LIB${PYTHONPATH:+:$PYTHONPATH}"
 export PYTHONDONTWRITEBYTECODE=1
 exec python3 -m dxaqc.desktop "$@"
 SH
-chmod 755 "$PKG/usr/bin/dxaqc"
-cat > "$PKG/usr/share/applications/dxaqc.desktop" <<'DT'
+chmod 755 "$PKG/usr/bin/kostik"
+ln -s kostik "$PKG/usr/bin/dxaqc"                  # прежняя команда — для тех, кто привык
+cat > "$PKG/usr/share/applications/kostik.desktop" <<'DT'
 [Desktop Entry]
 Type=Application
-Name=DXA QC
+Name=Kostik
 GenericName=Контроль качества денситометрии
 Comment=Проверка качества снимков денситометрии DXA без интернета
-Exec=dxaqc %F
-Icon=dxaqc
+Exec=kostik %F
+Icon=kostik
 Terminal=false
 Categories=Science;MedicalSoftware;Graphics;
 MimeType=application/dicom;
-Keywords=DXA;DICOM;densitometry;денситометрия;остеопороз;
+Keywords=Kostik;Костик;DXA;DICOM;densitometry;денситометрия;остеопороз;
 DT
-cp "$REPO/dxaqc/desktop/assets/icon.png" "$PKG/usr/share/icons/hicolor/256x256/apps/dxaqc.png"
-cat > "$PKG/usr/share/doc/dxaqc/copyright" <<CP
-DXA QC $VER — контроль качества денситометрии DXA
-© 2026 авторы DXA QC: Юрий Коноплёв, Алексей Чуркин; команда «Квантовый Скачок». Все права защищены.
+cp "$REPO/dxaqc/desktop/assets/icon.png" "$PKG/usr/share/icons/hicolor/256x256/apps/kostik.png"
+cat > "$PKG/usr/share/doc/kostik/copyright" <<CP
+Kostik $VER — контроль качества денситометрии DXA
+© 2026 авторы Kostik: Юрий Коноплёв, Алексей Чуркин; команда «Квантовый Скачок». Все права защищены.
 Программа для контроля качества снимков, не для постановки диагноза. Сайт: https://ltz2026.ru
 Сторонние компоненты и их лицензии — в программе, раздел «О программе».
 CP
-cat > "$PKG/usr/share/metainfo/ru.ltz2026.dxaqc.metainfo.xml" <<MI
+cat > "$PKG/usr/share/metainfo/ru.ltz2026.kostik.metainfo.xml" <<MI
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>ru.ltz2026.dxaqc</id>
-  <launchable type="desktop-id">dxaqc.desktop</launchable>
-  <name>DXA QC</name>
-  <name xml:lang="ru">DXA QC</name>
+  <id>ru.ltz2026.kostik</id>
+  <launchable type="desktop-id">kostik.desktop</launchable>
+  <name>Kostik</name>
+  <name xml:lang="ru">Kostik</name>
   <summary>Quality control of DXA densitometry images</summary>
   <summary xml:lang="ru">Контроль качества снимков денситометрии DXA</summary>
   <developer id="ru.ltz2026"><name>Алексей Чуркин и Юрий Коноплёв</name></developer>
@@ -97,7 +98,10 @@ cat > "$PKG/usr/share/metainfo/ru.ltz2026.dxaqc.metainfo.xml" <<MI
 MI
 SIZE=$(du -sk "$PKG" | cut -f1)
 cat > "$PKG/DEBIAN/control" <<CT
-Package: dxaqc
+Package: kostik
+Provides: dxaqc
+Replaces: dxaqc
+Conflicts: dxaqc
 Version: $DEBVER
 Architecture: amd64
 Maintainer: Alexey Churkin and Yuri Konoplev <support@ltz2026.ru>
@@ -107,7 +111,7 @@ Recommends: xdg-utils
 Section: science
 Priority: optional
 Homepage: https://ltz2026.ru
-Description: DXA QC - quality control of DXA densitometry images
+Description: Kostik - quality control of DXA densitometry images (formerly DXA QC)
  Checks DICOM images of lumbar spine and hip against the quality criteria
  of the Moscow Healthcare Department: region, verdict, reason of rejection,
  annotated atlas, explanation graph, CSV/XLSX export. Works offline: images
@@ -124,5 +128,5 @@ exit 0
 PI
 cp "$PKG/DEBIAN/postinst" "$PKG/DEBIAN/postrm"
 chmod 755 "$PKG/DEBIAN/postinst" "$PKG/DEBIAN/postrm"
-dpkg-deb --root-owner-group -Zxz -b "$PKG" "$OUT/dxaqc_${FVER}_amd64.deb" >/dev/null
-du -sh "$PKG" "$OUT/dxaqc_${FVER}_amd64.deb"
+dpkg-deb --root-owner-group -Zxz -b "$PKG" "$OUT/kostik_${FVER}_amd64.deb" >/dev/null
+du -sh "$PKG" "$OUT/kostik_${FVER}_amd64.deb"

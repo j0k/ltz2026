@@ -12,7 +12,7 @@
 ] %}
 <section class="sh" id="shots" aria-roledescription="карусель" aria-label="Скриншоты приложения">
   <div class="sh-win">
-    <div class="sh-bar" aria-hidden="true"><i></i><i></i><i></i><span>DXA QC {{ app_version or '' }}</span></div>
+    <div class="sh-bar" aria-hidden="true"><i></i><i></i><i></i><span>Kostik {{ app_version or '' }}</span></div>
     <div class="sh-stage">
       {% for key, t, d in shots %}
       <figure class="sh-slide{{ ' on' if loop.first }}" aria-roledescription="слайд" aria-label="{{ loop.index }} из {{ shots|length }}: {{ t }}"{{ '' if loop.first else ' aria-hidden="true"' }}>

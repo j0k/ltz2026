@@ -50,8 +50,8 @@ def _fit(im: Image.Image, box_w: int, box_h: int) -> Image.Image:
 
 def _brand(d, x: int, y: int):
     fb = T.font(26, True)
-    d.text((x, y), "DXA QC", font=fb, fill=ACCENT, anchor="ls")
-    d.text((x + d.textlength("DXA QC", font=fb) + 12, y), "контроль качества денситометрии", font=T.font(21), fill=MUTED, anchor="ls")
+    d.text((x, y), "Kostik", font=fb, fill=ACCENT, anchor="ls")
+    d.text((x + d.textlength("Kostik", font=fb) + 12, y), "контроль качества денситометрии", font=T.font(21), fill=MUTED, anchor="ls")
 
 
 def _pill(d, x: int, y: int, text: str, color, size: int = 27) -> int:

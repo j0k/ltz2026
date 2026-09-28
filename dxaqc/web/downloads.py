@@ -19,7 +19,7 @@ ctx: dict = {}
 KINDS = {
     ".exe": dict(os="windows", title="Windows — установщик .exe", hint="Для Windows 10 и 11: установка для текущего пользователя, права администратора не нужны."),
     ".msi": dict(os="windows", title="Windows — пакет .msi", hint="Для администраторов и больниц: тихая установка msiexec /i … /qn на все компьютеры."),
-    ".deb": dict(os="linux", title="Linux — пакет .deb", hint="Ubuntu 22.04–26.04, Debian 12–13: sudo apt install ./dxaqc_….deb"),
+    ".deb": dict(os="linux", title="Linux — пакет .deb", hint="Ubuntu 22.04–26.04, Debian 12–13: sudo apt install ./kostik_….deb"),
 }
 
 
@@ -66,7 +66,7 @@ def download_page(request: Request):
     guess = "windows" if "windows" in ua else "linux" if ("linux" in ua and "android" not in ua) else "other"
     return ctx["templates"].TemplateResponse(request, "download.html", dict(rel=latest(), guess=guess,
                                                                             app_version=_app_version(),
-                                                                            og_title="Скачать приложение DXA QC"))
+                                                                            og_title="Скачать приложение Kostik"))
 
 
 def _app_version() -> str:

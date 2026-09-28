@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Сборка DXA QC для Windows на Linux (#155–#157): переносимый Python 3.12 + библиотеки win_amd64 + код,
-# запускатель «DXA QC.exe», установщик .exe (NSIS, для пользователя) и .msi (wixl, на компьютер).
+# Сборка Kostik для Windows на Linux (#155–#157): переносимый Python 3.12 + библиотеки win_amd64 + код,
+# запускатель «Kostik.exe», установщик .exe (NSIS, для пользователя) и .msi (wixl, на компьютер).
 #   packaging/build_windows.sh [папка сборки] [папка результатов]
 set -euo pipefail
 REPO=$(cd "$(dirname "$0")/.." && pwd)
@@ -12,7 +12,7 @@ FVER=$(echo "$VER" | tr 'A-Z' 'a-z')                 # в именах файл�
 OUT=${2:-$REPO/../dist-desktop/$VER}
 PYV=3.12.10
 PIP="$REPO/.venv/bin/pip"
-STAGE="$BUILD/stage-win/DXA QC"
+STAGE="$BUILD/stage-win/Kostik"
 mkdir -p "$BUILD" "$OUT"
 echo "[win] версия $VER → $OUT"
 
@@ -36,8 +36,8 @@ find "$STAGE/python/Lib/site-packages" -depth \( -name __pycache__ -o -name test
 rm -rf "$STAGE/python/Lib/site-packages/bin"
 rsync -a --exclude __pycache__ --exclude '*.pyc' "$REPO/dxaqc" "$STAGE/app/"
 cp "$REPO/dxaqc/desktop/assets/icon.ico" "$STAGE/icon.ico"
-printf '%s\r\n' "DXA QC $VER — контроль качества денситометрии DXA" "" \
-  "© 2026 авторы DXA QC: Юрий Коноплёв, Алексей Чуркин; команда «Квантовый Скачок»." \
+printf '%s\r\n' "Kostik $VER — контроль качества денситометрии DXA" "" \
+  "© 2026 авторы Kostik: Юрий Коноплёв, Алексей Чуркин; команда «Квантовый Скачок»." \
   "Все права защищены. Программа для контроля качества снимков, не для постановки диагноза." "" \
   "Программа работает на компьютере пользователя и не отправляет снимки в интернет." \
   "Сторонние компоненты и их лицензии — в программе: «О программе»." > "$STAGE/LICENSE.txt"
@@ -45,9 +45,9 @@ printf '@echo off\r\nchcp 65001 >nul\r\n"%%~dp0python\\python.exe" -m dxaqc.desk
 printf '@echo off\r\n"%%~dp0python\\python.exe" -m dxaqc.desktop --mcp-stdio\r\n' > "$STAGE/dxaqc-mcp.cmd"
 
 # 3) запускатель и установщики
-makensis -V2 -DOUTFILE="$STAGE/DXA QC.exe" -DICON="$STAGE/icon.ico" -DVERSION="$WINVER" -DDISPLAYVER="$VER" "$REPO/packaging/windows/launcher.nsi"
-makensis -V2 -DOUTFILE="$OUT/DXAQC-$FVER-setup.exe" -DICON="$STAGE/icon.ico" -DVERSION="$WINVER" -DDISPLAYVER="$VER" -DSTAGE="$STAGE" \
+makensis -V2 -DOUTFILE="$STAGE/Kostik.exe" -DICON="$STAGE/icon.ico" -DVERSION="$WINVER" -DDISPLAYVER="$VER" "$REPO/packaging/windows/launcher.nsi"
+makensis -V2 -DOUTFILE="$OUT/Kostik-$FVER-setup.exe" -DICON="$STAGE/icon.ico" -DVERSION="$WINVER" -DDISPLAYVER="$VER" -DSTAGE="$STAGE" \
   -DLICENSE="$STAGE/LICENSE.txt" "$REPO/packaging/windows/installer.nsi"
 python3 "$REPO/packaging/windows/make_wxs.py" "$STAGE" "$WINVER" "$BUILD/dxaqc.wxs" "$VER"
-wixl -a x64 -o "$OUT/DXAQC-$FVER.msi" "$BUILD/dxaqc.wxs"
-du -sh "$STAGE" "$OUT"/DXAQC-$FVER-setup.exe "$OUT"/DXAQC-$FVER.msi
+wixl -a x64 -o "$OUT/Kostik-$FVER.msi" "$BUILD/dxaqc.wxs"
+du -sh "$STAGE" "$OUT"/Kostik-$FVER-setup.exe "$OUT"/Kostik-$FVER.msi

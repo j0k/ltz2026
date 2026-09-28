@@ -22,7 +22,7 @@ def serve() -> int:
     from dxaqc.web import accounts as A, app as webapp, desktop, mcp  # noqa: F401 — импорт настраивает сервис
     token = A.resolve_api_token(desktop.mcp_token() or "")
     if not token:
-        print("[mcp] ИИ-ассистент выключен в приложении: DXA QC → ИИ-ассистент → Включить", file=sys.stderr, flush=True)
+        print("[mcp] ИИ-ассистент выключен в приложении: Kostik → ИИ-ассистент → Включить", file=sys.stderr, flush=True)
         return 1
     loop = asyncio.new_event_loop()
     for line in sys.stdin:

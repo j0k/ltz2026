@@ -25,7 +25,7 @@ def test_selftest_passes(tmp_path):
     r = subprocess.run([sys.executable, "-W", "ignore", "-m", "dxaqc.desktop", "--selftest"], env=_env(tmp_path),
                        capture_output=True, text=True, timeout=240)
     assert r.returncode == 0, r.stdout + r.stderr[-2000:]
-    assert "ВСЁ В ПОРЯДКЕ" in r.stdout and "MCP-сервер" in r.stdout and "DXA QC 1.0-Beta" in r.stdout
+    assert "ВСЁ В ПОРЯДКЕ" in r.stdout and "MCP-сервер" in r.stdout and "Kostik 1.0-Beta" in r.stdout
 
 
 def test_mcp_stdio_roundtrip(tmp_path):

@@ -82,7 +82,7 @@ GROUP_COMMANDS = [
 ]
 GROUP_HANDLERS = {"site": "cmd_site", "start": "cmd_site", "status": "cmd_status", "runs": "cmd_runs", "run": "cmd_run",
                   "datasets": "cmd_datasets", "check": "cmd_check", "me": "cmd_me", "help": "cmd_group_help"}
-HELP = ("<b>DXA QC · контроль качества денситометрии</b>\n"
+HELP = ("<b>Kostik · контроль качества денситометрии</b>\n"
         "/check test — фрагмент «Для теста» (3 снимка)\n"
         "/check train 10 — 10 случайных исследований обучающего набора, /check train all — весь набор\n"
         "Пришлите файл DICOM или zip с папками исследований — бот проверит его и пришлёт итог.\n"
@@ -466,7 +466,7 @@ class Bot:
                 [("Привязать аккаунт стенда", _url("/account"))]]
 
     def welcome(self, cid: int):
-        sent = self.send(cid, "<b>Привет, команда!</b> Я бот стенда DXA QC «Квантового Скачка».\n\n"
+        sent = self.send(cid, "<b>Привет, команда!</b> Я бот стенда Kostik «Квантового Скачка».\n\n"
                               f"{self.links_text()}\n\n{GROUP_HELP}", self.links_buttons(), preview=_url("/"))
         if sent and sent.get("message_id"):
             self.call("pinChatMessage", chat_id=cid, message_id=sent["message_id"], disable_notification=True)
@@ -490,7 +490,7 @@ class Bot:
         runs = ctx["list_runs"](300)
         running = sum(r.get("state") == "running" for r in runs)
         queued = sum(r.get("state") == "queued" for r in runs)
-        lines = [f"<b>Стенд DXA QC</b> · версия {__version__}", f"Обрабатывается прогонов: {running}, в очереди: {queued}"]
+        lines = [f"<b>Стенд Kostik</b> · версия {__version__}", f"Обрабатывается прогонов: {running}, в очереди: {queued}"]
         buttons = [[("Открыть стенд", _url("/"))]]
         train = self.last_train(runs)
         if train:
@@ -804,7 +804,7 @@ class Bot:
                   scope={"type": "all_group_chats"})
         self.call("setMyShortDescription", short_description="Контроль качества денситометрии DXA: проверки и итоги стенда ЛЦТ 2026")
         self.call("setMyDescription", description=(
-            "Бот стенда DXA QC команды «Квантовый Скачок» (ЛЦТ 2026, задача 04). Проверяет наборы организатора и ваши DICOM, "
+            "Бот стенда Kostik команды «Квантовый Скачок» (ЛЦТ 2026, задача 04). Проверяет наборы организатора и ваши DICOM, "
             "присылает живой прогресс, вердикты и нарушения со ссылками на карточки снимков. Запуск проверок — после привязки "
             "аккаунта стенда. Присылайте только обезличенные данные."))
 

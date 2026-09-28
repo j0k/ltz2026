@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Веб-стенд DXA QC: загрузка исследований, пакетная обработка, таблица и карточки снимков.
+"""Веб-стенд Kostik: загрузка исследований, пакетная обработка, таблица и карточки снимков.
 
 Контракт с пайплайном: pipeline.run_batch(input_dir, out_dir) пишет out_dir/manifest.json,
 results.csv, results.xlsx, overlays.zip и PNG-файлы снимков.
@@ -106,7 +106,7 @@ async def lifespan(_app):
     executor.shutdown(wait=False, cancel_futures=True)
 
 
-app = FastAPI(title="DXA QC · ЛЦТ 2026", version=__version__, lifespan=lifespan)
+app = FastAPI(title="Kostik · ЛЦТ 2026", version=__version__, lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -578,7 +578,7 @@ def check_page(request: Request, run_id: str):
     return templates.TemplateResponse(request, "check.html", dict(
         run_id=run_id, st=st, man=man, rows=rows, region_ru=REGION_RU, violation_ru=VIOLATION_RU, example_id=EXAMPLE_ID,
         running=st.get("state") in ("queued", "running"), version=__version__, dash=dash, checks=CHECKS,
-        og_title=f"{st.get('title') or 'Проверка'} · DXA QC", og_image=f"/runs/{run_id}/og.jpg"))
+        og_title=f"{st.get('title') or 'Проверка'} · Kostik", og_image=f"/runs/{run_id}/og.jpg"))
 
 
 @app.get("/runs/{run_id}/3d")
@@ -800,7 +800,7 @@ def _card_og(run_id: str, row: dict) -> dict:
     region, notes, name = _card_texts(row)
     verdict = {0: "качественное", 1: "нарушение"}.get(row.get("quality_class"), "не оценено")
     lead = ("Нарушения: " + "; ".join(notes) + ".") if row.get("violation_list") and row.get("quality_class") == 1 else " ".join(notes)
-    return dict(og_title=f"{region}: {verdict} · DXA QC", og_description=f"{lead} {name}".strip()[:300],
+    return dict(og_title=f"{region}: {verdict} · Kostik", og_description=f"{lead} {name}".strip()[:300],
                 og_image=f"/runs/{run_id}/images/{row.get('key')}/og.jpg" if row.get("key") else None)
 
 
@@ -811,7 +811,7 @@ def _run_og(run_id: str, st: dict, man: dict | None) -> dict:
                 f"{s.get('bad', 0)} с нарушением, {s.get('not_evaluated', 0)} не оценено.")
     else:
         desc = "Идёт обработка: этапы, счётчики и результаты снимков по мере анализа."
-    return dict(og_title=f"{st.get('title') or run_id} · DXA QC", og_description=desc, og_image=f"/runs/{run_id}/og.jpg")
+    return dict(og_title=f"{st.get('title') or run_id} · Kostik", og_description=desc, og_image=f"/runs/{run_id}/og.jpg")
 
 
 def _jpeg(img) -> bytes:
@@ -913,7 +913,7 @@ def gallery_page(request: Request):
                           f"/runs/{EXAMPLE_ID}/images/{i['key']}" if i["key"] in example else None)) for i in items]
     bad = sum(1 for i in items if i["expert"].get("bad"))
     return templates.TemplateResponse(request, "gallery.html", dict(
-        items=data, total=len(items), bad=bad, version=__version__, og_title="Галерея снимков · DXA QC", og_image="/og/gallery.jpg",
+        items=data, total=len(items), bad=bad, version=__version__, og_title="Галерея снимков · Kostik", og_image="/og/gallery.jpg",
         og_description=(f"{len(items)} снимков наборов организатора: листать как фотоальбом, смотреть заключение экспертов "
                         "и запускать наш анализ с атласом и сравнением.")))
 
@@ -955,7 +955,7 @@ def violations_page(request: Request):
     run_id, man = _latest_train_run()
     c = violations.build(man, run_id)
     return templates.TemplateResponse(request, "tz_violations.html", dict(
-        c=c, region_ru=REGION_RU, version=__version__, og_title="Каталог нарушений · DXA QC", og_image="/og/violations.jpg",
+        c=c, region_ru=REGION_RU, version=__version__, og_title="Каталог нарушений · Kostik", og_image="/og/violations.jpg",
         og_description=(f"Все нарушения, которые знает сервис контроля качества денситометрии: {c['counts']['total']} видов, "
                         f"определения по ТЗ, способ проверки и примеры снимков — где сервис прав, где ошибается.")))
 
@@ -978,7 +978,7 @@ def data_page(request: Request):
     t = (d.get("train") or {})
     return templates.TemplateResponse(request, "tz_data.html", dict(
         d=d, ev=ev, train_id=train_id, thumbs=thumbs, example_id=EXAMPLE_ID, version=__version__,
-        og_title="Данные задачи 04 · DXA QC", og_image="/og/data.jpg",
+        og_title="Данные задачи 04 · Kostik", og_image="/og/data.jpg",
         og_description=(f"Данные организатора: {t.get('studies', 0)} исследований, {t.get('unique', 0)} уникальных снимков "
                         f"из {t.get('files', 0)} файлов, экспертная разметка по 10 критериям и технические параметры."
                         if d.get("ok") else "Данные организатора задачи 04: состав, разметка экспертов, технические параметры.")))

@@ -94,7 +94,7 @@ def tz_mlmap(request: Request):
     return templates.TemplateResponse(request, "tz_mlmap.html", dict(
         data=ML.payload(), estimators=est, beyond=ML.BEYOND, perspective=ML.PERSPECTIVE, regions=ML.REGIONS, version=__version__,
         by_level={k: sum(1 for n in est if n["perspective"] == k) for k in ML.PERSPECTIVE},
-        og_title="Шпаргалка scikit-learn для задачи 04 · DXA QC", og_image="/og/mlmap.jpg",
+        og_title="Шпаргалка scikit-learn для задачи 04 · Kostik", og_image="/og/mlmap.jpg",
         og_description="Какие алгоритмы scikit-learn перспективны для контроля качества денситометрии, что используется на стенде и почему."))
 
 
@@ -122,7 +122,7 @@ def tz_roadmap(request: Request):
     calib = dict(closed=len(closed), hours=f"{hours:.1f} ч".replace(".", ",") if closed else "—")
     return templates.TemplateResponse(request, "tz_roadmap.html", dict(
         d=d, calib=calib, version=__version__, payload=dict(d, trac_url=g["trac_url"]),
-        og_title="Роудмап развития · DXA QC", og_image="/og/roadmap.jpg",
+        og_title="Роудмап развития · Kostik", og_image="/og/roadmap.jpg",
         og_description=(f"Куда развивать контроль качества денситометрии: {t['items']} инициатив в шести направлениях, "
                         f"рекомендуемый путь из {t['path']} шагов — агент {t['path_agent']}, человек {t['path_human']}.")))
 
@@ -134,7 +134,7 @@ def tz_gantt(request: Request, refresh: int = 0):
     d = G.data(force=bool(refresh))
     c = d["counts"]
     return templates.TemplateResponse(request, "tz_gantt.html", dict(
-        d=d, version=__version__, og_title="Диаграмма Ганта проекта · DXA QC", og_image="/og/gantt.jpg",
+        d=d, version=__version__, og_title="Диаграмма Ганта проекта · Kostik", og_image="/og/gantt.jpg",
         og_description=(f"Задачи и вехи проекта контроля качества денситометрии: закрыто {c['closed']} из {c['total']} задач, "
                         f"достигнуто {c['reached']} из {c['epics']} вех.")))
 
@@ -147,7 +147,7 @@ def tz_mindmap(request: Request):
     c = MM.counts()
     return templates.TemplateResponse(request, "tz_mindmap.html", dict(
         tree=MM.TREE, counts=c, status_ru=MM.STATUS, pdf_url="/tz/tz-04.pdf" if pdf else "", version=__version__,
-        og_title="Mind map ТЗ задачи 04 · DXA QC", og_image="/og/mindmap.jpg",
+        og_title="Mind map ТЗ задачи 04 · Kostik", og_image="/og/mindmap.jpg",
         og_description=(f"Требования ТЗ контроля качества денситометрии деревом: сделано {c['done']}, частично {c['partial']}, "
                         f"не сделано {c['todo']} из {c['total']}.")))
 

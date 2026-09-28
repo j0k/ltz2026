@@ -382,7 +382,7 @@ def patch_mcp(mcp):
         mcp.TOOLS.insert(3, tool)
         mcp.TOOL_BY_NAME["analyze_paths"] = tool
         mcp.HANDLERS["analyze_paths"] = _t_analyze_paths
-    mcp.INSTRUCTIONS = ("DXA QC — настольное приложение контроля качества денситометрии DXA, работает на этом компьютере. "
+    mcp.INSTRUCTIONS = ("Kostik — настольное приложение контроля качества денситометрии DXA, работает на этом компьютере. "
                         "analyze_paths проверяет файлы и папки по путям, analyze_files — переданные в base64; get_run показывает ход, "
                         "get_results и get_image — результаты. Не для клинических выводов.")
 

@@ -38,7 +38,7 @@ MAX_FILES_BYTES = 30 * 1024 * 1024
 WAIT_MAX = 170
 KEY_RE = re.compile(r"^[A-Za-z0-9]{1,40}$")
 RUN_RE = re.compile(r"^[A-Za-z0-9-]{1,64}$")
-INSTRUCTIONS = ("DXA QC — контроль качества денситометрии DXA (ЛЦТ 2026, задача 04 Департамента здравоохранения Москвы). "
+INSTRUCTIONS = ("Kostik — контроль качества денситометрии DXA (ЛЦТ 2026, задача 04 Департамента здравоохранения Москвы). "
                 "Сервис по DICOM определяет область (поясничный отдел, правое или левое бедро), выносит вердикт качества и объясняет "
                 "нарушения. Порядок: analyze_dataset или analyze_files запускают прогон и сразу возвращают run_id; get_run показывает ход; "
                 "get_results и get_image отдают результаты. Версия на правилах: результаты для отладки стенда, не для клинических выводов.")
@@ -136,7 +136,7 @@ def _rows(run_id: str) -> tuple[list[dict], bool]:
 
 
 def t_service_info(args, token):
-    return dict(service="DXA QC — контроль качества денситометрии", version=__version__,
+    return dict(service="Kostik — контроль качества денситометрии", version=__version__,
                 task="ЛЦТ 2026, задача 04 Департамента здравоохранения Москвы",
                 checks={"lumbar_spine": "поясничный отдел: наклон оси (допуск 5°), охват по гребням подвздошных костей, посторонние предметы",
                         "hip_right, hip_left": "бедро: сторона и ориентиры; качество бедра в этой версии не оценивается"},
@@ -370,7 +370,7 @@ async def _handle(msg, token: dict, request: Request, bytes_in: int, session: di
             headers["Mcp-Session-Id"] = sid
             log.update(client=client, session=sid)
             result = {"protocolVersion": version, "capabilities": {"tools": {"listChanged": False}},
-                      "serverInfo": {"name": "dxa-qc", "title": "DXA QC · ЛЦТ 2026", "version": __version__},
+                      "serverInfo": {"name": "dxa-qc", "title": "Kostik · ЛЦТ 2026", "version": __version__},
                       "instructions": INSTRUCTIONS}
         elif method == "ping":
             result = {}
@@ -472,7 +472,7 @@ async def mcp_post(request: Request):
 
 @router.get("/mcp")
 def mcp_get():
-    return JSONResponse({"error": "MCP-сервер DXA QC: Streamable HTTP, запросы JSON-RPC методом POST с заголовком "
+    return JSONResponse({"error": "MCP-сервер Kostik: Streamable HTTP, запросы JSON-RPC методом POST с заголовком "
                                   "Authorization: Bearer dxq_…; поток SSE не используется. Токен выдаёт админ стенда."},
                         status_code=405, headers={"Allow": "POST, DELETE"})
 

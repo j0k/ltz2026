@@ -4,7 +4,7 @@
 {% block content %}
 <div class="dk-page">
 <h1>Подключить ИИ-ассистента <a class="dk-help-q" href="/help#assistant" title="справка">?</a></h1>
-<p class="dk-muted">Claude Desktop, Cursor, VS Code и другие ассистенты с поддержкой MCP могут проверять снимки через DXA QC.
+<p class="dk-muted">Claude Desktop, Cursor, VS Code и другие ассистенты с поддержкой MCP могут проверять снимки через Kostik.
   Сервер работает только на этом компьютере: ассистент передаёт файлы приложению напрямую. Учтите — сам ассистент может
   отправлять ответы приложения своей модели в интернет; снимки организатора и пациентов не передавайте ассистентам без разрешения.</p>
 <div class="dk-card">
@@ -22,17 +22,17 @@
 <div class="dk-card">
   <h2>1. Claude Desktop</h2>
   <p class="dk-muted">Настройки → Developer → Edit Config, вставьте в <code>claude_desktop_config.json</code> и перезапустите Claude.
-    Этот способ (stdio) не требует токена и работает, даже когда окно DXA QC закрыто.</p>
+    Этот способ (stdio) не требует токена и работает, даже когда окно Kostik закрыто.</p>
   <div class="dk-code" id="cClaude">{{ cfg.claude }}</div><button class="dk-btn ghost" data-copy="cClaude">Скопировать</button>
 </div>
 <div class="dk-card">
   <h2>2. Cursor</h2>
-  <p class="dk-muted">Файл <code>~/.cursor/mcp.json</code>. Работает, пока открыто окно DXA QC.</p>
+  <p class="dk-muted">Файл <code>~/.cursor/mcp.json</code>. Работает, пока открыто окно Kostik.</p>
   <div class="dk-code" id="cCursor">{{ cfg.cursor }}</div><button class="dk-btn ghost" data-copy="cCursor">Скопировать</button>
 </div>
 <div class="dk-card">
   <h2>3. VS Code</h2>
-  <p class="dk-muted">Файл <code>.vscode/mcp.json</code> в проекте или команда «MCP: Add Server». Работает, пока открыто окно DXA QC.</p>
+  <p class="dk-muted">Файл <code>.vscode/mcp.json</code> в проекте или команда «MCP: Add Server». Работает, пока открыто окно Kostik.</p>
   <div class="dk-code" id="cVs">{{ cfg.vscode }}</div><button class="dk-btn ghost" data-copy="cVs">Скопировать</button>
 </div>
 <div class="dk-card">

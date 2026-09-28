@@ -1,4 +1,4 @@
-# DXA QC — контроль качества денситометрии
+# Kostik — контроль качества денситометрии
 
 **ЛЦТ 2026, задача 04 Департамента здравоохранения Москвы.** Сервис проверяет снимки денситометрии (DXA) поясничного
 отдела и бедра в формате DICOM: определяет область, выносит вердикт о качестве, называет нарушение укладки
@@ -100,9 +100,9 @@ python3 -m venv .venv && .venv/bin/pip install -r infra/app/requirements.txt pyt
 
 | система | файл |
 |---|---|
-| Windows 10/11, для пользователя | `DXAQC-<версия>-setup.exe` |
-| Windows, на компьютер (тихо: `msiexec /i … /qn`) | `DXAQC-<версия>.msi` |
-| Ubuntu 22.04–26.04, Debian 12–13 | `dxaqc_<версия>_amd64.deb` |
+| Windows 10/11, для пользователя | `Kostik-<версия>-setup.exe` |
+| Windows, на компьютер (тихо: `msiexec /i … /qn`) | `Kostik-<версия>.msi` |
+| Ubuntu 22.04–26.04, Debian 12–13 | `kostik_<версия>_amd64.deb` |
 
 Код приложения — `dxaqc/desktop/` и `dxaqc/web/desktop.py` (режим `DXAQC_MODE=desktop`). Сборка на Linux:
 

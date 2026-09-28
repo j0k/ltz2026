@@ -42,28 +42,28 @@ def walk(folder, rel, depth):
 
 
 walk(stage, "", 6)
-exe_id = ident("f", "DXA QC.exe")
+exe_id = ident("f", "Kostik.exe")
 cmd_id = ident("f", "selftest.cmd")
 wxs = f'''<?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
-  <Product Id="*" Name="DXA QC {display}" Language="1049" Codepage="1251" Version="{version}" Manufacturer="команда «Квантовый Скачок»" UpgradeCode="{UPGRADE}">
+  <Product Id="*" Name="Kostik {display}" Language="1049" Codepage="1251" Version="{version}" Manufacturer="команда «Квантовый Скачок»" UpgradeCode="{UPGRADE}">
     <Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine" SummaryCodepage="1251"
-             Description="DXA QC — контроль качества денситометрии" Comments="Работает без интернета, снимки не покидают компьютер"/>
-    <MajorUpgrade DowngradeErrorMessage="Уже установлена более новая версия DXA QC."/>
+             Description="Kostik — контроль качества денситометрии" Comments="Работает без интернета, снимки не покидают компьютер"/>
+    <MajorUpgrade DowngradeErrorMessage="Уже установлена более новая версия Kostik."/>
     <Media Id="1" Cabinet="dxaqc.cab" EmbedCab="yes"/>
     <Icon Id="dxaqc.ico" SourceFile={quoteattr(os.path.join(stage, "icon.ico"))}/>
     <Property Id="ARPPRODUCTICON" Value="dxaqc.ico"/>
     <Property Id="ARPURLINFOABOUT" Value="https://ltz2026.ru"/>
     <Directory Id="TARGETDIR" Name="SourceDir">
       <Directory Id="ProgramFiles64Folder">
-        <Directory Id="INSTALLDIR" Name="DXA QC">
+        <Directory Id="INSTALLDIR" Name="Kostik">
 {chr(10).join(lines)}
         </Directory>
       </Directory>
       <Directory Id="ProgramMenuFolder">
-        <Directory Id="MenuDir" Name="DXA QC">
+        <Directory Id="MenuDir" Name="Kostik">
           <Component Id="MenuShortcuts" Guid="{guid('menu')}" Win64="yes">
-            <Shortcut Id="scApp" Name="DXA QC" Target="[INSTALLDIR]DXA QC.exe" WorkingDirectory="INSTALLDIR" Icon="dxaqc.ico"/>
+            <Shortcut Id="scApp" Name="Kostik" Target="[INSTALLDIR]Kostik.exe" WorkingDirectory="INSTALLDIR" Icon="dxaqc.ico"/>
             <Shortcut Id="scTest" Name="Проверка установки" Target="[INSTALLDIR]selftest.cmd" WorkingDirectory="INSTALLDIR" Icon="dxaqc.ico"/>
             <RemoveFolder Id="rmMenu" On="uninstall"/>
             <RegistryValue Root="HKLM" Key="Software\\DXA QC" Name="menu" Type="integer" Value="1" KeyPath="yes"/>
@@ -71,7 +71,7 @@ wxs = f'''<?xml version="1.0" encoding="utf-8"?>
         </Directory>
       </Directory>
     </Directory>
-    <Feature Id="Main" Title="DXA QC" Level="1">
+    <Feature Id="Main" Title="Kostik" Level="1">
 {chr(10).join(f'      <ComponentRef Id="{c}"/>' for c in comps)}
       <ComponentRef Id="MenuShortcuts"/>
     </Feature>

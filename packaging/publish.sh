@@ -10,7 +10,7 @@ WINVER=$(sed -n 's/^WIN_VERSION = "\([^"]*\)".*/\1/p' "$REPO/dxaqc/desktop/__ini
 DEBVER=$(sed -n 's/^DEB_VERSION = "\([^"]*\)".*/\1/p' "$REPO/dxaqc/desktop/__init__.py")
 FVER=$(echo "$VER" | tr 'A-Z' 'a-z')                 # в именах файлов: 1.0-beta
 cd "$DIST/$VER"
-sha256sum DXAQC-$FVER-setup.exe DXAQC-$FVER.msi dxaqc_${FVER}_amd64.deb > SHA256SUMS
+sha256sum Kostik-$FVER-setup.exe Kostik-$FVER.msi kostik_${FVER}_amd64.deb > SHA256SUMS
 mkdir -p "$DIST/models"
 for f in ru_RU-irina-medium.onnx ru_RU-irina-medium.onnx.json; do
   [ -f "$DIST/models/$f" ] || docker cp "ltz_app:/models/piper/$f" "$DIST/models/$f"
@@ -29,7 +29,7 @@ dist, ver, fver = sys.argv[1], sys.argv[2], sys.argv[3]
 sha = lambda p: hashlib.sha256(open(p, "rb").read()).hexdigest()
 files = [dict(name=n, size=os.path.getsize(os.path.join(dist, ver, n)), sha256=sha(os.path.join(dist, ver, n)),
               crc32=crc(os.path.join(dist, ver, n)))
-         for n in (f"DXAQC-{fver}-setup.exe", f"DXAQC-{fver}.msi", f"dxaqc_{fver}_amd64.deb")]
+         for n in (f"Kostik-{fver}-setup.exe", f"Kostik-{fver}.msi", f"kostik_{fver}_amd64.deb")]
 with open(os.path.join(dist, ver, "CRC32SUMS"), "w") as f:
     f.writelines(f"{x['crc32']}  {x['name']}\n" for x in files)
 json.dump(dict(version=ver, date=time.strftime("%Y-%m-%d"), files=files), open(os.path.join(dist, "latest.json"), "w"),

@@ -1,28 +1,28 @@
-; Установщик DXA QC для Windows 10/11: для текущего пользователя, без прав администратора (#156)
+; Установщик Kostik для Windows 10/11: для текущего пользователя, без прав администратора (#156)
 Unicode true
 !include MUI2.nsh
 !include FileFunc.nsh
-Name "DXA QC ${DISPLAYVER}"
+Name "Kostik ${DISPLAYVER}"
 OutFile "${OUTFILE}"
-InstallDir "$LOCALAPPDATA\Programs\DXA QC"
+InstallDir "$LOCALAPPDATA\Programs\Kostik"
 InstallDirRegKey HKCU "Software\DXA QC" "InstallDir"
 RequestExecutionLevel user
 SetCompressor /SOLID lzma
-BrandingText "DXA QC · команда «Квантовый Скачок»"
+BrandingText "Kostik · команда «Квантовый Скачок»"
 VIProductVersion "${VERSION}.0"
-VIAddVersionKey "ProductName" "DXA QC"
-VIAddVersionKey "FileDescription" "Установка DXA QC ${DISPLAYVER}"
+VIAddVersionKey "ProductName" "Kostik"
+VIAddVersionKey "FileDescription" "Установка Kostik ${DISPLAYVER}"
 VIAddVersionKey "FileVersion" "${VERSION}"
 VIAddVersionKey "ProductVersion" "${DISPLAYVER}"
 VIAddVersionKey "CompanyName" "команда «Квантовый Скачок»"
-VIAddVersionKey "LegalCopyright" "© 2026 авторы DXA QC"
+VIAddVersionKey "LegalCopyright" "© 2026 авторы Kostik"
 !define MUI_ICON "${ICON}"
 !define MUI_UNICON "${ICON}"
 !define MUI_ABORTWARNING
-!define MUI_WELCOMEPAGE_TITLE "Установка DXA QC ${DISPLAYVER}"
+!define MUI_WELCOMEPAGE_TITLE "Установка Kostik ${DISPLAYVER}"
 !define MUI_WELCOMEPAGE_TEXT "Программа проверяет качество снимков денситометрии DXA: область, вердикт и причина брака по каждому снимку, разметка, 3D-модель и пояснение решения.$\r$\n$\r$\nРаботает на этом компьютере без интернета — снимки никуда не отправляются.$\r$\n$\r$\nНажмите «Далее»."
-!define MUI_FINISHPAGE_RUN "$INSTDIR\DXA QC.exe"
-!define MUI_FINISHPAGE_RUN_TEXT "Открыть DXA QC"
+!define MUI_FINISHPAGE_RUN "$INSTDIR\Kostik.exe"
+!define MUI_FINISHPAGE_RUN_TEXT "Открыть Kostik"
 !define MUI_FINISHPAGE_SHOWREADME "$INSTDIR\python\python.exe"
 !define MUI_FINISHPAGE_SHOWREADME_NOTCHECKED
 !define MUI_FINISHPAGE_SHOWREADME_TEXT "Проверить установку (самопроверка)"
@@ -41,23 +41,28 @@ Function SelfTest
   ExecWait '"$INSTDIR\selftest.cmd"'
 FunctionEnd
 
-Section "DXA QC (обязательно)" SecMain
+Section "Kostik (обязательно)" SecMain
   SectionIn RO
   SetOutPath "$INSTDIR"
   File /r "${STAGE}\*"
-  WriteUninstaller "$INSTDIR\Удалить DXA QC.exe"
-  CreateDirectory "$SMPROGRAMS\DXA QC"
-  CreateShortcut "$SMPROGRAMS\DXA QC\DXA QC.lnk" "$INSTDIR\DXA QC.exe" "" "$INSTDIR\icon.ico"
-  CreateShortcut "$SMPROGRAMS\DXA QC\Проверка установки.lnk" "$INSTDIR\selftest.cmd" "" "$INSTDIR\icon.ico"
-  CreateShortcut "$SMPROGRAMS\DXA QC\Удалить DXA QC.lnk" "$INSTDIR\Удалить DXA QC.exe"
+  WriteUninstaller "$INSTDIR\Удалить Kostik.exe"
+  ; прежнее название приложения — DXA QC: убрать старые ярлыки и запускатель при обновлении
+  RMDir /r "$SMPROGRAMS\DXA QC"
+  Delete "$DESKTOP\DXA QC.lnk"
+  Delete "$INSTDIR\DXA QC.exe"
+  Delete "$INSTDIR\Удалить DXA QC.exe"
+  CreateDirectory "$SMPROGRAMS\Kostik"
+  CreateShortcut "$SMPROGRAMS\Kostik\Kostik.lnk" "$INSTDIR\Kostik.exe" "" "$INSTDIR\icon.ico"
+  CreateShortcut "$SMPROGRAMS\Kostik\Проверка установки.lnk" "$INSTDIR\selftest.cmd" "" "$INSTDIR\icon.ico"
+  CreateShortcut "$SMPROGRAMS\Kostik\Удалить Kostik.lnk" "$INSTDIR\Удалить Kostik.exe"
   WriteRegStr HKCU "Software\DXA QC" "InstallDir" "$INSTDIR"
   !define UNKEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\DXAQC"
-  WriteRegStr HKCU "${UNKEY}" "DisplayName" "DXA QC"
+  WriteRegStr HKCU "${UNKEY}" "DisplayName" "Kostik"
   WriteRegStr HKCU "${UNKEY}" "DisplayVersion" "${DISPLAYVER}"
   WriteRegStr HKCU "${UNKEY}" "Publisher" "команда «Квантовый Скачок»"
   WriteRegStr HKCU "${UNKEY}" "DisplayIcon" "$INSTDIR\icon.ico"
-  WriteRegStr HKCU "${UNKEY}" "UninstallString" '"$INSTDIR\Удалить DXA QC.exe"'
-  WriteRegStr HKCU "${UNKEY}" "QuietUninstallString" '"$INSTDIR\Удалить DXA QC.exe" /S'
+  WriteRegStr HKCU "${UNKEY}" "UninstallString" '"$INSTDIR\Удалить Kostik.exe"'
+  WriteRegStr HKCU "${UNKEY}" "QuietUninstallString" '"$INSTDIR\Удалить Kostik.exe" /S'
   WriteRegStr HKCU "${UNKEY}" "URLInfoAbout" "https://ltz2026.ru"
   WriteRegDWORD HKCU "${UNKEY}" "NoModify" 1
   WriteRegDWORD HKCU "${UNKEY}" "NoRepair" 1
@@ -66,20 +71,20 @@ Section "DXA QC (обязательно)" SecMain
 SectionEnd
 
 Section "Ярлык на рабочем столе" SecDesktop
-  CreateShortcut "$DESKTOP\DXA QC.lnk" "$INSTDIR\DXA QC.exe" "" "$INSTDIR\icon.ico"
+  CreateShortcut "$DESKTOP\Kostik.lnk" "$INSTDIR\Kostik.exe" "" "$INSTDIR\icon.ico"
 SectionEnd
 
-Section /o "Открывать файлы .dcm в DXA QC" SecAssoc
+Section /o "Открывать файлы .dcm в Kostik" SecAssoc
   WriteRegStr HKCU "Software\Classes\DXAQC.dcm" "" "Снимок DICOM"
   WriteRegStr HKCU "Software\Classes\DXAQC.dcm\DefaultIcon" "" "$INSTDIR\icon.ico"
-  WriteRegStr HKCU "Software\Classes\DXAQC.dcm\shell\open\command" "" '"$INSTDIR\DXA QC.exe" "%1"'
+  WriteRegStr HKCU "Software\Classes\DXAQC.dcm\shell\open\command" "" '"$INSTDIR\Kostik.exe" "%1"'
   WriteRegStr HKCU "Software\Classes\.dcm\OpenWithProgids" "DXAQC.dcm" ""
 SectionEnd
 
 Section "Uninstall"
   RMDir /r "$INSTDIR"
-  Delete "$DESKTOP\DXA QC.lnk"
-  RMDir /r "$SMPROGRAMS\DXA QC"
+  Delete "$DESKTOP\Kostik.lnk"
+  RMDir /r "$SMPROGRAMS\Kostik"
   DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\DXAQC"
   DeleteRegKey HKCU "Software\DXA QC"
   DeleteRegKey HKCU "Software\Classes\DXAQC.dcm"
@@ -87,8 +92,8 @@ Section "Uninstall"
 SectionEnd
 
 LangString DESC_Main ${LANG_RUSSIAN} "Программа, справка и модель бедра (около 300 МБ)."
-LangString DESC_Desk ${LANG_RUSSIAN} "Значок DXA QC на рабочем столе."
-LangString DESC_Assoc ${LANG_RUSSIAN} "Пункт «Открыть с помощью DXA QC» для файлов .dcm."
+LangString DESC_Desk ${LANG_RUSSIAN} "Значок Kostik на рабочем столе."
+LangString DESC_Assoc ${LANG_RUSSIAN} "Пункт «Открыть с помощью Kostik» для файлов .dcm."
 !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
   !insertmacro MUI_DESCRIPTION_TEXT ${SecMain} $(DESC_Main)
   !insertmacro MUI_DESCRIPTION_TEXT ${SecDesktop} $(DESC_Desk)

@@ -54,7 +54,7 @@ h, l = axes[0, 0].get_legend_handles_labels()
 axn.legend(h, l, loc="upper left", frameon=False, fontsize=11.5)
 axn.text(0, 0.52, "Квадрат ошибки вероятности брака против\nоценки экспертов. Проверка — 5 фолдов по\nисследованиям × 10 повторов, полоса —\n10–90% повторов. Ниже константы — модель\nдаёт информацию; большой зазор с обучением —\nпереобучение. Шкалы Y у панелей разные.",
          va="top", fontsize=10.5, color=INK2, transform=axn.transAxes)
-fig.suptitle("Квадрат ошибки во время обучения: от объёма данных · DXA QC 0.5.4", x=0.01, ha="left", fontsize=15, fontweight="bold", color=INK)
+fig.suptitle("Квадрат ошибки во время обучения: от объёма данных · Kostik 0.5.4", x=0.01, ha="left", fontsize=15, fontweight="bold", color=INK)
 fig.tight_layout(rect=(0, 0, 1, 0.96)); fig.savefig(os.path.join(out, "brier_by_data.png"), dpi=110)
 
 fig, axes = plt.subplots(1, 3, figsize=(16, 5.2))

@@ -53,7 +53,7 @@ def test_open_graph_for_card_run_and_site(client):
     key = row["key"]
 
     m = meta(client.get(f"/runs/{rid}/images/{key}").text)
-    assert m["og:title"].startswith("Поясничный отдел: ") and "DXA QC" in m["og:title"]
+    assert m["og:title"].startswith("Поясничный отдел: ") and "Kostik" in m["og:title"]
     assert m["og:image"] == f"{public}/runs/{rid}/images/{key}/og.jpg"
     assert m["og:url"] == f"{public}/runs/{rid}/images/{key}"
     assert m["twitter:card"] == "summary_large_image" and m["og:locale"] == "ru_RU"
@@ -68,9 +68,9 @@ def test_open_graph_for_card_run_and_site(client):
     image(client, f"/runs/{rid}/og.jpg")
 
     home = meta(client.get("/").text)
-    assert home["og:image"] == f"{public}/og.jpg" and home["og:title"].endswith("· DXA QC")
+    assert home["og:image"] == f"{public}/og.jpg" and home["og:title"].endswith("· Kostik")
     image(client, "/og.jpg")
-    assert meta(client.get("/tz/").text)["og:title"] == "Документы задачи · DXA QC"
+    assert meta(client.get("/tz/").text)["og:title"] == "Документы задачи · Kostik"
 
     for bad in (f"/runs/{rid}/images/nope/og.jpg", "/runs/nope/og.jpg", f"/runs/{rid}/images/..%2F/og.jpg"):
         assert client.get(bad).status_code == 404, bad
@@ -94,4 +94,4 @@ def test_page_previews_are_own_pictures(client):
                       "/tz/ml-map.html": "/og/mlmap.jpg", "/control": "/og/control.jpg"}.items():
         m = meta(client.get(path).text)
         assert m["og:image"] == public + img, path
-        assert len(m["og:description"]) > 30 and m["og:title"].endswith("· DXA QC"), path
+        assert len(m["og:description"]) > 30 and m["og:title"].endswith("· Kostik"), path

@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Скачать приложение DXA QC{% endblock %}
+{% block title %}Скачать приложение Kostik{% endblock %}
 {% block head %}<link rel="stylesheet" href="/static/v2.css?v={{ version }}"><link rel="stylesheet" href="/static/dash.css?v={{ version }}"><link rel="stylesheet" href="/static/desk.css?v={{ version }}">{% endblock %}
 {% block header %}{% include "_kiosk_header.html" %}{% endblock %}
 {% block content %}
 <div class="dk-page" style="max-width:1000px">
-<h1>DXA QC для компьютера</h1>
+<h1>Kostik для компьютера</h1>
 <p class="dk-muted" style="font-size:16px">Та же проверка качества снимков денситометрии, что на сайте, — у вас на компьютере. Работает без интернета:
   снимки никуда не отправляются. Внутри — дашборд, атлас снимков, пояснения графом, справка, пульт порогов и MCP-сервер для ИИ-ассистентов.</p>
 {% if not rel %}
@@ -59,20 +59,20 @@ sha256sum -c SHA256SUMS --ignore-missing</div>
       <li>Если Windows покажет «Система Windows защитила ваш компьютер» — нажмите <b>«Подробнее» → «Выполнить в любом случае»</b>.
         Предупреждение появляется, потому что у программы пока нет платной цифровой подписи.</li>
       <li>Следуйте мастеру установки: права администратора не нужны.</li>
-      <li>Откройте <b>DXA QC</b> из меню «Пуск». Проверить установку — ярлык «Проверка установки».</li>
+      <li>Откройте <b>Kostik</b> из меню «Пуск». Проверить установку — ярлык «Проверка установки».</li>
     </ol>
-    <p class="faint">Для администраторов: <code>msiexec /i DXAQC-{{ rel.version }}.msi /qn</code> — тихая установка на компьютер,
+    <p class="faint">Для администраторов: <code>msiexec /i Kostik-{{ rel.version|lower }}.msi /qn</code> — тихая установка на компьютер,
       <code>msiexec /x … /qn</code> — удаление. Окно использует встроенный в Windows Microsoft Edge WebView2.</p>
   </section>
   <section class="dk-card">
     <h2>Linux</h2>
     <ol>
-      {% set deb = (rel.files|selectattr('os', 'equalto', 'linux')|list or [dict(name='dxaqc_…_amd64.deb')])[0] %}
+      {% set deb = (rel.files|selectattr('os', 'equalto', 'linux')|list or [dict(name='kostik_…_amd64.deb')])[0] %}
       <li>Скачайте <b>{{ deb.name }}</b>.</li>
       <li>В терминале, в папке с файлом: <code>sudo apt install ./{{ deb.name }}</code> — система доставит нужные пакеты окна (WebKitGTK).
         Можно и двойным щелчком через «Центр приложений» Ubuntu; если он не справится — установите командой.</li>
-      <li>Откройте <b>DXA QC</b> из меню приложений или командой <code>dxaqc</code>.</li>
-      <li>Проверка установки: <code>dxaqc --selftest</code>.</li>
+      <li>Откройте <b>Kostik</b> из меню приложений или командой <code>kostik</code>.</li>
+      <li>Проверка установки: <code>kostik --selftest</code>.</li>
     </ol>
     <p class="faint">Ubuntu 22.04–26.04, Debian 12 и 13 (Python 3.10–3.14). Удаление: <code>sudo apt remove dxaqc</code>.
       Пакет не из магазина Ubuntu, поэтому «Центр приложений» может назвать издателя неизвестным: авторы — Алексей Чуркин и Юрий Коноплёв,

@@ -1,7 +1,7 @@
 {# шапка настольного приложения: все разделы под рукой, без входа и внешних ссылок #}
 <link rel="stylesheet" href="/static/desk.css?v={{ version }}">
 <header class="desk-head"><div class="bar">
-  <a class="logo" href="/">DXA QC<small>контроль качества денситометрии</small></a>
+  <a class="logo" href="/">Kostik<small>контроль качества денситометрии</small></a>
   <nav>{% set p = request.url.path if request is defined else '' %}
     <a href="/" class="{{ 'on' if p == '/' or p.startswith('/check') else '' }}">Проверка</a>
     <a href="/history" class="{{ 'on' if p.startswith('/history') else '' }}">История</a>

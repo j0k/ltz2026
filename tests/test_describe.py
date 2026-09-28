@@ -52,3 +52,54 @@ def test_dashboard_shows_rejected_card(client):
     html = client.get(f"/check/{rid}").text
     assert "Что на картинке:" in html and "обычный рентгеновский снимок таза" in html and "Что можно сделать" in html
     assert "reject000_preview.png" in html and "Запросить разбор картинки" in html and "/?presets=1" in html
+
+
+def _lateral_spine():
+    """Синтетический позвоночник сбоку, как на сагиттальном срезе КТ: симметричный контур тела, по центру тела
+    позвонков, асимметрия только рядом со столбом — спереди тёмная брюшная полость, сзади канал и задняя дуга."""
+    yy, xx = np.mgrid[0:420, 0:400]
+    a = np.where(((xx - 200) / 190) ** 2 + ((yy - 210) / 260) ** 2 < 1, 70, 12).astype(np.uint8)
+    for i in range(7):
+        y = 15 + i * 58
+        a[y:y + 46, 160:240] = 200                           # тела позвонков
+        a[y + 4:y + 40, 250:290] = 215                       # дуга и отростки сразу за каналом
+    a[:, 110:160] = 35                                       # брюшная полость спереди
+    a[:, 240:250] = 40                                       # позвоночный канал
+    return a
+
+
+def test_lateral_spine_is_told_apart(tmp_path):
+    Image.fromarray(_lateral_spine()).save(tmp_path / "lat.png")
+    Image.fromarray(synth.spine()).save(tmp_path / "ap.png")
+    lat, ap = describe_picture(str(tmp_path / "lat.png")), describe_picture(str(tmp_path / "ap.png"))
+    assert lat["kind"] == "spine_lateral" and "сбоку" in lat["title"], lat["title"]
+    assert ap["kind"] == "spine" and "прямой проекции" in ap["title"]
+    assert any("прямой проекции" in t for t in lat["dxa"])
+
+
+def test_black_side_bars_listed(tmp_path):
+    a = np.zeros((300, 400), np.uint8)
+    a[:, 80:320] = synth.spine()[:300, :240] if synth.spine().shape[1] >= 240 else 120
+    Image.fromarray(a).save(tmp_path / "bars.png")
+    assert any("чёрные поля" in e for e in describe_picture(str(tmp_path / "bars.png"))["elements"])
+
+
+def test_text_on_picture_is_read_and_classified(tmp_path):
+    import pytest
+    from PIL import ImageDraw, ImageFont
+    from dxaqc import ocr
+    if not ocr.available():
+        pytest.skip("нет модели OCR (DXAQC_OCR_MODEL)")
+    img = Image.fromarray(_lateral_spine()).convert("RGB").resize((800, 840))
+    d = ImageDraw.Draw(img)
+    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 34)
+    d.text((20, 10), "Остеопороз позвоночника", font=font, fill="white")
+    d.text((560, 300), "Spin: -83", font=font, fill="white")
+    d.text((400, 780), "rentgen-example.ru", font=font, fill="white")
+    img.save(tmp_path / "ct.jpg", quality=95)
+    r = describe_picture(str(tmp_path / "ct.jpg"))
+    joined = " | ".join(r["elements"])
+    assert "заголовок" in joined and "Остеопороз" in joined, joined
+    assert "служебная надпись" in joined and "Spin" in joined, joined
+    assert "водяной знак" in joined and "example.ru" in joined, joined
+    assert r["modality"] == "КТ" and r["title"].startswith("КТ позвоночника, вид сбоку"), r["title"]

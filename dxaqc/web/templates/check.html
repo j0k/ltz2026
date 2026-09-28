@@ -190,6 +190,8 @@
     {% if d %}
     <p class="d-rej-seen"><b>Что на картинке:</b> {{ d.title }}.</p>
     <ul class="d-rej-list">{% for f in d.facts %}<li>{{ f }}</li>{% endfor %}</ul>
+    {% if d.elements %}<p class="d-rej-seen"><b>Что ещё на картинке, кроме самого снимка</b></p>
+    <ul class="d-rej-list d-rej-el">{% for e in d.elements %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
     <details class="d-expl" open><summary>Почему не проверяем как денситометрию</summary>
       <ul>{% for t in d.dxa %}<li>{{ t }}</li>{% endfor %}</ul></details>
     <p class="d-rej-seen"><b>Что можно сделать</b></p>

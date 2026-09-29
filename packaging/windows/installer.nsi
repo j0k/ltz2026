@@ -8,6 +8,7 @@ OutFile "${OUTFILE}"
 InstallDir "$PROGRAMFILES64\Kostik-${SHORTVER}"
 RequestExecutionLevel admin
 SetCompressor /SOLID lzma
+ShowInstDetails show          ; список «Извлечение: файл» виден сразу, без кнопки «Показать подробности»
 BrandingText "Kostik · команда «Квантовый Скачок»"
 VIProductVersion "${VERSION}.0"
 VIAddVersionKey "ProductName" "Kostik"
@@ -59,8 +60,18 @@ FunctionEnd
 
 Section "Kostik (обязательно)" SecMain
   SectionIn RO
+  DetailPrint "Kostik ${DISPLAYVER}: установка в $INSTDIR"
+  DetailPrint "[1/5] Копирование: запускатели, лицензия, значок, служебные команды"
   SetOutPath "$INSTDIR"
-  File /r "${STAGE}\*"
+  File "${STAGE}\*.*"
+  DetailPrint "[2/5] Копирование: код программы (анализ, сервис, окно, справка)"
+  SetOutPath "$INSTDIR\app"
+  File /r "${STAGE}\app\*"
+  DetailPrint "[3/5] Копирование: Python 3.12 и библиотеки (numpy, pydicom, FastAPI, pywebview) — самая долгая часть"
+  SetOutPath "$INSTDIR\python"
+  File /r "${STAGE}\python\*"
+  SetOutPath "$INSTDIR"
+  DetailPrint "[4/5] Удаление прежней установки и старых ярлыков (если были)"
   WriteUninstaller "$INSTDIR\Удалить Kostik.exe"
   ; прежняя установка «для текущего пользователя» (LOCALAPPDATA\Programs\Kostik): убрать, чтобы не было двух копий
   ReadRegStr $R1 HKCU "Software\DXA QC" "InstallDir"
@@ -81,6 +92,7 @@ Section "Kostik (обязательно)" SecMain
   Delete "$DESKTOP\DXA QC.lnk"
   Delete "$INSTDIR\DXA QC.exe"
   Delete "$INSTDIR\Удалить DXA QC.exe"
+  DetailPrint "[5/5] Ярлыки в меню «Пуск» и запись в «Установка и удаление программ»"
   CreateDirectory "$SMPROGRAMS\Kostik"
   CreateShortcut "$SMPROGRAMS\Kostik\Kostik.lnk" "$INSTDIR\Kostik-app.exe" "" "$INSTDIR\icon.ico"
   CreateShortcut "$SMPROGRAMS\Kostik\Проверка установки.lnk" "$INSTDIR\selftest.cmd" "" "$INSTDIR\icon.ico"
@@ -97,8 +109,9 @@ Section "Kostik (обязательно)" SecMain
   WriteRegStr HKLM "${UNKEY}" "URLInfoAbout" "https://ltz2026.ru"
   WriteRegDWORD HKLM "${UNKEY}" "NoModify" 1
   WriteRegDWORD HKLM "${UNKEY}" "NoRepair" 1
-  ${GetSize} "$INSTDIR" "/S=0K" $0 $1 $2
-  WriteRegDWORD HKLM "${UNKEY}" "EstimatedSize" $0
+  ; размер известен при сборке: перебор 4,5 тысяч файлов после копирования (GetSize) занимал минуту и засорял журнал
+  WriteRegDWORD HKLM "${UNKEY}" "EstimatedSize" ${SIZEKB}
+  DetailPrint "Готово: Kostik ${DISPLAYVER} установлен в $INSTDIR"
 SectionEnd
 
 Section "Ярлык на рабочем столе" SecDesktop

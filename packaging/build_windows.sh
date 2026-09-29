@@ -49,11 +49,12 @@ printf '@echo off\r\n"%%~dp0Kostik.exe" --verbose\r\necho.\r\necho Журнал 
 "$REPO/.venv/bin/python" -m compileall -q -j 2 --invalidation-mode unchecked-hash "$STAGE/app" "$STAGE/python/Lib" 2>/dev/null || \
   "$REPO/.venv/bin/python" -m compileall -q --invalidation-mode unchecked-hash "$STAGE/app" || true
 SHORTVER=$(echo "$WINVER" | cut -d. -f1,2)
+SIZEKB=$(du -sk "$STAGE" | cut -f1)
 
 # 3) запускатель и установщики
 # Kostik.exe — консольный (--help, --version, --author, --mcp, --verbose), Kostik-app.exe — оконный для ярлыков
 "$REPO/packaging/windows/launcher/build.sh" "$STAGE" "$STAGE/icon.ico" "$WINVER" "$VER"
-makensis -V2 -DOUTFILE="$OUT/Kostik-$FVER-setup.exe" -DICON="$STAGE/icon.ico" -DVERSION="$WINVER" -DSHORTVER="$SHORTVER" -DDISPLAYVER="$VER" -DSTAGE="$STAGE" \
+makensis -V2 -DOUTFILE="$OUT/Kostik-$FVER-setup.exe" -DICON="$STAGE/icon.ico" -DVERSION="$WINVER" -DSHORTVER="$SHORTVER" -DSIZEKB="$SIZEKB" -DDISPLAYVER="$VER" -DSTAGE="$STAGE" \
   -DLICENSE="$STAGE/LICENSE.txt" "$REPO/packaging/windows/installer.nsi"
 python3 "$REPO/packaging/windows/make_wxs.py" "$STAGE" "$WINVER" "$BUILD/dxaqc.wxs" "$VER"
 wixl -a x64 -o "$OUT/Kostik-$FVER.msi" "$BUILD/dxaqc.wxs"

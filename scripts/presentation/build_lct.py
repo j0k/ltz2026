@@ -214,12 +214,16 @@ for sh in list(s8.shapes):
                  'устойчивость к любым файлам и работа офлайн — на сервере и на ноутбуке.'])
     elif sh.has_text_frame and sh.text_frame.text.startswith('Капитан'):
         tf = sh.text_frame
-        vals = {'Капитан:': f' Юрий Коноплёв, {TODO}', 'Кол-во участников:': ' 2 человека', 'Краткое описание:': '',
-                'как образовалась команда?': TODO, 'место работы/учебы участников?': TODO, 'Город и регион:': f' {TODO}'}
+        vals = {'Капитан:': ' Юрий Коноплёв', 'Кол-во участников:': ' 2 человека', 'Краткое описание:': '',
+                'как образовалась команда?': 'решение сделали вдвоём за две недели', 'место работы/учебы участников?': None,
+                'Город и регион:': None}
         for p in tf.paragraphs:
             full = ''.join(r.text for r in p.runs).strip()
             key = next((k for k in vals if full.startswith(k)), None)
             if key is None:
+                continue
+            if vals[key] is None:                        # данных нет — строку убираем, а не выдумываем
+                p._p.getparent().remove(p._p)
                 continue
             if key in ('как образовалась команда?', 'место работы/учебы участников?'):
                 p.runs[0].text = vals[key]
@@ -264,7 +268,7 @@ for sh in list(s9.shapes):
         if sh.has_text_frame and x == m['x'] and sh.text_frame.text.startswith('Имя'):
             put(sh, m['name'])
         elif sh.has_text_frame and x == m['x'] and sh.text_frame.text.startswith('Роль'):
-            put(sh, [m['role'], 'Telegram ' + m['nick'], 'Телефон: ' + TODO, TODO + ' (работа/учёба)'])
+            put(sh, [m['role'], 'Telegram ' + m['nick']])
     if sh.is_placeholder and sh.has_text_frame and sh.placeholder_format.type == 1:
         put(sh, 'КОМАНДА')
 
@@ -275,7 +279,7 @@ for sh in s10.shapes:
     if sh.is_placeholder and sh.placeholder_format.type == 1:
         put(sh, 'О КОМАНДЕ')
     elif t.startswith('Расскажите, как вы собрались'):
-        put(sh, [f'{TODO}: как собрались и где работали вместе. Решение сделали вдвоём за две недели; код, тесты '
+        put(sh, ['Нас двое: Юрий Коноплёв и Алексей Чуркин. Решение сделали за две недели хакатона; код, тесты '
                  'и документацию писали вместе с ИИ-агентом Claude через Codellake.'])
     elif t.startswith('Что вас вдохновило'):
         put(sh, ['Брак укладки DXA ведёт к ошибкам в диагнозе остеопороза, а критерии качества в ТЗ формализуемы — '

@@ -162,7 +162,7 @@ def title_screen(preview):
     for i, ln in enumerate(lines):
         d.text((90, 330 + i * 46), ln, font=R.font(34), fill=R.INK2)
     chip(d, (90, 520), "первая версия · синтетические данные", fg=(12, 12, 12), bg=R.AMBER, size=22)
-    d.text((90, 640), "Codellake: Юрий Коноплёв · Алексей · Claude", font=R.font(24, True), fill=R.INK3)
+    d.text((90, 640), "Команда «Квантовый Скачок»: Юрий Коноплёв · Алексей Чуркин", font=R.font(24, True), fill=R.INK3)
     return im
 
 
@@ -299,7 +299,7 @@ def roadmap_screen():
         d.text((130, y), h, font=R.font(28, True), fill=R.INK)
         d.text((460, y + 3), b, font=R.font(26), fill=R.INK2)
         y += 64
-    d.text((92, R.H - 70), "код первой версии: github.com/j0k/ltz2026 · команда Codellake", font=R.font(24, True), fill=(110, 167, 236))
+    d.text((92, R.H - 70), "код первой версии: github.com/j0k/ltz2026 · команда «Квантовый Скачок»", font=R.font(24, True), fill=(110, 167, 236))
     return im
 
 
@@ -429,7 +429,7 @@ def main():
              text="Дальше четыре шага: реальные записи лидара от заказчика вместо симуляции, кривые участки по плану путей, "
                   "нейросетевой классификатор поверх геометрии и трекинг между кадрами. Код первой версии уже в репозитории "
                   "команды Коделейк.",
-             caption="Дальше: реальные записи, кривые по плану путей, классификатор, трекинг. Код в репозитории команды Codellake.",
+             caption="Дальше: реальные записи, кривые по плану путей, классификатор, трекинг. Код в репозитории команды.",
              actions=[dict(type="point", at=[1400, 170, 250, 130], dur=1.4)]),
     ]
     film = dict(title="TunnelGuard — первая версия", voice="silero:xenia", music="calm", fps=24,

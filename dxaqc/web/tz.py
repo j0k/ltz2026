@@ -37,7 +37,7 @@ CATALOG = [
     dict(slug="komanda", source_path="codellake_crew.pdf", download="ЛЦТ2026_команда.pdf",
          title="Команда «Квантовый Скачок»",
          origin="команда", author="Квантовый Скачок", received="26.09.2026",
-         summary="Одностраничник о команде: Юрий Коноплёв (капитан), Алексей Чуркин и ИИ-разработчик Claude — кто за что отвечает.",
+         summary="Одностраничник о команде: Юрий Коноплёв, Алексей Чуркин и ИИ-разработчик Claude — кто за что отвечает.",
          points=[]),
 ]
 BY_SLUG = {d["slug"]: d for d in CATALOG}

@@ -167,8 +167,8 @@ def ask_page(request: Request):
         return _to_login(request)
     return _page(request, "ask.html", questions=A.user_questions(user["id"]), asked_today=A.asked_today(user["id"]),
                  error="", draft="", broker=bool(ASK_URL), og_image="/og/ask.jpg",
-                 og_description="Вопрос по коду и данным стенда из браузера: отвечает Claude через Codellake "
-                                "по копии проекта, с лимитами и одобрением админом.")
+                 og_description="Вопрос по коду и данным стенда из браузера: отвечает Claude "
+                       "по копии проекта, с лимитами и одобрением админом.")
 
 
 @router.post("/ask")

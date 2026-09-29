@@ -352,7 +352,7 @@ def finish(qid: int, *, answer: str = "", error: str = ""):
 
 # ------------------------------------------------------------------ запросы на анализ с одобрением админа
 
-REQUEST_KINDS = {"force": "принудительный анализ", "claude": "анализ снимка в Claude через Codellake"}
+REQUEST_KINDS = {"force": "принудительный анализ", "claude": "анализ снимка в Claude"}
 REQUEST_STATUS = {"pending": "ждёт одобрения админа", "approved": "одобрен", "rejected": "отклонён админом", "error": "ошибка"}
 _REQ_SELECT = ("SELECT r.*, u.login AS login, a.login AS approver FROM analysis_requests r JOIN users u ON u.id=r.user_id "
                "LEFT JOIN users a ON a.id=r.decided_by")

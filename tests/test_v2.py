@@ -22,6 +22,7 @@ def test_home_is_just_upload_and_3d(client):
     assert 'id="bone3d"' in html and "/static/bone3d.js" in html and "/static/bone/poster.jpg" in html, "справа 3D-модель таза"
     for extra in ('href="/login"', 'href="/register"', 'href="/v1"', 'href="/tz/"', 'id="cookieBar"', "<footer>", "Подробнее"):
         assert extra not in html, f"на главной только загрузка: лишнее {extra}"
+    assert "Команда «Квантовый Скачок»" in html and 'class="qf-art"' in html, "внизу — команда и квантовый скачок (29.09, Юрий)"
     old = client.get("/start").text
     assert "Демо" in old and 'href="/v1"' in old and 'href="/tz/"' in old, "прежняя главная — по /start"
     assert 'href="/control">Пульт' not in old

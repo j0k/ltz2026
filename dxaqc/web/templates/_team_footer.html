@@ -1,0 +1,50 @@
+{# подвал сайта (29.09, Юрий): команда «Квантовый Скачок» и сам квантовый скачок — электрон поглощает фотон,
+   прыгает на верхний уровень энергии и, падая обратно, излучает фотон ΔE = hν #}
+<footer class="qf">
+  <svg class="qf-art" viewBox="0 0 240 92" role="img" aria-label="Квантовый скачок: электрон поглощает фотон, переходит на верхний уровень энергии и излучает фотон, возвращаясь">
+    <defs>
+      <radialGradient id="qfGlow"><stop offset="0" stop-color="#7cc4ff"/><stop offset=".45" stop-color="#2f7cf6" stop-opacity=".55"/><stop offset="1" stop-color="#2f7cf6" stop-opacity="0"/></radialGradient>
+      <linearGradient id="qfPh" x1="0" x2="1"><stop offset="0" stop-color="#ff4fa3" stop-opacity="0"/><stop offset=".3" stop-color="#ff4fa3"/><stop offset="1" stop-color="#a45cff"/></linearGradient>
+    </defs>
+    <g class="qf-levels">
+      <line x1="62" x2="150" y1="72" y2="72"/><line x1="62" x2="150" y1="45" y2="45"/><line x1="62" x2="150" y1="18" y2="18"/>
+      <text x="56" y="75">n=1</text><text x="56" y="48">n=2</text><text x="56" y="21">n=3</text>
+    </g>
+    <path class="qf-in" d="M0 0 q3 -6 6 0 t6 0 t6 0 t6 0 t6 0 t6 0"/>
+    <path class="qf-trail" d="M92 72 C 94 42, 108 22, 118 18"/>
+    <path class="qf-out" d="M0 0 q3 -6 6 0 t6 0 t6 0 t6 0 t6 0 t6 0"/>
+    <g class="qf-e"><circle r="11" fill="url(#qfGlow)"/><circle r="4" fill="#dff0ff" stroke="#2f7cf6" stroke-width="1.4"/></g>
+    <text class="qf-f" x="106" y="90">ΔE = hν</text>
+  </svg>
+  <div class="qf-text">
+    <div class="qf-team">Команда «Квантовый Скачок»</div>
+    <div class="qf-names">Юрий Коноплёв · Алексей Чуркин</div>
+    <div class="qf-meta">Kostik · ЛЦТ 2026 · задача 04 Департамента здравоохранения{% if version %} · версия {{ version }}{% endif %}{% if not desktop %} · только обезличенные данные организатора · <a href="/cookies">cookie</a>{% else %} · <a href="/about">О программе</a> · <a href="/help">Справка</a>{% endif %}</div>
+  </div>
+</footer>
+<style>
+.qf{display:flex;align-items:center;gap:22px;max-width:1100px;margin:36px auto 18px;padding:16px 22px;border-radius:18px;
+  background:#12151c;color:#e8edf3;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+.qf-art{flex:none;width:260px;height:100px;overflow:visible}
+.qf-levels line{stroke:#3a4352;stroke-width:2;stroke-linecap:round}
+.qf-levels text{fill:#7f8b9b;font-size:9px;font-family:inherit;text-anchor:end}
+.qf-f{fill:#a9b4c2;font-size:10px;font-style:italic;text-anchor:middle;font-family:Georgia,"Times New Roman",serif}
+.qf-in,.qf-out{fill:none;stroke:url(#qfPh);stroke-width:2.2;stroke-linecap:round}
+.qf-trail{fill:none;stroke:#7cc4ff;stroke-width:1.6;stroke-dasharray:3 4;opacity:0}
+.qf-team{font-size:19px;font-weight:800;letter-spacing:-.01em;color:#fff}
+.qf-names{font-size:14px;color:#c9d3df;margin-top:2px}
+.qf-meta{font-size:12px;color:#8793a3;margin-top:6px;line-height:1.5}
+.qf-meta a{color:#8fc1ff}
+/* цикл 6 с: фотон прилетает → электрон прыгает на n=3 → держится → падает на n=1 и излучает фотон */
+.qf-e{animation:qfE 6s cubic-bezier(.5,0,.3,1) infinite}
+.qf-in{animation:qfIn 6s linear infinite}
+.qf-out{animation:qfOut 6s linear infinite}
+.qf-trail{animation:qfTr 6s linear infinite}
+@keyframes qfE{0%,24%{transform:translate(92px,72px)}32%,62%{transform:translate(118px,18px)}66%{transform:translate(110px,18px)}74%,100%{transform:translate(92px,72px)}}
+@keyframes qfIn{0%{transform:translate(30px,122px) rotate(-40deg);opacity:0}8%{opacity:1}22%{transform:translate(62px,95px) rotate(-40deg);opacity:1}25%,100%{transform:translate(66px,92px) rotate(-40deg);opacity:0}}
+@keyframes qfTr{0%,24%{opacity:0}28%{opacity:.9}40%,100%{opacity:0}}
+@keyframes qfOut{0%,72%{transform:translate(100px,66px) rotate(-14deg);opacity:0}75%{opacity:1}95%{transform:translate(196px,42px) rotate(-14deg);opacity:1}100%{transform:translate(206px,40px) rotate(-14deg);opacity:0}}
+@media (prefers-reduced-motion:reduce){.qf-e,.qf-in,.qf-out,.qf-trail{animation:none}.qf-e{transform:translate(118px,18px)}}
+@media (max-width:640px){.qf{flex-direction:column;align-items:flex-start;gap:8px;margin:24px 12px 14px}.qf-art{width:210px;height:80px}}
+@media print{.qf{background:none;color:#000}.qf-art{display:none}}
+</style>

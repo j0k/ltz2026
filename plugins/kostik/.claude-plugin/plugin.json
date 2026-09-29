@@ -1,0 +1,19 @@
+{
+  "name": "kostik",
+  "displayName": "Kostik",
+  "version": "1.0.0",
+  "description": "Проверка снимков денситометрии DXA в программе Kostik: область, вердикт, нарушение и пояснение по каждому снимку — прямо в Claude Code. Нужна установленная программа Kostik.",
+  "author": {
+    "name": "команда «Квантовый Скачок»",
+    "url": "https://ltz2026.ru"
+  },
+  "homepage": "https://ltz2026.ru",
+  "repository": "https://github.com/j0k/ltz2026",
+  "keywords": [
+    "dxa",
+    "densitometry",
+    "dicom",
+    "quality-control",
+    "mcp"
+  ]
+}

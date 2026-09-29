@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "kostik": {
+      "command": "${KOSTIK_CLI:-C:\\Program Files\\Kostik-1.0\\Kostik-cli.exe}",
+      "args": ["--mcp-stdio"]
+    }
+  }
+}

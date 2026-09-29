@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "ltz2026",
+  "description": "Kostik — контроль качества снимков денситометрии DXA: плагин для работы с программой из Claude Code",
+  "owner": {
+    "name": "команда «Квантовый Скачок»",
+    "url": "https://ltz2026.ru"
+  },
+  "plugins": [
+    {
+      "name": "kostik",
+      "description": "Проверка снимков денситометрии DXA в программе Kostik: область, вердикт, нарушение и пояснение по каждому снимку — прямо в Claude Code",
+      "category": "productivity",
+      "source": "./plugins/kostik"
+    }
+  ]
+}

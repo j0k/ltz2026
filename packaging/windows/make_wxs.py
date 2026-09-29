@@ -10,6 +10,7 @@ from xml.sax.saxutils import quoteattr
 
 stage, version, out = sys.argv[1], sys.argv[2], sys.argv[3]
 display = sys.argv[4] if len(sys.argv) > 4 else version
+short = ".".join(version.split(".")[:2])          # 1.0.0 → 1.0: папка C:\Program Files\Kostik-1.0
 UPGRADE = "6F0C2A57-3E1B-4B7E-9A55-2D7C4E0A1B26"       # постоянный: новые версии заменяют старые
 
 
@@ -56,7 +57,7 @@ wxs = f'''<?xml version="1.0" encoding="utf-8"?>
     <Property Id="ARPURLINFOABOUT" Value="https://ltz2026.ru"/>
     <Directory Id="TARGETDIR" Name="SourceDir">
       <Directory Id="ProgramFiles64Folder">
-        <Directory Id="INSTALLDIR" Name="Kostik">
+        <Directory Id="INSTALLDIR" Name="Kostik-{short}">
 {chr(10).join(lines)}
         </Directory>
       </Directory>

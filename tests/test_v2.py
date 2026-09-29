@@ -128,3 +128,14 @@ def test_zip_with_repeated_names_extracts_everything(tmp_path):
     names = sorted(os.listdir(out))
     assert len(names) == 6 and "CR000000.dcm" in names and "CR000000__2.dcm" in names, names
     assert (out / "CR000000.dcm").read_bytes() != (out / "CR000000__2.dcm").read_bytes()
+
+
+def test_home_bone_video_precomputed(client):
+    """главная: регенерация кости — предрасчитанное видео, живой WebGL только по кнопке"""
+    c = client
+    html = c.get("/").text
+    assert 'class="k-bone-video"' in html and "regen.webm" in html and "regen.mp4" in html
+    assert "bone3dBtn" in html and '<script type="module" src="/static/bone3d.js' not in html
+    for f in ("regen.webm", "regen.mp4"):
+        r = c.get("/static/bone/" + f)
+        assert r.status_code == 200 and len(r.content) < 2_000_000

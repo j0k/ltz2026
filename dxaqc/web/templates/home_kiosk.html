@@ -50,11 +50,31 @@
   </div>
   <div class="k-right">
     <div class="k-bone" id="bone3d" data-v="{{ version }}" role="img" aria-label="3D-модель таза и тазобедренных суставов: гладкий кортикальный слой, губчатая трабекулярная структура на срезе шейки бедра">
-      <img class="k-bone-poster" src="/static/bone/poster.jpg?v={{ version }}" alt="" width="570" height="570">
+      {# предрасчитанная анимация «регенерации» шейки бедра (scripts/render_bone_video.js): 10 с в петле, ничего не считается в браузере #}
+      <video class="k-bone-video" muted loop playsinline preload="metadata" width="570" height="570" poster="/static/bone/poster.jpg?v={{ version }}" disablepictureinpicture>
+        <source src="/static/bone/regen.webm?v={{ version }}" type="video/webm">
+        <source src="/static/bone/regen.mp4?v={{ version }}" type="video/mp4">
+      </video>
+      {% if not desktop %}<button type="button" class="k-bone-3d" id="bone3dBtn">Покрутить в 3D</button>{% endif %}
     </div>
-    {% if not desktop %}{# в приложении — только картинка: WebGL на слабом компьютере без видеокарты тормозит окно #}
-    <script type="importmap">{"imports": {"three": "/static/vendor/three/three.module.min.js"}}</script>
-    <script type="module" src="/static/bone3d.js?v={{ version }}"></script>{% endif %}
+    {% if not desktop %}{# живой WebGL — только по кнопке: на слабом компьютере без видеокарты он тормозит #}
+    <script type="importmap">{"imports": {"three": "/static/vendor/three/three.module.min.js"}}</script>{% endif %}
+    <script>
+    (function () {
+      const box = document.getElementById('bone3d'), v = box.querySelector('video'), btn = document.getElementById('bone3dBtn');
+      const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      let visible = true, live = false;
+      const sync = () => { if (still || live) { v.pause(); return; } if (visible && !document.hidden) v.play().catch(() => {}); else v.pause(); };
+      new IntersectionObserver(e => { visible = e[0].isIntersecting; sync(); }, {threshold: .15}).observe(box);
+      document.addEventListener('visibilitychange', sync);
+      v.addEventListener('canplay', sync, {once: true});
+      if (btn) btn.addEventListener('click', () => {
+        btn.disabled = true; btn.textContent = 'Загрузка…';
+        import('/static/bone3d.js?v={{ version }}').then(() => { live = true; sync(); btn.remove(); })
+          .catch(() => { btn.disabled = false; btn.textContent = 'Покрутить в 3D'; });
+      });
+    })();
+    </script>
   </div>
 </section>
 <script>

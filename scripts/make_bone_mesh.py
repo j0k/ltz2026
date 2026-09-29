@@ -238,6 +238,19 @@ ao /= 4
 ao = np.clip(ao, 0, 1) ** 0.8
 print(f"затенение, {time.time() - t0:.0f} с; среднее {ao.mean():.2f}", flush=True)
 
+# ------------------------------------------------------------------ порядок «регенерации» узлов решётки (29.09, Юрий)
+# 0 — вершина не относится к решётке; 1…255 — порядок появления при росте: от кортикального слоя к центру шейки, с
+# органичным разбросом. Шейдер главной страницы по нему «выращивает» трабекулы (предрассчитанное видео: static/bone/regen.*).
+idxB = ((verts - LO) / VOX).T
+depthB = -map_coordinates(B, idxB, order=1, mode="nearest")             # глубина под поверхностью кости, мм
+dcut = np.linalg.norm(verts - cut_c, axis=1)
+in_region = (dcut < R_CUT + 4) & (verts[:, 2] > z_cut - 19) & (verts[:, 2] < z_cut + 2.5)
+lattice = in_region & (depthB > T_CORT + 0.45)
+order = np.clip((depthB - T_CORT) / 15.0, 0, 1)
+noise = 0.5 + (np.sin(verts[:, 0] * 0.27 + 1.3) + np.sin(verts[:, 1] * 0.31 + 0.7) + np.sin(verts[:, 2] * 0.23 + 2.1)) / 6
+grow = np.where(lattice, 1 + np.round(np.clip(0.72 * order + 0.28 * noise, 0, 1) * 254), 0).astype(np.uint8)
+print(f"решётка: {int(lattice.sum())} вершин из {len(verts)}", flush=True)
+
 # ------------------------------------------------------------------ упаковка: uint16 координаты, int8 нормали, uint8 затенение
 
 vmin, vmax = verts.min(0), verts.max(0)
@@ -245,8 +258,8 @@ q = np.round((verts - vmin) / (vmax - vmin) * 65535).astype(np.uint16)
 nq = np.round(vn * 127).astype(np.int8)
 aq = np.round(ao * 255).astype(np.uint8)
 idx_dtype = np.uint32
-header = struct.pack("<4sII6f", b"DXB1", len(verts), len(faces), *vmin.tolist(), *vmax.tolist())
-blob = header + q.tobytes() + nq.tobytes() + aq.tobytes() + faces.astype(idx_dtype).tobytes()
+header = struct.pack("<4sII6f", b"DXB2", len(verts), len(faces), *vmin.tolist(), *vmax.tolist())
+blob = header + q.tobytes() + nq.tobytes() + aq.tobytes() + faces.astype(idx_dtype).tobytes() + grow.tobytes()   # DXB2: после индексов — порядок роста решётки
 os.makedirs(OUT, exist_ok=True)
 with gzip.open(os.path.join(OUT, "pelvis.bin.gz"), "wb", compresslevel=9) as f:
     f.write(blob)

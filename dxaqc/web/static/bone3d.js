@@ -20,6 +20,7 @@ async function loadMesh(url) {
   const ao = new Uint8Array(buf, off, nv); off += nv;
   off = Math.ceil(off / 4) * 4 === off ? off : off;               // индексы идут сразу за затенением
   const idx = new Uint32Array(buf.slice(off, off + nf * 12));
+  const grow = buf.byteLength >= off + nf * 12 + nv ? new Uint8Array(buf, off + nf * 12, nv) : null;   // DXB2: порядок роста решётки
   const pos = new Float32Array(nv * 3), col = new Float32Array(nv * 3);
   const base = new THREE.Color(0xf3efe7);
   for (let i = 0; i < nv; i++) {
@@ -32,11 +33,22 @@ async function loadMesh(url) {
   g.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(n).map(v => v / 127), 3));
   g.setAttribute('color', new THREE.BufferAttribute(col, 3));
   g.setIndex(new THREE.BufferAttribute(idx, 1));
+  if (grow) g.setAttribute('aG', new THREE.BufferAttribute(Float32Array.from(grow, v => v ? (v - 1) / 254 : -1), 1));   // -1 — не решётка
   return g;
 }
 
+// прогресс роста по циклу 0…1: пусто → вырастает → держится → рассасывается; на 0 и на 1 состояние одинаково (петля)
+export function regen(p) {
+  const ease = x => 0.5 - 0.5 * Math.cos(Math.PI * Math.min(Math.max(x, 0), 1));
+  if (p < 0.10) return -0.05;
+  if (p < 0.62) return -0.05 + 1.45 * ease((p - 0.10) / 0.52);
+  if (p < 0.86) return 1.40;
+  return 1.40 - 1.45 * Math.pow(ease((p - 0.86) / 0.14), 1.6);
+}
+
 (async () => {
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: !!window.__BONE_RENDER });
+  if (window.__BONE_RENDER) renderer.setClearColor(0xffffff, 1);      // офлайн-рендер: белый фон карточки
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -55,6 +67,17 @@ async function loadMesh(url) {
   const c = geo.boundingBox.getCenter(new THREE.Vector3()), size = geo.boundingBox.getSize(new THREE.Vector3());
   geo.translate(-c.x, -c.y, -c.z);
   const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.62, metalness: 0.0 });
+  // «регенерация» губчатой решётки на срезе шейки бедра: трабекулы вырастают от кортикального слоя к центру, фронт роста светится.
+  // Всё считается в шейдере по готовому порядку роста (aG), геометрия не меняется; главная показывает предрассчитанное видео этой сцены.
+  const uT = { value: 1.4 }, uTint = { value: new THREE.Color(0x3fe0b0) };
+  if (geo.getAttribute('aG')) mat.onBeforeCompile = sh => {
+    sh.uniforms.uT = uT; sh.uniforms.uTint = uTint;
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float aG;\nuniform float uT;\nvarying float vS;\nvarying float vG;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\n vG = aG; float s = 1.0;\n if (aG >= 0.0) { s = clamp((uT - aG) / 0.30, 0.0, 1.0); transformed -= normal * (1.0 - s) * 2.2; }\n vS = s;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vS;\nvarying float vG;\nuniform vec3 uTint;')
+      .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\n if (vG >= 0.0 && vS < 0.03) discard;')
+      .replace('#include <dithering_fragment>', '#include <dithering_fragment>\n if (vG >= 0.0) { float f = smoothstep(0.0, 0.3, vS) * (1.0 - smoothstep(0.5, 1.0, vS)); gl_FragColor.rgb = mix(gl_FragColor.rgb, uTint, f * 0.6); }');
+  };
   const mesh = new THREE.Mesh(geo, mat);
   scene.add(mesh);
   const controls = new OrbitControls(camera, renderer.domElement);
@@ -76,7 +99,25 @@ async function loadMesh(url) {
     camera.updateProjectionMatrix();
   }
   new ResizeObserver(resize).observe(box); resize();
-  renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); });
+  if (window.__BONE_RENDER) {                       // офлайн-рендер кадров видео: scripts/render_bone_video.py
+    controls.autoRotate = false; controls.enabled = false;
+    // центр решётки: среднее по вершинам с порядком роста; к нему плавно приближается камера, пока трабекулы растут
+    const gp = geo.getAttribute('aG'), pp = geo.getAttribute('position'), P = new THREE.Vector3(); let np = 0;
+    if (gp) for (let i = 0; i < gp.count; i++) if (gp.getX(i) >= 0) { P.x += pp.getX(i); P.y += pp.getY(i); P.z += pp.getZ(i); np++; }
+    if (np) P.divideScalar(np);
+    const home = camera.position.clone();
+    window.__boneFrame = (rotDeg, t, zoom = 0) => {
+      mesh.rotation.y = rotDeg * Math.PI / 180; uT.value = t;
+      const pw = P.clone().applyEuler(mesh.rotation);
+      controls.target.copy(pw.multiplyScalar(0.92 * zoom));
+      camera.position.set(home.x * (1 - 0.42 * zoom), home.y * (1 - 0.42 * zoom) + pw.y * 0.2 * zoom, home.z * (1 - 0.47 * zoom));
+      camera.lookAt(controls.target); renderer.render(scene, camera); return true;
+    };
+  } else {
+    // живой вид (по кнопке «Покрутить в 3D»): та же регенерация циклом ~10 с
+    const t0 = performance.now();
+    renderer.setAnimationLoop(() => { const p = ((performance.now() - t0) / 10000) % 1; uT.value = regen(p); controls.update(); renderer.render(scene, camera); });
+  }
   box.dataset.ready = '1';
   box.classList.add('ready');                         // заставка уходит, живая модель остаётся
 })().catch(e => { box.dataset.error = String(e); console.error(e); });

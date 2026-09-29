@@ -9,11 +9,13 @@ VER=$(sed -n 's/^APP_VERSION = "\([^"]*\)".*/\1/p' "$REPO/dxaqc/desktop/__init__
 WINVER=$(sed -n 's/^WIN_VERSION = "\([^"]*\)".*/\1/p' "$REPO/dxaqc/desktop/__init__.py")
 DEBVER=$(sed -n 's/^DEB_VERSION = "\([^"]*\)".*/\1/p' "$REPO/dxaqc/desktop/__init__.py")
 FVER=$(echo "$VER" | tr 'A-Z' 'a-z')                 # в именах файлов: 1.0-beta
+STAMP=${BUILD_STAMP:-$(TZ=UTC-3 date +%Y%m%d-%H%M)}  # дата и время сборки по Москве
+FULL="$VER-$STAMP"                                   # версия для человека: 1.0-Beta-20260930-0015
 OUT=${2:-$REPO/../dist-desktop/$VER}
 PIP="$REPO/.venv/bin/pip"
 PKG="$BUILD/deb/kostik_${FVER}_amd64"
 mkdir -p "$OUT"; cd "$BUILD"
-echo "[deb] версия $VER → $OUT"
+echo "[deb] версия $FULL → $OUT"
 grep -v '^pywebview' "$REPO/packaging/requirements-desktop.txt" > req-lin.txt
 declare -A NUMPY=([3.10]=2.2.6 [3.11]=2.4.6 [3.12]= [3.13]= [3.14]=)
 P="$BUILD/pure"; mkdir -p "$P"
@@ -36,6 +38,7 @@ done
 find "$PKG/opt/kostik/lib" -depth \( -name __pycache__ -o -name tests -o -name testing \) -type d -exec rm -rf {} + 2>/dev/null || true
 rm -rf "$PKG"/opt/kostik/lib/*/bin
 rsync -a --exclude __pycache__ --exclude '*.pyc' "$REPO/dxaqc" "$PKG/opt/kostik/app/"
+printf 'BUILD = "%s"\n' "$STAMP" > "$PKG/opt/kostik/app/dxaqc/desktop/_build.py"
 python3 "$REPO/packaging/linux/dedupe.py" "$PKG/opt/kostik/lib"
 cat > "$PKG/usr/bin/kostik" <<'SH'
 #!/bin/sh
@@ -67,7 +70,7 @@ Keywords=Kostik;Костик;DXA;DICOM;densitometry;денситометрия;�
 DT
 cp "$REPO/dxaqc/desktop/assets/icon.png" "$PKG/usr/share/icons/hicolor/256x256/apps/kostik.png"
 cat > "$PKG/usr/share/doc/kostik/copyright" <<CP
-Kostik $VER — контроль качества денситометрии DXA
+Kostik $FULL — контроль качества денситометрии DXA
 © 2026 авторы Kostik: Юрий Коноплёв, Алексей Чуркин; команда «Квантовый Скачок». Все права защищены.
 Программа для контроля качества снимков, не для постановки диагноза. Сайт: https://ltz2026.ru
 Сторонние компоненты и их лицензии — в программе, раздел «О программе».

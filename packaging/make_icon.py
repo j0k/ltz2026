@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-"""Значок приложения: синий квадрат, стопка позвонков, зелёная галочка качества → icon.png (256) и icon.ico."""
+"""Значок приложения: синий квадрат, стопка позвонков, зелёная галочка качества → icon.png (256) и icon.ico.
+Значок файла снимка: лист с загнутым углом и значок приложения → dcm.ico (установщик: «Открывать файлы .dcm в Kostik»)."""
 import os
 from PIL import Image, ImageDraw
 
@@ -23,4 +24,28 @@ d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(27, 175, 122, 255), outline=(2
 d.line([(cx - 95, cy + 5), (cx - 25, cy + 80), (cx + 105, cy - 70)], fill=(255, 255, 255, 255), width=56, joint="curve")
 im.resize((256, 256), Image.LANCZOS).save(os.path.join(OUT, "icon.png"))
 im.save(os.path.join(OUT, "icon.ico"), sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
+
+
+def document(size: int) -> Image.Image:
+    """Лист со значком Kostik нужного размера: рисуем крупнее и уменьшаем, обводка не тоньше 1 px."""
+    k = 8
+    n = size * k
+    line = max(1, round(size / 64)) * k
+    edge, paper, corner = (132, 148, 170, 255), (250, 251, 253, 255), (214, 224, 238, 255)
+    doc = Image.new("RGBA", (n, n), (0, 0, 0, 0))
+    g = ImageDraw.Draw(doc)
+    x0, y0, x1, y1, fold = n * 0.17, n * 0.05, n * 0.83, n * 0.95, n * 0.22
+    sheet = [(x0, y0), (x1 - fold, y0), (x1, y0 + fold), (x1, y1), (x0, y1)]
+    g.polygon(sheet, fill=paper)
+    g.polygon([(x1 - fold, y0), (x1 - fold, y0 + fold), (x1, y0 + fold)], fill=corner)
+    g.line(sheet + sheet[:2], fill=edge, width=line, joint="curve")
+    g.line([(x1 - fold, y0), (x1 - fold, y0 + fold), (x1, y0 + fold)], fill=edge, width=line, joint="curve")
+    m = round(n * 0.54)
+    doc.alpha_composite(im.resize((m, m), Image.LANCZOS), (round(n / 2 - m / 2), round(n * 0.36)))
+    return doc.resize((size, size), Image.LANCZOS)
+
+
+SIZES = [16, 24, 32, 48, 64, 128, 256]
+docs = {s: document(s) for s in SIZES}
+docs[256].save(os.path.join(OUT, "dcm.ico"), sizes=[(s, s) for s in SIZES], append_images=[docs[s] for s in SIZES[:-1]])
 print("ok", OUT)

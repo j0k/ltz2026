@@ -2,6 +2,10 @@
 """Описание .msi для wixl (WiX 3): все файлы папки приложения, ярлыки в Пуске, установка на компьютер (#157).
 
     python make_wxs.py <папка приложения> <версия> <out.wxs>
+
+Все строки пакета — только латиницей. wixl (msitools) пишет таблицу строк без кодовой страницы: с одной русской строкой
+Windows Installer читает имена папок со сдвигом, и установка кончается ошибкой 1324 «путь содержит недопустимый символ»
+и кодом 1603 — каждый раз на новой папке. Русский интерфейс установки — в установщике .exe (NSIS).
 """
 import hashlib
 import os
@@ -30,6 +34,9 @@ def walk(folder, rel, depth):
     ind = "  " * depth
     for name in sorted(os.listdir(folder)):
         p = os.path.join(folder, name)
+        if name.startswith(".") or name.endswith((".", " ")) or set(name) & set('\\/:*?"<>|'):
+            # Windows Installer такое имя не примет: установка кончится ошибкой 1324 и кодом 1603 уже у пользователя
+            sys.exit(f"make_wxs: имя не годится для .msi: {p}")
         r = f"{rel}/{name}" if rel else name
         if os.path.isdir(p):
             lines.append(f'{ind}<Directory Id="{ident("d", r)}" Name={quoteattr(name)}>')
@@ -43,14 +50,14 @@ def walk(folder, rel, depth):
 
 
 walk(stage, "", 6)
-exe_id = ident("f", "Kostik-app.exe")           # ярлыки — на оконный запускатель; Kostik.exe консольный (--help, --verbose)
+exe_id = ident("f", "Kostik.exe")               # ярлыки — на оконный запускатель; консольный — Kostik-cli.exe
 cmd_id = ident("f", "selftest.cmd")
 wxs = f'''<?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
-  <Product Id="*" Name="Kostik {display}" Language="1049" Codepage="1251" Version="{version}" Manufacturer="команда «Квантовый Скачок»" UpgradeCode="{UPGRADE}">
-    <Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine" SummaryCodepage="1251"
-             Description="Kostik — контроль качества денситометрии" Comments="Работает без интернета, снимки не покидают компьютер"/>
-    <MajorUpgrade DowngradeErrorMessage="Уже установлена более новая версия Kostik."/>
+  <Product Id="*" Name="Kostik {display}" Language="1049" Version="{version}" Manufacturer="Kvantovyi Skachok team" UpgradeCode="{UPGRADE}">
+    <Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine"
+             Description="Kostik - DXA densitometry quality control" Comments="Works offline, images never leave the computer"/>
+    <MajorUpgrade DowngradeErrorMessage="A newer version of Kostik is already installed."/>
     <Media Id="1" Cabinet="dxaqc.cab" EmbedCab="yes"/>
     <Icon Id="dxaqc.ico" SourceFile={quoteattr(os.path.join(stage, "icon.ico"))}/>
     <Property Id="ARPPRODUCTICON" Value="dxaqc.ico"/>
@@ -64,9 +71,9 @@ wxs = f'''<?xml version="1.0" encoding="utf-8"?>
       <Directory Id="ProgramMenuFolder">
         <Directory Id="MenuDir" Name="Kostik">
           <Component Id="MenuShortcuts" Guid="{guid('menu')}" Win64="yes">
-            <Shortcut Id="scApp" Name="Kostik" Target="[INSTALLDIR]Kostik-app.exe" WorkingDirectory="INSTALLDIR" Icon="dxaqc.ico"/>
-            <Shortcut Id="scTest" Name="Проверка установки" Target="[INSTALLDIR]selftest.cmd" WorkingDirectory="INSTALLDIR" Icon="dxaqc.ico"/>
-            <Shortcut Id="scVerbose" Name="Подробный журнал запуска" Target="[INSTALLDIR]verbose.cmd" WorkingDirectory="INSTALLDIR" Icon="dxaqc.ico"/>
+            <Shortcut Id="scApp" Name="Kostik" Target="[INSTALLDIR]Kostik.exe" WorkingDirectory="INSTALLDIR" Icon="dxaqc.ico"/>
+            <Shortcut Id="scTest" Name="Kostik self-test" Target="[INSTALLDIR]selftest.cmd" WorkingDirectory="INSTALLDIR" Icon="dxaqc.ico"/>
+            <Shortcut Id="scVerbose" Name="Kostik verbose log" Target="[INSTALLDIR]verbose.cmd" WorkingDirectory="INSTALLDIR" Icon="dxaqc.ico"/>
             <RemoveFolder Id="rmMenu" On="uninstall"/>
             <RegistryValue Root="HKLM" Key="Software\\DXA QC" Name="menu" Type="integer" Value="1" KeyPath="yes"/>
           </Component>
@@ -80,6 +87,10 @@ wxs = f'''<?xml version="1.0" encoding="utf-8"?>
   </Product>
 </Wix>
 '''
+try:
+    wxs.encode("ascii")
+except UnicodeEncodeError as e:
+    sys.exit(f"make_wxs: в описании .msi не латиница: {wxs[max(0, e.start - 60):e.end + 20]!r} — такой пакет не установится (ошибка 1324)")
 with open(out, "w", encoding="utf-8") as f:
     f.write(wxs)
 print(f"{out}: {len(comps)} файлов")

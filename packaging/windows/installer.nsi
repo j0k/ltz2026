@@ -3,6 +3,7 @@ Unicode true
 !include MUI2.nsh
 !include FileFunc.nsh
 !include LogicLib.nsh
+!include Sections.nsh
 Name "Kostik ${DISPLAYVER}"
 OutFile "${OUTFILE}"
 InstallDir "$PROGRAMFILES64\Kostik-${SHORTVER}"
@@ -42,6 +43,7 @@ VIAddVersionKey "LegalCopyright" "© 2026 авторы Kostik"
 Function .onInit
   SetRegView 64
   SetShellVarContext all
+  Call ApplySwitches
 FunctionEnd
 
 Function un.onInit
@@ -51,7 +53,7 @@ FunctionEnd
 
 Function LaunchKostik
   ; установщик работает с правами администратора, а программа должна идти от обычного пользователя — запускаем через проводник
-  Exec '"$WINDIR\explorer.exe" "$INSTDIR\Kostik-app.exe"'
+  Exec '"$WINDIR\explorer.exe" "$INSTDIR\Kostik.exe"'
 FunctionEnd
 
 Function SelfTest
@@ -92,9 +94,10 @@ Section "Kostik (обязательно)" SecMain
   Delete "$DESKTOP\DXA QC.lnk"
   Delete "$INSTDIR\DXA QC.exe"
   Delete "$INSTDIR\Удалить DXA QC.exe"
+  Delete "$INSTDIR\Kostik-app.exe"                      ; прежнее имя оконного запускателя: теперь оконный — Kostik.exe
   DetailPrint "[5/5] Ярлыки в меню «Пуск» и запись в «Установка и удаление программ»"
   CreateDirectory "$SMPROGRAMS\Kostik"
-  CreateShortcut "$SMPROGRAMS\Kostik\Kostik.lnk" "$INSTDIR\Kostik-app.exe" "" "$INSTDIR\icon.ico"
+  CreateShortcut "$SMPROGRAMS\Kostik\Kostik.lnk" "$INSTDIR\Kostik.exe" "" "$INSTDIR\icon.ico"
   CreateShortcut "$SMPROGRAMS\Kostik\Проверка установки.lnk" "$INSTDIR\selftest.cmd" "" "$INSTDIR\icon.ico"
   CreateShortcut "$SMPROGRAMS\Kostik\Подробный журнал запуска.lnk" "$INSTDIR\verbose.cmd" "" "$INSTDIR\icon.ico"
   CreateShortcut "$SMPROGRAMS\Kostik\Удалить Kostik.lnk" "$INSTDIR\Удалить Kostik.exe"
@@ -115,14 +118,22 @@ Section "Kostik (обязательно)" SecMain
 SectionEnd
 
 Section "Ярлык на рабочем столе" SecDesktop
-  CreateShortcut "$DESKTOP\Kostik.lnk" "$INSTDIR\Kostik-app.exe" "" "$INSTDIR\icon.ico"
+  CreateShortcut "$DESKTOP\Kostik.lnk" "$INSTDIR\Kostik.exe" "" "$INSTDIR\icon.ico"
 SectionEnd
 
 Section /o "Открывать файлы .dcm в Kostik" SecAssoc
   WriteRegStr HKLM "Software\Classes\DXAQC.dcm" "" "Снимок DICOM"
-  WriteRegStr HKLM "Software\Classes\DXAQC.dcm\DefaultIcon" "" "$INSTDIR\icon.ico"
-  WriteRegStr HKLM "Software\Classes\DXAQC.dcm\shell\open\command" "" '"$INSTDIR\Kostik-app.exe" "%1"'
+  WriteRegStr HKLM "Software\Classes\DXAQC.dcm\DefaultIcon" "" "$INSTDIR\dcm.ico"
+  WriteRegStr HKLM "Software\Classes\DXAQC.dcm\shell\open\command" "" '"$INSTDIR\Kostik.exe" "%1"'
   WriteRegStr HKLM "Software\Classes\.dcm\OpenWithProgids" "DXAQC.dcm" ""
+  ; значок на файлах и открытие двойным щелчком: тип .dcm становится нашим; прежний запоминаем и возвращаем при удалении.
+  ; Если человек сам выбрал программу для .dcm в «Открыть с помощью», Windows оставит её и её значок
+  ReadRegStr $R2 HKLM "Software\Classes\.dcm" ""
+  ${If} $R2 != "DXAQC.dcm"
+    WriteRegStr HKLM "Software\DXA QC" "DcmBefore" "$R2"
+  ${EndIf}
+  WriteRegStr HKLM "Software\Classes\.dcm" "" "DXAQC.dcm"
+  System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'       ; SHCNE_ASSOCCHANGED: проводник перечитывает значки
 SectionEnd
 
 Section "Uninstall"
@@ -130,14 +141,34 @@ Section "Uninstall"
   Delete "$DESKTOP\Kostik.lnk"
   RMDir /r "$SMPROGRAMS\Kostik"
   DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\DXAQC"
+  ReadRegStr $R2 HKLM "Software\Classes\.dcm" ""
+  ${If} $R2 == "DXAQC.dcm"                              ; тип .dcm был нашим — вернуть прежний
+    ReadRegStr $R3 HKLM "Software\DXA QC" "DcmBefore"
+    ${If} $R3 == ""
+      DeleteRegValue HKLM "Software\Classes\.dcm" ""
+    ${Else}
+      WriteRegStr HKLM "Software\Classes\.dcm" "" "$R3"
+    ${EndIf}
+  ${EndIf}
   DeleteRegKey HKLM "Software\DXA QC"
   DeleteRegKey HKLM "Software\Classes\DXAQC.dcm"
   DeleteRegValue HKLM "Software\Classes\.dcm\OpenWithProgids" "DXAQC.dcm"
+  System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
 SectionEnd
+
+; ключи командной строки: тихая установка с привязкой файлов .dcm — Kostik-<версия>-setup.exe /S /DCM
+Function ApplySwitches
+  ${GetParameters} $R0
+  ClearErrors
+  ${GetOptions} $R0 "/DCM" $R1
+  ${IfNot} ${Errors}
+    !insertmacro SelectSection ${SecAssoc}
+  ${EndIf}
+FunctionEnd
 
 LangString DESC_Main ${LANG_RUSSIAN} "Программа, справка и модель бедра (около 300 МБ)."
 LangString DESC_Desk ${LANG_RUSSIAN} "Значок Kostik на рабочем столе."
-LangString DESC_Assoc ${LANG_RUSSIAN} "Пункт «Открыть с помощью Kostik» для файлов .dcm."
+LangString DESC_Assoc ${LANG_RUSSIAN} "Файлы .dcm получают значок Kostik и открываются в нём двойным щелчком."
 !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
   !insertmacro MUI_DESCRIPTION_TEXT ${SecMain} $(DESC_Main)
   !insertmacro MUI_DESCRIPTION_TEXT ${SecDesktop} $(DESC_Desk)

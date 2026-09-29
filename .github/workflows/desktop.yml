@@ -61,14 +61,32 @@ jobs:
 
           # ---------- .exe
           $setup = Get-ChildItem dist\*-setup.exe | Select-Object -First 1
-          $t = Measure-Command { Start-Process -Wait $setup.FullName -ArgumentList "/S" }
-          $app = "$env:LOCALAPPDATA\Programs\Kostik"
-          Step ".exe: тихая установка" (Test-Path "$app\Kostik.exe") ("{0:N0} с, {1}" -f $t.TotalSeconds, $setup.Name)
+          function Reg($path, $name = "(default)") { try { (Get-ItemProperty -Path $path -Name $name -ErrorAction Stop).$name } catch { $null } }
+          $dcmBefore = Reg "HKLM:\SOFTWARE\Classes\.dcm"
+          $t = Measure-Command { Start-Process -Wait $setup.FullName -ArgumentList "/S", "/DCM" }
+          $app = "$env:ProgramFiles\Kostik-1.0"
+          Step ".exe: тихая установка с привязкой .dcm" ((Test-Path "$app\Kostik.exe") -and (Test-Path "$app\Kostik-cli.exe")) ("{0:N0} с, {1}" -f $t.TotalSeconds, $setup.Name)
+          Step ".exe: тип .dcm — Kostik, значок dcm.ico" ((Reg "HKLM:\SOFTWARE\Classes\.dcm") -eq "DXAQC.dcm" -and (Reg "HKLM:\SOFTWARE\Classes\DXAQC.dcm\DefaultIcon") -eq "$app\dcm.ico" -and (Test-Path "$app\dcm.ico")) (Reg "HKLM:\SOFTWARE\Classes\DXAQC.dcm\shell\open\command")
+          Step ".exe: ярлык ведёт на оконный Kostik.exe" ((New-Object -ComObject WScript.Shell).CreateShortcut("$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Kostik\Kostik.lnk").TargetPath -eq "$app\Kostik.exe") ""
+          & "$app\python\python.exe" -X utf8 -W ignore -c "from dxaqc.desktop import synth; synth.study(r'results\phantom', 'artifact')" 2>$null
+          $check = & "$app\Kostik-cli.exe" --check results\phantom --json --out results\report 2>$null | Out-String
+          $code = $LASTEXITCODE
+          $desc = $check | ConvertFrom-Json
+          Step "Kostik-cli.exe --check: описание в консоль" ($code -eq 1 -and $desc.summary.images -eq 3 -and $desc.summary.bad -eq 1 -and $desc.final -and (Test-Path results\report\results.xlsx) -and $check -notmatch "http://") "код $code, снимков $($desc.summary.images), с нарушением $($desc.summary.bad)"
+          Remove-Item -Recurse -Force results\phantom -ErrorAction SilentlyContinue
           $st = & "$app\python\python.exe" -X utf8 -m dxaqc.desktop --selftest 2>&1 | Out-String
           $st | Out-File -Encoding utf8 results\selftest-exe.txt
           Step ".exe: самопроверка" ($LASTEXITCODE -eq 0) (($st -split "`n")[0].Trim())
           $ver = & "$app\python\python.exe" -X utf8 -m dxaqc.desktop --version 2>&1 | Out-String
-          Step ".exe: версия" ($ver -match "1.0") $ver.Trim()
+          Step ".exe: версия" ($ver -match "1\.0-Beta-\d{8}-\d{4}") $ver.Trim()
+          $help = & "$app\Kostik.exe" --help 2>&1 | Out-String
+          Step "Kostik.exe --help (оконный)" ($help -match "--show-all-hosts") (($help -split "`n")[0].Trim())
+          $help = & "$app\Kostik-cli.exe" --help 2>&1 | Out-String
+          Step "Kostik-cli.exe --help" ($LASTEXITCODE -eq 0 -and $help -match "--show-all-hosts") (($help -split "`n")[0].Trim())
+          $hosts = & "$app\Kostik-cli.exe" --show-all-hosts 2>&1 | Out-String
+          Step "Kostik-cli.exe --show-all-hosts" ($hosts -match "127\.0\.0\.1" -and $hosts -match "0\.0\.0\.0") ("{0} строк" -f ($hosts -split "`n").Count)
+          & "$app\Kostik-cli.exe" --host 203.0.113.7 2>$null | Out-Null
+          Step "Kostik-cli.exe: чужой адрес — код 2" ($LASTEXITCODE -eq 2) "код $LASTEXITCODE"
 
           # настоящее окно: запускатель, ожидание сервера, запросы, скриншот
           Start-Process "$app\Kostik.exe"
@@ -96,15 +114,18 @@ jobs:
           Start-Sleep 3
           Start-Process -Wait "$app\Удалить Kostik.exe" -ArgumentList "/S"; Start-Sleep 10
           Step ".exe: удаление" (-not (Test-Path "$app\python")) "папка программы удалена"
+          Step ".exe: после удаления тип .dcm прежний" ("$(Reg 'HKLM:\SOFTWARE\Classes\.dcm')" -eq "$dcmBefore" -and -not (Test-Path "HKLM:\SOFTWARE\Classes\DXAQC.dcm")) "'$(Reg 'HKLM:\SOFTWARE\Classes\.dcm')'"
 
           # ---------- .msi
           $msi = Get-ChildItem dist\*.msi | Select-Object -First 1
           $p = Start-Process -Wait -PassThru msiexec -ArgumentList "/i `"$($msi.FullName)`" /qn /l*v results\msi-install.log"
-          $pf = "$env:ProgramFiles\Kostik"
+          $pf = "$env:ProgramFiles\Kostik-1.0"
           Step ".msi: тихая установка" ($p.ExitCode -eq 0 -and (Test-Path "$pf\Kostik.exe")) "код $($p.ExitCode)"
           $st = & "$pf\python\python.exe" -X utf8 -m dxaqc.desktop --selftest 2>&1 | Out-String
           $st | Out-File -Encoding utf8 results\selftest-msi.txt
           Step ".msi: самопроверка" ($LASTEXITCODE -eq 0) (($st -split "`n")[0].Trim())
+          $ver = & "$pf\Kostik-cli.exe" --version 2>&1 | Out-String
+          Step ".msi: запускатели и версия" ((Test-Path "$pf\Kostik-cli.exe") -and $ver -match "1\.0-Beta-\d{8}-\d{4}") (($ver -split "`n")[0].Trim())
           $p = Start-Process -Wait -PassThru msiexec -ArgumentList "/x `"$($msi.FullName)`" /qn"
           Step ".msi: удаление" ($p.ExitCode -eq 0 -and -not (Test-Path "$pf\python")) "код $($p.ExitCode)"
 

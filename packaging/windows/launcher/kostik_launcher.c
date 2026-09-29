@@ -1,8 +1,9 @@
 /* Запускатель Kostik для Windows (29.09, Юрий: Kostik.exe --help / --version / --author / --mcp / --verbose).
  *
  * Две сборки из одного файла:
- *   Kostik.exe      — консольная: команды выводят текст в то же окно cmd/PowerShell и возвращают код выхода;
- *   Kostik-app.exe  — оконная (-DGUI_BUILD): для ярлыков и «Открыть с помощью», консоль не показывает.
+ *   Kostik.exe      — оконная (-DGUI_BUILD): ярлыки и «Открыть с помощью», консоль не показывает; запущена из консоли
+ *                     с параметром — подключается к ней и печатает туда (30.09, Юрий: Kostik.exe — оконный);
+ *   Kostik-cli.exe  — консольная: cmd и PowerShell ждут её завершения, вывод и код выхода — как у любой команды.
  *
  * Команды с выводом (--help, --version, --author, --mcp, --verbose, --selftest, --mcp-stdio, --no-window)
  * идут в python\python.exe, обычный запуск — в python\pythonw.exe без ожидания.

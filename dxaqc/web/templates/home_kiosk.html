@@ -52,8 +52,9 @@
     <div class="k-bone" id="bone3d" data-v="{{ version }}" role="img" aria-label="3D-модель таза и тазобедренных суставов: гладкий кортикальный слой, губчатая трабекулярная структура на срезе шейки бедра">
       <img class="k-bone-poster" src="/static/bone/poster.jpg?v={{ version }}" alt="" width="570" height="570">
     </div>
+    {% if not desktop %}{# в приложении — только картинка: WebGL на слабом компьютере без видеокарты тормозит окно #}
     <script type="importmap">{"imports": {"three": "/static/vendor/three/three.module.min.js"}}</script>
-    <script type="module" src="/static/bone3d.js?v={{ version }}"></script>
+    <script type="module" src="/static/bone3d.js?v={{ version }}"></script>{% endif %}
   </div>
 </section>
 <script>

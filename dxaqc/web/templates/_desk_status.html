@@ -9,7 +9,8 @@
 </div>
 <style>
 body{padding-bottom:34px}
-.dst{position:fixed;left:0;right:0;bottom:0;z-index:900;height:30px;display:flex;align-items:center;gap:10px;padding:0 14px;
+dialog::backdrop{bottom:30px}   /* модальные окна не закрывают строку состояния */
+.dst{position:fixed;left:0;right:0;bottom:0;z-index:2147483000;height:30px;display:flex;align-items:center;gap:10px;padding:0 14px;
   background:#16191f;color:#dfe5ec;font:13px/1 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;border-top:1px solid #2a2f38}
 .dst-dot{width:9px;height:9px;border-radius:50%;background:#3fbf5f;flex:none}
 .dst.busy .dst-dot{background:#5aa7ff;animation:dstp 1.2s ease-in-out infinite}

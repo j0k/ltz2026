@@ -108,15 +108,15 @@ class Api:
     """Системные диалоги для страницы: window.pywebview.api.* (#140, #141)."""
 
     def __init__(self, runs_dir: str):
-        self.runs_dir = runs_dir
-        self.window = None
+        self._runs_dir = runs_dir
+        self._window = None
 
     def _dialog(self, kind: str, **kw):
         import webview
         fd = getattr(webview, "FileDialog", None)
         const = {"open": fd.OPEN if fd else webview.OPEN_DIALOG, "folder": fd.FOLDER if fd else webview.FOLDER_DIALOG,
                  "save": fd.SAVE if fd else webview.SAVE_DIALOG}[kind]
-        res = self.window.create_file_dialog(const, **kw)
+        res = self._window.create_file_dialog(const, **kw)
         if res is None:
             return []
         return [res] if isinstance(res, str) else list(res)
@@ -129,7 +129,7 @@ class Api:
         return self._dialog("folder")
 
     def save_file(self, run_id: str, name: str):
-        src = os.path.join(self.runs_dir, os.path.basename(run_id), "out", os.path.basename(name))
+        src = os.path.join(self._runs_dir, os.path.basename(run_id), "out", os.path.basename(name))
         if not os.path.isfile(src):
             return {"error": "файл результата не найден — дождитесь окончания проверки"}
         dest = self._dialog("save", save_filename=f"dxaqc_{os.path.basename(run_id)}_{os.path.basename(name)}")
@@ -139,8 +139,8 @@ class Api:
         return {"saved": dest[0]}
 
     def open_run_folder(self, run_id: str):
-        folder = os.path.join(self.runs_dir, os.path.basename(run_id), "out")
-        paths.open_path(folder if os.path.isdir(folder) else self.runs_dir)
+        folder = os.path.join(self._runs_dir, os.path.basename(run_id), "out")
+        paths.open_path(folder if os.path.isdir(folder) else self._runs_dir)
         return True
 
 
@@ -234,53 +234,54 @@ class Ui(Api):
 
     def __init__(self, engine: Engine, start_path: str, files: list[str]):
         super().__init__(paths.runs_dir())
-        self.engine, self.start_path, self.files, self.closing = engine, start_path, files, False
+        self._engine, self._start_path, self._files, self._closing = engine, start_path, files, False
 
     def _status(self, text: str, bad: bool = False, log: str = ""):
-        if self.window is not None:
+        if self._window is not None:
             try:
-                self.window.evaluate_js(f"window.kostikStatus && kostikStatus({json.dumps(text)}, {json.dumps(bad)}, {json.dumps(log)})")
+                self._window.evaluate_js(f"window.kostikStatus && kostikStatus({json.dumps(text)}, {json.dumps(bad)}, {json.dumps(log)})")
             except Exception:  # noqa: BLE001 — окно ещё не готово или уже закрыто
                 pass
 
     def _boot(self):
-        if not self.engine.alive():
-            self.engine.start()
+        if not self._engine.alive():
+            self._engine.start()
         hints = ((0, "Запускаю движок анализа…"), (3, "Загружаю модели анализа…"), (10, "Готовлю интерфейс… первый запуск дольше"))
-        ok = self.engine.wait_ready(on_wait=lambda t: self._status(next(h for s, h in reversed(hints) if t >= s)))
+        ok = self._engine.wait_ready(on_wait=lambda t: self._status(next(h for s, h in reversed(hints) if t >= s)))
         if not ok:
             self._status("Движок анализа не запустился", True, _log_tail())
             return False
-        url = self.engine.base + self.start_path
-        if self.files:
-            r = _post(self.engine.base + "/desktop/run-local", {"paths": self.files})
-            self.files = []
+        url = self._engine.base + self._start_path
+        if self._files:
+            r = _post(self._engine.base + "/desktop/run-local", {"paths": self._files})
+            self._files = []
             if r and r.get("url"):
-                url = self.engine.base + r["url"]
+                url = self._engine.base + r["url"]
         self._status("Открываю…")
-        self.window.load_url(url)
+        print(f"[ui] движок готов, открываю {url}", flush=True)
+        self._window.load_url(url)
         return True
 
     def restart_engine(self):
-        self.engine.stop()
+        self._engine.stop()
         threading.Thread(target=self._boot, daemon=True).start()
         return True
 
-    def watch(self):
+    def _watch(self):
         """Поток окна: первый запуск движка, дальше — перезапуск, если он упал (до 3 раз подряд)."""
         self._boot()
-        while not self.closing:
+        while not self._closing:
             time.sleep(1.0)
-            if self.closing or self.engine.alive():
+            if self._closing or self._engine.alive():
                 continue
-            if self.engine.restarts >= 3:
-                self.window.load_html(SPLASH)
+            if self._engine.restarts >= 3:
+                self._window.load_html(SPLASH)
                 time.sleep(0.5)
                 self._status("Движок анализа падает при запуске — подробности в журнале", True, _log_tail())
                 return
-            self.engine.restarts += 1
-            print(f"[ui] движок завершился (код {self.engine.proc.returncode}), перезапуск {self.engine.restarts}", flush=True)
-            self.start_path = "/"
+            self._engine.restarts += 1
+            print(f"[ui] движок завершился (код {self._engine.proc.returncode}), перезапуск {self._engine.restarts}", flush=True)
+            self._start_path = "/"
             self._boot()
 
 
@@ -292,14 +293,14 @@ def open_window(engine: Engine, start_path: str, files: list[str], prefer_browse
             ui = Ui(engine, start_path, files)
             win = webview.create_window(APP_NAME, html=SPLASH, width=1320, height=900, min_size=(900, 640), js_api=ui,
                                         text_select=True, background_color="#12151a")
-            ui.window = win
+            ui._window = win
             try:
-                win.events.closing += lambda: setattr(ui, "closing", True)
+                win.events.closing += lambda: setattr(ui, "_closing", True)
             except AttributeError:                       # старый pywebview без событий
                 pass
             print("[window] окно pywebview, движок в отдельном процессе", flush=True)
-            webview.start(ui.watch, private_mode=False, storage_path=os.path.join(paths.data_dir(), "webview"))
-            ui.closing = True
+            webview.start(ui._watch, private_mode=False, storage_path=os.path.join(paths.data_dir(), "webview"))
+            ui._closing = True
             return "pywebview"
         except Exception as exc:  # noqa: BLE001 — нет WebView2 / WebKitGTK: браузер в режиме приложения
             print(f"[window] встроенное окно недоступно: {type(exc).__name__}: {exc}", flush=True)

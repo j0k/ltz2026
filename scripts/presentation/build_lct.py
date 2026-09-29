@@ -212,6 +212,8 @@ for sh in list(s8.shapes):
     elif sh.has_text_frame and sh.text_frame.text.startswith('Что делает'):
         put(sh, ['Объяснимость для врача: атлас с разметкой, граф «измерение → норма → вердикт», честная пометка сомнений; '
                  'устойчивость к любым файлам и работа офлайн — на сервере и на ноутбуке.'])
+    elif sh.has_text_frame and sh.text_frame.text.strip() == 'О команде':
+        put(sh, 'Команда «Квантовый Скачок»', size=13, bold=True)
     elif sh.has_text_frame and sh.text_frame.text.startswith('Капитан'):
         tf = sh.text_frame
         vals = {'Капитан:': ' Юрий Коноплёв', 'Кол-во участников:': ' 2 человека', 'Краткое описание:': '',
@@ -277,7 +279,7 @@ s10 = S[9]
 for sh in s10.shapes:
     t = sh.text_frame.text if sh.has_text_frame else ''
     if sh.is_placeholder and sh.placeholder_format.type == 1:
-        put(sh, 'О КОМАНДЕ')
+        put(sh, 'Команда «Квантовый Скачок»', size=16)
     elif t.startswith('Расскажите, как вы собрались'):
         put(sh, ['Нас двое: Юрий Коноплёв и Алексей Чуркин. Решение сделали за две недели хакатона; код, тесты '
                  'и документацию писали вместе с ИИ-агентом Claude через Codellake.'])

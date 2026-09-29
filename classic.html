@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="ru" data-theme="classic">
+<head>
+<meta charset="utf-8">
+<script>(function(){try{var q=(location.search.match(/[?&]theme=(classic|modern)/)||[])[1];if(q)localStorage.setItem('ltzTheme',q);
+if(q==='modern'){location.replace('./'+location.hash);return}
+if(sessionStorage.getItem('ltzArrive')){sessionStorage.removeItem('ltzArrive');document.documentElement.classList.add('tt-arrive')}}catch(e){}})()</script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kostik — контроль качества снимков денситометрии · ЛЦТ 2026</title>
+<meta name="description" content="Kostik проверяет снимки денситометрии DXA (поясница и бедро, DICOM): область, вердикт о качестве, тип нарушения и объяснение прямо на снимке. Работает локально. ЛЦТ 2026, задача 04, команда «Квантовый Скачок».">
+<meta property="og:title" content="Kostik — контроль качества снимков денситометрии">
+<meta property="og:description" content="Задача, данные, путь решения с удачами и провалами, результаты и планы. ЛЦТ 2026, задача 04, команда «Квантовый Скачок».">
+<meta property="og:image" content="https://juri-konoplev.pro/ltz2026/doc/img/ex_bad_artifact.png">
+<meta property="og:url" content="https://juri-konoplev.pro/ltz2026/">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+:root{--ink:#15181e;--ink2:#4a5361;--ink3:#7a8494;--bg:#f6f5f2;--card:#fff;--line:#e4e1da;--accent:#2a6fdb;--dark:#12151c;--was:#8a8983;--ok:#0c8a0c;--no:#c0392b}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+a{color:var(--accent)}
+.wrap{max-width:1100px;margin:0 auto;padding:0 22px}
+header{position:sticky;top:0;z-index:5;background:rgba(246,245,242,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+header .wrap{display:flex;align-items:center;gap:14px;padding-top:12px;padding-bottom:12px}
+.logo{font-weight:800;font-size:21px;color:var(--accent);letter-spacing:-.02em;text-decoration:none}
+nav{margin-left:auto;display:flex;gap:16px;flex-wrap:wrap}
+nav a{color:var(--ink2);text-decoration:none;font-size:14px} nav a:hover{color:var(--accent)}
+.hero{display:grid;grid-template-columns:1.05fr 1fr;gap:36px;align-items:center;padding:40px 0 10px}
+h1{font-size:44px;line-height:1.08;letter-spacing:-.03em;margin:0 0 14px;font-weight:800}
+.lead{font-size:18px;color:var(--ink2);margin:0 0 22px}
+.btns{display:flex;gap:10px;flex-wrap:wrap}
+.btn{display:inline-block;padding:11px 18px;border-radius:12px;background:var(--accent);color:#fff;text-decoration:none;font-weight:600}
+.btn.ghost{background:#e8effb;color:var(--accent)}
+.shot{width:100%;height:auto;border-radius:14px;border:1px solid var(--line);box-shadow:0 12px 40px rgba(20,30,50,.12);display:block}
+section{scroll-margin-top:70px}
+h2{font-size:30px;letter-spacing:-.02em;margin:56px 0 6px;font-weight:800}
+h2 small{display:block;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);font-weight:700;margin-bottom:4px}
+.sub{color:var(--ink2);margin:0 0 18px;max-width:780px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px} .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px} .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 18px}
+.card b{display:block;margin-bottom:4px} .card p{margin:0;color:var(--ink2);font-size:15px}
+.card ul{margin:6px 0 0;padding-left:18px;color:var(--ink2);font-size:15px}
+.stat b{font-size:30px;letter-spacing:-.02em;color:var(--accent);margin:0} .stat span{color:var(--ink2);font-size:14px}
+.ex{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.ex img{width:100%;height:auto;display:block} .ex div{padding:10px 14px;font-size:14px;color:var(--ink2)}
+.facts{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
+.fact{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;font-size:14px;color:var(--ink2)}
+.fact b{display:block;color:var(--ink);font-size:20px}
+/* роудмап в стиле «Этапы участия» сайта ЛЦТ: тёмный фиолетовый градиент, белые кружки на пунктире, красная точка — текущий этап */
+@font-face{font-family:"Montserrat";font-weight:400;font-display:swap;src:url(assets/fonts/Montserrat-Regular.woff) format("woff")}
+@font-face{font-family:"Montserrat";font-weight:600;font-display:swap;src:url(assets/fonts/Montserrat-SemiBold.woff) format("woff")}
+@font-face{font-family:"Montserrat";font-weight:700;font-display:swap;src:url(assets/fonts/Montserrat-Bold.woff) format("woff")}
+.stages{font-family:"Montserrat",Inter,system-ui,sans-serif;color:#fff;border-radius:24px;padding:28px 30px 22px;
+  background:radial-gradient(120% 90% at 0% 0%,#5a1a66 0%,#3d1657 45%,#2a1147 100%);box-shadow:0 18px 50px rgba(42,17,71,.28)}
+.st-head h3{margin:0 0 22px;font-size:26px;font-weight:700;letter-spacing:-.01em}
+.st-list{list-style:none;margin:0;padding:0}
+.st-item{position:relative;display:grid;grid-template-columns:44px 1fr;gap:18px;padding-bottom:26px}
+.st-item:last-child{padding-bottom:6px}
+.st-item:not(:last-child):before{content:"";position:absolute;left:21px;top:46px;bottom:2px;border-left:2px dotted rgba(200,180,225,.55)}
+.st-dot{width:42px;height:42px;border-radius:50%;background:#fff;position:relative;box-shadow:0 0 0 4px rgba(255,255,255,.08)}
+.st-item.cur .st-dot:after{content:"";position:absolute;left:50%;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;background:#ff5a5f}
+.st-body h4{margin:6px 0 6px;font-size:20px;font-weight:600;line-height:1.25;color:#e6dbf2}
+.st-item.cur .st-body h4{color:#fff}
+.st-date{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:600;color:#d3c5e6}
+.st-cal{flex:none;color:#cdbbe4}
+.st-tag{margin:2px 0 8px;font-size:15px;font-weight:600;color:#a993c4}
+.st-body ul{list-style:none;margin:0;padding:0;font-size:15px;line-height:1.55;font-weight:400;color:#cbbde0}
+.st-body li{position:relative;padding-left:22px;margin:5px 0}
+.st-body li:before{position:absolute;left:0;top:0;font-weight:700}
+.st-body li.ok:before{content:"+";color:#3fe0b0}.st-body li.no:before{content:"−";color:#ff7b8f}
+.st-toggle{display:flex;align-items:center;gap:10px;margin-top:8px;padding:8px 0 0;background:none;border:0;color:#fff;font:600 17px "Montserrat",Inter,sans-serif;cursor:pointer}
+.st-toggle svg{color:#3fe0b0;transition:transform .2s}.st-toggle[aria-expanded="false"] svg{transform:rotate(180deg)}
+.stages.short .st-item:not(.cur){display:none}
+.stages.short .st-item.cur:before{display:none}
+@media (max-width:640px){.stages{padding:22px 18px}.st-item{grid-template-columns:36px 1fr;gap:12px}.st-dot{width:34px;height:34px}.st-item:not(:last-child):before{left:17px;top:38px}.st-body h4{font-size:18px}}
+/* было → стало */
+.chart{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 20px 8px}
+.chart-h{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:6px}
+.legend{display:flex;gap:16px;font-size:13px;color:var(--ink2)} .legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+.db{display:grid;grid-template-columns:300px 1fr;gap:16px;align-items:center;padding:12px 0;border-top:1px solid #f0eee9}
+.db:first-of-type{border-top:0}
+.db-l b{display:block;font-size:15px} .db-l span{font-size:13px;color:var(--ink3)}
+.db-t{position:relative;height:34px;margin:0 22px;background:linear-gradient(90deg,#eceae4 1px,transparent 1px) 0 0/25% 100%}
+.db-line{position:absolute;top:16px;height:2px;background:#b9c9e8}
+.db-a,.db-b{position:absolute;top:10px;width:14px;height:14px;margin-left:-7px;border-radius:50%;box-shadow:0 0 0 2px #fff}
+.db-a{background:var(--was)} .db-b{background:var(--accent)}
+.db-a em,.db-b em{position:absolute;top:-19px;left:50%;transform:translateX(-50%);font:600 12px/1 Inter,system-ui,sans-serif;font-style:normal;color:var(--ink2);white-space:nowrap}
+.db-b em{color:var(--ink)}
+.axis{display:flex;justify-content:space-between;margin:0 22px 0 338px;font-size:11px;color:var(--ink3)}
+.lessons{margin-top:18px}
+table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;font-size:15px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid #efece6} th{background:#f1f4fa;font-size:13px;color:var(--ink2);font-weight:600}
+.tscroll{overflow-x:auto;border-radius:14px}
+td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
+.flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:4px 0 18px}
+.flow span{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:14px} .flow i{color:var(--ink3);font-style:normal}
+pre{background:var(--dark);color:#e6ecf3;border-radius:14px;padding:16px 18px;overflow:auto;font:14px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.links{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.links a{display:block;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 16px;text-decoration:none;color:var(--ink)}
+.links a:hover{border-color:var(--accent)} .links b{display:block} .links span{color:var(--ink3);font-size:14px}
+.note{color:var(--ink3);font-size:14px}
+@media (max-width:860px){.hero,.grid2{grid-template-columns:1fr}h1{font-size:34px}.grid3,.links,.facts{grid-template-columns:1fr}.grid4{grid-template-columns:repeat(2,1fr)}nav{display:none}
+  .db{grid-template-columns:1fr;gap:4px}.axis{margin-left:22px}}
+
+.qf{display:flex;align-items:center;gap:22px;max-width:1100px;margin:44px auto 24px;padding:16px 22px;border-radius:18px;
+  background:#12151c;color:#e8edf3;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+.qf-art{flex:none;width:260px;height:100px;overflow:visible}
+.qf-levels line{stroke:#3a4352;stroke-width:2;stroke-linecap:round}
+.qf-levels text{fill:#7f8b9b;font-size:9px;font-family:inherit;text-anchor:end}
+.qf-f{fill:#a9b4c2;font-size:10px;font-style:italic;text-anchor:middle;font-family:Georgia,"Times New Roman",serif}
+.qf-in,.qf-out{fill:none;stroke:url(#qfPh);stroke-width:2.2;stroke-linecap:round}
+.qf-trail{fill:none;stroke:#7cc4ff;stroke-width:1.6;stroke-dasharray:3 4;opacity:0}
+.qf-team{font-size:19px;font-weight:800;letter-spacing:-.01em;color:#fff}
+.qf-names{font-size:14px;color:#c9d3df;margin-top:2px}
+.qf-meta{font-size:12px;color:#8793a3;margin-top:6px;line-height:1.5}
+.qf-meta a{color:#8fc1ff}
+/* цикл 6 с: фотон прилетает → электрон прыгает на n=3 → держится → падает на n=1 и излучает фотон */
+.qf-e{animation:qfE 6s cubic-bezier(.5,0,.3,1) infinite}
+.qf-in{animation:qfIn 6s linear infinite}
+.qf-out{animation:qfOut 6s linear infinite}
+.qf-trail{animation:qfTr 6s linear infinite}
+@keyframes qfE{0%,24%{transform:translate(92px,72px)}32%,62%{transform:translate(118px,18px)}66%{transform:translate(110px,18px)}74%,100%{transform:translate(92px,72px)}}
+@keyframes qfIn{0%{transform:translate(30px,122px) rotate(-40deg);opacity:0}8%{opacity:1}22%{transform:translate(62px,95px) rotate(-40deg);opacity:1}25%,100%{transform:translate(66px,92px) rotate(-40deg);opacity:0}}
+@keyframes qfTr{0%,24%{opacity:0}28%{opacity:.9}40%,100%{opacity:0}}
+@keyframes qfOut{0%,72%{transform:translate(100px,66px) rotate(-14deg);opacity:0}75%{opacity:1}95%{transform:translate(196px,42px) rotate(-14deg);opacity:1}100%{transform:translate(206px,40px) rotate(-14deg);opacity:0}}
+@media (prefers-reduced-motion:reduce){.qf-e,.qf-in,.qf-out,.qf-trail{animation:none}.qf-e{transform:translate(118px,18px)}}
+@media (max-width:640px){.qf{flex-direction:column;align-items:flex-start;gap:8px;margin:24px 12px 14px}.qf-art{width:210px;height:80px}}
+@media print{.qf{background:none;color:#000}.qf-art{display:none}}
+
+header .tt{margin-left:16px;color:var(--ink2)}@media (max-width:860px){header .tt{margin-left:auto}}
+</style>
+<link rel="stylesheet" href="assets/theme.css">
+</head>
+<body>
+<header><div class="wrap">
+  <a class="logo" href="#top">Kostik</a>
+  <nav><a href="#task">Задача</a><a href="#dxa">Денситометрия</a><a href="#images">Снимки</a><a href="#roadmap">Путь</a><a href="#solution">Решение</a><a href="#results">Результаты</a><a href="#next">Развитие</a><a href="#team-info">Команда</a></nav>
+  <button type="button" class="tt" data-mode="modern" role="switch" aria-checked="true" aria-label="Оформление страницы: Modern или Classic" title="Переключить оформление: Modern ⇄ Classic"><span class="tt-l tt-c">Classic</span><span class="tt-k" aria-hidden="true"><i></i></span><span class="tt-l tt-m">Modern</span></button>
+</div></header>
+
+<div class="wrap" id="top">
+<section class="hero">
+  <div>
+    <h1>Проверка снимков денситометрии за доли секунды</h1>
+    <p class="lead">Kostik смотрит каждый снимок DXA сразу после исследования и говорит: годен или брак, какое нарушение
+      и почему — прямо на снимке. Работает локально: снимки не покидают больницу.</p>
+    <div class="btns">
+      <a class="btn" href="https://ltz2026.ru/">Открыть стенд</a>
+      <a class="btn ghost" href="https://ltz2026.ru/video/">Видео · 2 мин</a>
+      <a class="btn ghost" href="https://ltz2026.ru/download">Приложение</a>
+    </div>
+  </div>
+  <img class="shot" src="https://ltz2026.ru/downloads/materials/real/real_bad_artifact.jpg" alt="Синтетический снимок поясницы и атлас Kostik: позвонки Th12–L5, ось и найденный посторонний предмет" width="1000" height="530">
+</section>
+
+<section id="task">
+<h2><small>01 · Задача</small>Постановка задачи</h2>
+<p class="sub">ЛЦТ 2026, задача 04 Департамента здравоохранения Москвы (Центр диагностики и телемедицины): сервис ИИ, который
+  оценивает качество исследований плотности костей. Врач должен узнать о браке, пока пациент ещё в кабинете, а не через
+  неделю, когда снимок уже не переснять.</p>
+<div class="grid3">
+  <div class="card"><b>Вход</b><p>DICOM-снимки исследования без разметки: поясничный отдел и проксимальные отделы бёдер.</p></div>
+  <div class="card"><b>Выход</b><p>Строка на снимок: область, класс качества 0/1, тип нарушения, статус и время — CSV/XLSX по разделу 2.5 ТЗ.</p></div>
+  <div class="card"><b>Условия</b><p>Контейнер и API пакетной обработки, до 3 минут на исследование, воспроизводимо, без падений, без передачи снимков наружу. Метрики — F1 и ROC-AUC с 95 % ДИ.</p></div>
+</div>
+</section>
+
+<section id="dxa">
+<h2><small>02 · Денситометрия</small>Что это и почему важна укладка</h2>
+<p class="sub">Денситометрия (DXA, двухэнергетическая рентгеновская абсорбциометрия) измеряет минеральную плотность кости
+  двумя пучками рентгена малой энергии. По ней диагностируют остеопороз и следят за лечением. Считают плотность
+  позвонков L1–L4 и шейки бедра — поэтому число зависит от того, как лёг пациент.</p>
+<div class="grid3">
+  <div class="card"><b>Поворот и наклон</b><p>Ось позвоночника отклонена больше 5° или бедро ротировано — плотность считается по косой проекции и «плывёт».</p></div>
+  <div class="card"><b>Неполный охват</b><p>В кадр не попали гребни подвздошных костей или Th12 — нельзя найти L1–L4 и сравнить с прошлым исследованием.</p></div>
+  <div class="card"><b>Посторонний предмет</b><p>Застёжка, пуговица, украшение в зоне измерения завышают плотность — диагноз может быть пропущен.</p></div>
+</div>
+</section>
+
+<section id="images">
+<h2><small>03 · Снимки</small>Как устроены данные</h2>
+<p class="sub">Обучающий набор организатора — 100 исследований с одного аппарата. Ниже настоящие обезличенные снимки из него
+  (слева исходный снимок, справа атлас, который построил Kostik). Файлы лежат на стенде ltz2026.ru, в репозитории их нет.</p>
+<div class="facts">
+  <div class="fact"><b>~300×290 px, 8 бит</b>GE Lunar Prodigy Advance, серая шкала; ширина кадра 300 px — поясница, 280 px — бедро</div>
+  <div class="fact"><b>нет масштаба в мм</b>ни в одном файле нет размера пикселя и области тела — поля «3 см и 2 см» по ТЗ только косвенно</div>
+  <div class="fact"><b>499 файлов → 252 снимка</b>247 точных копий; исследование — поясница и одно-два бедра</div>
+</div>
+<div class="grid3">
+  <div class="ex"><img src="https://ltz2026.ru/downloads/materials/real/real_good_spine.jpg" alt="Поясница — годен" loading="lazy" width="1014" height="530"><div><b>Поясница — годен.</b> Th12–L5 и гребни в кадре, ось 0°.</div></div>
+  <div class="ex"><img src="https://ltz2026.ru/downloads/materials/real/real_bad_axis.jpg" alt="Наклон оси" loading="lazy" width="1097" height="530"><div><b>Наклон оси — брак.</b> 8,7° при допуске 5°.</div></div>
+  <div class="ex"><img src="https://ltz2026.ru/downloads/materials/real/real_bad_coverage.jpg" alt="Неполный охват" loading="lazy" width="1000" height="530"><div><b>Неполный охват — брак.</b> Гребни подвздошных костей не видны.</div></div>
+  <div class="ex"><img src="https://ltz2026.ru/downloads/materials/real/real_bad_artifact.jpg" alt="Посторонний предмет" loading="lazy" width="1000" height="530"><div><b>Посторонний предмет — брак.</b> Яркое пятно у позвоночника в рамке.</div></div>
+  <div class="ex"><img src="https://ltz2026.ru/downloads/materials/real/real_good_hip_left.jpg" alt="Левое бедро — годно" loading="lazy" width="1260" height="530"><div><b>Левое бедро — годно.</b> Вертел, шейка и поля в норме.</div></div>
+  <div class="ex"><img src="https://ltz2026.ru/downloads/materials/real/real_good_hip_right.jpg" alt="Правое бедро — годно" loading="lazy" width="1148" height="530"><div><b>Правое бедро — годно.</b> Сторона — по массе таза.</div></div>
+</div>
+</section>
+
+<section id="roadmap">
+<h2><small>04 · Путь</small>Роудмап: как мы двигались</h2>
+<p class="sub">Две недели, 15–29 сентября. Зелёным — что сработало, красным — что не сработало и было честно отброшено.</p>
+<div class="stages" id="stages">
+  <div class="st-head"><h3>Этапы пути</h3></div>
+  <ol class="st-list">
+    <li class="st-item"><span class="st-dot" aria-hidden="true"></span><div class="st-body"><h4>ТЗ и стенд в первый же день</h4><div class="st-date"><svg class="st-cal" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg><span>15.09.2026</span></div><div class="st-tag">2 удачи · 1 отброшено</div><ul><li class="ok">рабочий сервис на домене с первого дня: чтение DICOM, область, вердикт, атлас, голос</li><li class="ok">версия 0.1 — правила для поясницы</li><li class="no">пороги подобраны на тех же данных, что и оценка: цифры завышены</li></ul></div></li>
+    <li class="st-item"><span class="st-dot" aria-hidden="true"></span><div class="st-body"><h4>Разбираем данные</h4><div class="st-date"><svg class="st-cal" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg><span>16–21.09.2026</span></div><div class="st-tag">3 удачи · 1 отброшено</div><ul><li class="ok">из 499 файлов уникальных только 252 — без схлопывания дублей оценка «подглядывает»</li><li class="ok">в DICOM нет масштаба в мм и области тела — всё определяем по изображению</li><li class="ok">каталог нарушений, диаграмма Ганта, роудмап</li><li class="no">минималистичный редизайн откатили: карточки понятнее ссылок</li></ul></div></li>
+    <li class="st-item"><span class="st-dot" aria-hidden="true"></span><div class="st-body"><h4>Устойчивость</h4><div class="st-date"><svg class="st-cal" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg><span>25.09.2026</span></div><div class="st-tag">2 удачи</div><ul><li class="ok">архив МРТ из интернета: было 135 из 135 технических ошибок → понятный отказ «это не DXA»</li><li class="ok">декодеры сжатых DICOM (JPEG Lossless, JPEG-LS, JPEG 2000)</li></ul></div></li>
+    <li class="st-item"><span class="st-dot" aria-hidden="true"></span><div class="st-body"><h4>Честная оценка — главный поворот</h4><div class="st-date"><svg class="st-cal" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg><span>26.09.2026</span></div><div class="st-tag">2 удачи · 1 отброшено</div><ul><li class="ok">кросс-валидация 5×50 по исследованиям, 95 % ДИ: F1 итога 0,58 [0,46–0,74]</li><li class="ok">посторонние предметы: ROC-AUC 0,55 → 0,85 — контраст пятна вместо порога яркости</li><li class="no">бедро: широкий поиск признаков и признаки нейросетей (ResNet-50, DINOv2) — сигнал не вырос, ≤ 0,64</li></ul></div></li>
+    <li class="st-item"><span class="st-dot" aria-hidden="true"></span><div class="st-body"><h4>Бедро и упаковка</h4><div class="st-date"><svg class="st-cal" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg><span>27.09.2026</span></div><div class="st-tag">3 удачи · 1 отброшено</div><ul><li class="ok">бедро оценивается: ExtraTrees по 47 признакам формы, ROC-AUC 0,66</li><li class="ok">итоговая фитнес-функция по п. 8.4 ТЗ: 0,570</li><li class="ok">приложение 1.0-Beta: .exe, .msi, .deb; стенд на ltz2026.ru</li><li class="no">3D-модель исследования: красиво, но уводило от снимков — убрали, результаты только на снимках</li></ul></div></li>
+    <li class="st-item"><span class="st-dot" aria-hidden="true"></span><div class="st-body"><h4>Проверка гипотез</h4><div class="st-date"><svg class="st-cal" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg><span>28.09.2026</span></div><div class="st-tag">2 удачи · 1 отброшено</div><ul><li class="ok">.deb для Ubuntu 22.04–26.04 и Python 3.10–3.14</li><li class="ok">переименование в Kostik</li><li class="no">RAD-DINO для бедра: +0,01 ROC-AUC внутри доверительного интервала — не взяли, лишняя сложность</li></ul></div></li>
+    <li class="st-item cur"><span class="st-dot" aria-hidden="true"></span><div class="st-body"><h4>Сдача</h4><div class="st-date"><svg class="st-cal" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg><span>29.09.2026</span></div><div class="st-tag">3 удачи</div><ul><li class="ok">презентация по шаблону ЛЦТ, документация PDF, видео</li><li class="ok">чтение надписей на чужих картинках (OCR), дообучение на правках врачей плагинами</li><li class="ok">приложение без тормозов: окно, движок и анализ — три процесса</li></ul></div></li>
+  </ol>
+  <button type="button" class="st-toggle" id="stToggle" aria-expanded="true">Скрыть до текущего <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button>
+</div>
+
+<div class="chart lessons" role="group" aria-label="Метрики: было и сейчас">
+  <div class="chart-h"><b>Было → сейчас</b><div class="legend"><span><i style="background:var(--was)"></i>было</span><span><i style="background:var(--accent)"></i>сейчас (0.5.4)</span></div></div>
+  <div class="db" title="Посторонние предметы · ROC-AUC: было 0,55, сейчас 0,85. порог яркости → локальный контраст пятна">
+  <div class="db-l"><b>Посторонние предметы · ROC-AUC</b><span>порог яркости → локальный контраст пятна</span></div>
+  <div class="db-t"><i class="db-line" style="left:55.0%;width:30.0%"></i>
+    <i class="db-a" style="left:55.0%"><em>0,55</em></i><i class="db-b" style="left:85.0%"><em>0,85</em></i></div>
+</div>
+<div class="db" title="Посторонние предметы · F1: было 0,13, сейчас 0,62. версия 0.1 → 0.5.4">
+  <div class="db-l"><b>Посторонние предметы · F1</b><span>версия 0.1 → 0.5.4</span></div>
+  <div class="db-t"><i class="db-line" style="left:13.0%;width:49.0%"></i>
+    <i class="db-a" style="left:13.0%"><em>0,13</em></i><i class="db-b" style="left:62.0%"><em>0,62</em></i></div>
+</div>
+<div class="db" title="Поясница, итог · F1: было 0,45, сейчас 0,62. правила по ориентирам, полный набор">
+  <div class="db-l"><b>Поясница, итог · F1</b><span>правила по ориентирам, полный набор</span></div>
+  <div class="db-t"><i class="db-line" style="left:45.0%;width:17.0%"></i>
+    <i class="db-a" style="left:45.0%"><em>0,45</em></i><i class="db-b" style="left:62.0%"><em>0,62</em></i></div>
+</div>
+<div class="db" title="Бедро, брак · ROC-AUC: было 0,5 — уровень угадывания, сейчас 0,66. «не оценено» → ExtraTrees, кросс-валидация">
+  <div class="db-l"><b>Бедро, брак · ROC-AUC</b><span>«не оценено» → ExtraTrees, кросс-валидация</span></div>
+  <div class="db-t"><i class="db-line" style="left:50.0%;width:16.0%"></i>
+    <i class="db-a" style="left:50.0%"><em>0,5 · наугад</em></i><i class="db-b" style="left:66.0%"><em>0,66</em></i></div>
+</div>
+  <div class="axis"><span>0</span><span>0,25</span><span>0,5</span><span>0,75</span><span>1</span></div>
+</div>
+
+<div class="grid3" style="margin-top:18px">
+  <div class="card"><b>Что сработало</b><ul><li>стенд с первого дня — каждая идея сразу видна команде</li><li>разбор данных до моделей: дубли и нет масштаба</li><li>правила по анатомии там, где примеров мало</li></ul></div>
+  <div class="card"><b>Что не сработало</b><ul><li>признаки больших нейросетей для бедра — сигнала нет</li><li>оценка на тех же данных — цифры завышены</li><li>3D-вид — уводил внимание от снимка</li></ul></div>
+  <div class="card"><b>Аналитика пути</b><ul><li>93 коммита; 63 из них (68 %) — в последние три дня: упаковка, приложение, сдача</li><li>главный прирост качества — 26.09, после честной кросс-валидации</li><li>узкое место — бедро: 150 снимков, ротация и поля без масштаба</li></ul></div>
+</div>
+</section>
+
+<section id="solution">
+<h2><small>05 · Решение</small>Как работает Kostik</h2>
+<div class="flow"><span>DICOM, папка, zip</span><i>→</i><span>чтение и схлопывание дублей</span><i>→</i><span>область: поясница или бедро</span><i>→</i><span>проверка по ТЗ</span><i>→</i><span>атлас, граф, текст</span><i>→</i><span>таблица CSV/XLSX</span></div>
+<div class="grid2">
+  <div class="card"><b>Поясница — правила по анатомии</b><p>Позвонки Th12–L5 по межпозвонковым щелям, гребни подвздошных костей, ось столба, посторонние предметы по локальному контрасту пятна. Каждое решение — измерение, норма и вердикт.</p></div>
+  <div class="card"><b>Бедро — обученная модель</b><p>ExtraTrees по 47 признакам формы кости, краёв кадра и ориентиров атласа; инференс на numpy без видеокарты. Вердикт бедра — подсказка для проверки.</p></div>
+  <div class="card"><b>Объяснимость</b><p>Атлас с разметкой поверх снимка, переключатель «атлас ⇄ чистый снимок», граф «измерение → норма → вердикт», пояснение текстом и голосом.</p></div>
+  <div class="card"><b>Где работает</b><p>Веб-стенд, Docker без сети, API и MCP для ИИ-ассистентов, приложение для Windows и Linux. Дообучение на правках врачей — плагинами с воротами качества.</p></div>
+</div>
+<pre>git clone https://github.com/j0k/ltz2026 &amp;&amp; cd ltz2026
+./build.sh                               # образ Docker, интернет нужен только здесь
+./run.sh &lt;папка или архив.zip&gt; &lt;выход&gt;   # results.csv, results.xlsx, overlays.zip</pre>
+</section>
+
+<section id="results">
+<h2><small>06 · Результаты</small>Где мы сегодня — версия 0.5.4</h2>
+<div class="grid4" style="margin-bottom:16px">
+  <div class="card stat"><b>0,31 с</b><span>на снимок, 2 ядра CPU; допуск ТЗ — 3 минуты на исследование</span></div>
+  <div class="card stat"><b>252 / 252</b><span>снимка набора без ошибок, повторный прогон — побайтно тот же</span></div>
+  <div class="card stat"><b>175</b><span>чужих файлов из интернета — ни одного падения, каждому понятный отказ</span></div>
+  <div class="card stat"><b>0,57</b><span>итоговая фитнес-функция по п. 8.4 ТЗ, 95 % ДИ [0,48–0,64]</span></div>
+</div>
+<div class="tscroll"><table>
+  <tr><th>Критерий</th><th>F1 (кросс-валидация, 95 % ДИ)</th><th>ROC-AUC</th><th>Уровень</th></tr>
+  <tr><td>Поясница, итог</td><td class="n">0,58 [0,46–0,74]</td><td class="n">0,75</td><td>работает</td></tr>
+  <tr><td>Посторонние предметы</td><td class="n">0,55</td><td class="n">0,85</td><td>можно доверять</td></tr>
+  <tr><td>Охват</td><td class="n">0,69</td><td class="n">0,88</td><td>можно доверять</td></tr>
+  <tr><td>Наклон оси</td><td class="n">0,30</td><td class="n">0,75</td><td>сколиоз похож на наклон</td></tr>
+  <tr><td>Бедро, брак</td><td class="n">0,47</td><td class="n">0,66 [0,62–0,69]</td><td>подсказка для проверки</td></tr>
+</table></div>
+<p class="note">Кросс-валидация 5×50 по исследованиям, дубли в одной группе, пороги подбираются только на обучающей части. Подробно — в <a href="https://github.com/j0k/ltz2026#readme">README</a> и <a href="https://github.com/j0k/ltz2026/blob/main/doc/TRAINING.md">TRAINING.md</a>.</p>
+</section>
+
+<section id="next">
+<h2><small>07 · Развитие</small>Что дальше</h2>
+<div class="grid4">
+  <div class="card"><b>Пилот</b><p>1–2 отделения денситометрии: проверка каждого снимка в день исследования.</p></div>
+  <div class="card"><b>Разметка врачей</b><p>Спорные вердикты правятся в пульте — это данные для дообучения, оно уже встроено.</p></div>
+  <div class="card"><b>Бедро и Th12</b><p>Разметка малого вертела и уровней позвонков, масштаб в мм от аппарата.</p></div>
+  <div class="card"><b>Интеграция</b><p>PACS и ЕРИС, отчёт о качестве по отделениям и лаборантам.</p></div>
+</div>
+<div class="card" style="margin-top:14px"><b>05 · Разработка вместе с врачами</b>
+  <p>Следующий шаг: несколько подходов с практикующими врачами и ИИ. Записываем, как врач разбирает снимок — голос и движения, — ИИ раскладывает записи на понятные правила и признаки, врач проверяет, и мы делаем новый подход.</p>
+  <div class="flow" style="margin:14px 0 0"><span>голос: врач объясняет, что видит</span><i>→</i><span>движения: курсор, обводка зон</span><i>→</i><span>анализ ИИ: правила и признаки</span><i>→</i><span>проверка врачом</span><i>↺</i><span>подход 1 → 2 → 3 …</span></div>
+</div>
+</section>
+
+<section id="team-info">
+<h2><small>08 · О команде</small>Команда «Квантовый Скачок»</h2>
+<p class="sub">Двое участников и ИИ-агент как инструмент разработки. Решение сделали за две недели хакатона.</p>
+<div class="grid2">
+  <div class="card"><b>Юрий Коноплёв — капитан</b><p>Руководитель проекта и продукт: постановка, приоритеты, приёмка каждой версии. Telegram <a href="https://t.me/bimodaling">@bimodaling</a></p></div>
+  <div class="card"><b>Алексей Чуркин</b><p>Стенд, Telegram-бот, проверка сервиса на чужих данных, обратная связь по продукту и презентации. Telegram <a href="https://t.me/lesha_cfc">@lesha_cfc</a></p></div>
+  <div class="card"><b>Что нас объединяет</b><p>Нам обоим интересно всё, что связано со спортом. Здоровье костей и суставов там не абстракция: травмы, нагрузки и восстановление начинаются с точной картины, а хорошая картина — с хорошего снимка.</p></div>
+  <div class="card"><b>Как работали</b><p>Код, тесты и документацию писали вместе с ИИ-агентом Claude через Codellake; трекер задач, стенд и автопуш в GitHub обновлялись с первого дня.</p></div>
+</div>
+</section>
+
+<section id="materials">
+<h2><small>09 · Материалы</small>Всё по проекту</h2>
+<div class="links">
+  <a href="https://ltz2026.ru/"><b>Прототип</b><span>ltz2026.ru — свои файлы и примеры</span></a>
+  <a href="https://ltz2026.ru/video/"><b>Видео</b><span>демонстрация с главами</span></a>
+  <a href="https://ltz2026.ru/downloads/materials/Kostik_presentation.pdf"><b>Презентация</b><span>PDF по шаблону ЛЦТ</span></a>
+  <a href="https://ltz2026.ru/downloads/materials/Kostik_docs.pdf"><b>Документация</b><span>PDF с оглавлением</span></a>
+  <a href="https://ltz2026.ru/download"><b>Приложение</b><span>.exe, .msi, .deb — без интернета</span></a>
+  <a href="https://github.com/j0k/ltz2026"><b>Исходный код</b><span>репозиторий, тесты, обучение</span></a>
+</div>
+</section>
+</div>
+
+<section id="team">
+<footer class="qf">
+  <svg class="qf-art" viewBox="0 0 240 92" role="img" aria-label="Квантовый скачок: электрон поглощает фотон, переходит на верхний уровень энергии и излучает фотон, возвращаясь">
+    <defs>
+      <radialGradient id="qfGlow"><stop offset="0" stop-color="#7cc4ff"/><stop offset=".45" stop-color="#2f7cf6" stop-opacity=".55"/><stop offset="1" stop-color="#2f7cf6" stop-opacity="0"/></radialGradient>
+      <linearGradient id="qfPh" x1="0" x2="1"><stop offset="0" stop-color="#ff4fa3" stop-opacity="0"/><stop offset=".3" stop-color="#ff4fa3"/><stop offset="1" stop-color="#a45cff"/></linearGradient>
+    </defs>
+    <g class="qf-levels">
+      <line x1="62" x2="150" y1="72" y2="72"/><line x1="62" x2="150" y1="45" y2="45"/><line x1="62" x2="150" y1="18" y2="18"/>
+      <text x="56" y="75">n=1</text><text x="56" y="48">n=2</text><text x="56" y="21">n=3</text>
+    </g>
+    <path class="qf-in" d="M0 0 q3 -6 6 0 t6 0 t6 0 t6 0 t6 0 t6 0"/>
+    <path class="qf-trail" d="M92 72 C 94 42, 108 22, 118 18"/>
+    <path class="qf-out" d="M0 0 q3 -6 6 0 t6 0 t6 0 t6 0 t6 0 t6 0"/>
+    <g class="qf-e"><circle r="11" fill="url(#qfGlow)"/><circle r="4" fill="#dff0ff" stroke="#2f7cf6" stroke-width="1.4"/></g>
+    <text class="qf-f" x="106" y="90">ΔE = hν</text>
+  </svg>
+  <div class="qf-text">
+    <div class="qf-team">Команда «Квантовый Скачок»</div>
+    <div class="qf-names">Юрий Коноплёв · Алексей Чуркин</div>
+    <div class="qf-meta">ЛЦТ 2026 · задача 04 Департамента здравоохранения Москвы. Kostik — для контроля качества снимков, не для постановки диагноза. · <a href="https://ltz2026.ru/">ltz2026.ru</a> · <a href="https://github.com/j0k/ltz2026">GitHub</a></div>
+  </div>
+</footer>
+</section>
+<script>
+document.getElementById('stToggle').addEventListener('click', function () {   // «Скрыть до текущего», как на сайте ЛЦТ
+  const box = document.getElementById('stages'), short = box.classList.toggle('short');
+  this.setAttribute('aria-expanded', String(!short));
+  this.firstChild.textContent = short ? 'Показать весь путь ' : 'Скрыть до текущего ';
+});
+</script>
+<script src="assets/theme.js"></script>
+</body>
+</html>

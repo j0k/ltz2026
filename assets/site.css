@@ -26,7 +26,7 @@ img{max-width:100%;display:block}
 .nav a.l{font-size:13px;font-weight:600;color:var(--mut);padding:7px 12px;border-radius:999px;transition:color .2s,background .2s}
 .nav a.l:hover,.nav a.l.on{color:#fff;background:rgba(255,255,255,.09)}
 .nav .go{white-space:nowrap;margin-left:8px;padding:9px 18px;border-radius:999px;background:#fff;color:#0a0b12;font-weight:700;font-size:13px}
-@media (max-width:1000px){.nav a.l{display:none}.nav{padding-left:16px}}
+@media (max-width:1200px){.nav a.l{display:none}.nav{padding-left:16px}}
 /* ----- кнопки */
 .btn{display:inline-flex;align-items:center;gap:10px;padding:15px 26px;border-radius:999px;font-weight:700;font-size:15px;color:#fff;background:linear-gradient(120deg,var(--acc),var(--vio));box-shadow:0 12px 40px rgba(90,110,255,.35);will-change:transform}
 .btn.ghost{background:rgba(255,255,255,.07);border:1px solid var(--line);box-shadow:none;color:var(--ink)}

@@ -1,0 +1,17 @@
+/* Переключатель оформления Modern ⇄ Classic (тумблер, как тёмная/светлая тема): общий для обеих версий страницы */
+.tt{display:inline-flex;align-items:center;gap:9px;padding:6px 12px;border-radius:999px;border:1px solid rgba(128,140,170,.38);background:rgba(128,140,170,.1);color:inherit;
+  font:700 10.5px/1 "Montserrat",Inter,system-ui,-apple-system,"Segoe UI",sans-serif;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;white-space:nowrap;-webkit-tap-highlight-color:transparent}
+.tt:hover{border-color:rgba(128,150,210,.8)}
+.tt:focus-visible{outline:2px solid #5aa7ff;outline-offset:3px}
+.tt-l{opacity:.48;transition:opacity .25s}
+.tt[data-mode=modern] .tt-m,.tt[data-mode=classic] .tt-c{opacity:1}
+.tt-k{position:relative;flex:none;width:36px;height:19px;border-radius:999px;background:rgba(128,140,170,.4);transition:background .3s}
+.tt-k i{position:absolute;top:2.5px;left:2.5px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(20,30,60,.4);transition:transform .32s cubic-bezier(.3,1.5,.5,1)}
+.tt[data-mode=modern] .tt-k{background:linear-gradient(120deg,#5aa7ff,#8a6bff)}
+.tt[data-mode=modern] .tt-k i{transform:translateX(17px)}
+.tt-fade{position:fixed;inset:0;z-index:9999;pointer-events:none;opacity:0;transition:opacity .3s ease}
+html.tt-arrive body{animation:ttArrive .5s ease both}
+@keyframes ttArrive{from{opacity:0}to{opacity:1}}
+@media (max-width:480px){.tt{padding:6px 9px;gap:6px;font-size:9.5px}.tt-k{width:32px}.tt[data-mode=modern] .tt-k i{transform:translateX(13px)}}
+@media (prefers-reduced-motion:reduce){.tt-fade{transition:none}html.tt-arrive body{animation:none}.tt-k i{transition:none}}
+.nav .tt{margin-left:6px;color:var(--mut)}.nav .tt:hover{color:#fff}

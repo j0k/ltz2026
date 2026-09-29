@@ -2,6 +2,9 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
+<script>(function(){try{var q=(location.search.match(/[?&]theme=(classic|modern)/)||[])[1];if(q)localStorage.setItem('ltzTheme',q);
+if(localStorage.getItem('ltzTheme')==='classic'){location.replace('classic.html'+location.hash);return}
+if(sessionStorage.getItem('ltzArrive')){sessionStorage.removeItem('ltzArrive');document.documentElement.classList.add('tt-arrive')}}catch(e){}})()</script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Kostik — контроль качества снимков денситометрии · ЛЦТ 2026</title>
 <meta name="description" content="Kostik проверяет снимки денситометрии DXA (поясница и бедро, DICOM): область, вердикт о качестве, тип нарушения и объяснение прямо на снимке. Работает локально. ЛЦТ 2026, задача 04, команда «Квантовый Скачок».">
@@ -13,12 +16,14 @@
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preload" href="assets/fonts/Montserrat-ExtraBold.woff" as="font" type="font/woff" crossorigin>
 <link rel="stylesheet" href="assets/site.css">
+<link rel="stylesheet" href="assets/theme.css">
 </head>
 <body>
 <div class="progress"><i></i></div><div class="cur"></div><div class="cur-ring"></div><div class="grain"></div>
 <nav class="nav" aria-label="Разделы">
   <a class="logo" href="#top">Kostik</a>
   <a class="l" href="#task">Задача</a><a class="l" href="#dxa">Денситометрия</a><a class="l" href="#images">Снимки</a><a class="l" href="#roadmap">Путь</a><a class="l" href="#solution">Решение</a><a class="l" href="#results">Результаты</a><a class="l" href="#next">Развитие</a><a class="l" href="#team-info">Команда</a>
+  <button type="button" class="tt" data-mode="modern" role="switch" aria-checked="true" aria-label="Оформление страницы: Modern или Classic" title="Переключить оформление: Modern ⇄ Classic"><span class="tt-l tt-c">Classic</span><span class="tt-k" aria-hidden="true"><i></i></span><span class="tt-l tt-m">Modern</span></button>
   <a class="go" href="https://ltz2026.ru/">Открыть стенд</a>
 </nav>
 
@@ -298,5 +303,6 @@
 <script src="assets/vendor/gsap/ScrollTrigger.min.js"></script>
 <script src="assets/vendor/gsap/SplitText.min.js"></script>
 <script src="assets/site.js"></script>
+<script src="assets/theme.js"></script>
 </body>
 </html>

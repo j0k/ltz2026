@@ -73,25 +73,28 @@ def put(shape, lines, size=None, bold=None, color=None):
 
 
 def place(ph, f, mode='cover'):
-    """Вставить картинку в поле шаблона, сохранив его место и размер (python-pptx сбрасывает их на позицию макета)."""
+    """Вставить картинку в поле шаблона, сохранив его место и размер (python-pptx сбрасывает их на позицию макета).
+    cover — обрезать по рамке; contain — вписать целиком: поля прозрачные, рамка шаблона та же."""
     from PIL import Image as _I
     L, T, W, H = ph.left, ph.top, ph.width, ph.height
-    pic_ = ph.insert_picture(A(f))
-    iw, ih = _I.open(A(f)).size
-    ri, rb = iw / ih, W / H
+    src = A(f)
+    im = _I.open(src)
+    ri, rb = im.width / im.height, W / H
+    if mode != 'cover':
+        im = im.convert('RGBA')
+        cw, ch = (im.width, round(im.width / rb)) if ri > rb else (round(im.height * rb), im.height)
+        canvas = _I.new('RGBA', (cw, ch), (0, 0, 0, 0))
+        canvas.paste(im, ((cw - im.width) // 2, (ch - im.height) // 2))
+        src = os.path.join('/tmp', 'contain_' + os.path.basename(f))
+        canvas.save(src)
+        ri = rb
+    pic_ = ph.insert_picture(src)
     pic_.crop_left = pic_.crop_right = pic_.crop_top = pic_.crop_bottom = 0
-    if mode == 'cover':
-        pic_.left, pic_.top, pic_.width, pic_.height = L, T, W, H
-        if ri > rb:
-            e = (1 - rb / ri) / 2; pic_.crop_left = pic_.crop_right = e
-        else:
-            e = (1 - ri / rb) / 2; pic_.crop_top = pic_.crop_bottom = e
-    else:
-        if ri > rb:
-            w, h = W, int(W / ri)
-        else:
-            w, h = int(H * ri), H
-        pic_.left, pic_.top, pic_.width, pic_.height = L, T + (H - h) // 2, w, h
+    pic_.left, pic_.top, pic_.width, pic_.height = L, T, W, H
+    if ri > rb:
+        e = (1 - rb / ri) / 2; pic_.crop_left = pic_.crop_right = e
+    elif ri < rb:
+        e = (1 - ri / rb) / 2; pic_.crop_top = pic_.crop_bottom = e
     return pic_
 
 

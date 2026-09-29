@@ -14,7 +14,7 @@ from pptx import Presentation
 from pptx.chart.data import CategoryChartData
 from pptx.dml.color import RGBColor
 from pptx.enum.chart import XL_CHART_TYPE, XL_LABEL_POSITION
-from pptx.enum.shapes import MSO_SHAPE
+from pptx.enum.shapes import MSO_CONNECTOR, MSO_SHAPE
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.opc.constants import RELATIONSHIP_TYPE as RT
 from pptx.oxml.ns import qn
@@ -387,16 +387,98 @@ text(s, 0.56, 1.3, 12.2, 0.6, 'Честная оценка — без утечк
 st = [('100', 'исследований'), ('252', 'уникальных снимка'), ('247', 'дублей убрано'), ('99 / 150', 'поясниц / бёдер с оценкой')]
 for i, (b, t) in enumerate(st):
     x = 0.56 + i * 3.1
-    text(s, x, 2.05, 3.0, 0.9, b, size=44, bold=True, color=PINK)
-    text(s, x, 2.95, 3.0, 0.4, t, size=14, color=INK)
-rows = [('Без утечки', 'фолды — по исследованиям; общие снимки нескольких исследований — всегда в одной группе'),
-        ('Честная оценка', '5 фолдов × 50 повторов; пороги подбираются только на обучающей части'),
-        ('Дисбаланс', 'брак 32 % и 27 %: веса классов, порог по F1, метрики F1 и ROC-AUC'),
-        ('Интервалы', '95 % — по повторам и бутстрепом по исследованиям')]
-for i, (h, t) in enumerate(rows):
-    y = 3.75 + i * 0.62
-    text(s, 0.56, y, 2.6, 0.5, h, size=15, bold=True, color=DEEP)
-    text(s, 3.2, y, 9.6, 0.5, t, size=14)
+    text(s, x, 1.85, 3.0, 0.8, b, size=40, bold=True, color=PINK)
+    text(s, x, 2.68, 3.0, 0.4, t, size=14, color=INK)
+LAV_L = RGBColor.from_string('ECE9F8')
+LINE_L = RGBColor.from_string('DAD5EE')
+
+
+def shp(s, kind, x, y, w, h, fill=None, line=None, lw=1.0, radius=None):
+    sh = s.shapes.add_shape(kind, Inches(x), Inches(y), Inches(w), Inches(h))
+    if radius is not None:
+        sh.adjustments[0] = radius
+    if fill is None:
+        sh.fill.background()
+    else:
+        sh.fill.solid(); sh.fill.fore_color.rgb = fill
+    if line is None:
+        sh.line.fill.background()
+    else:
+        sh.line.color.rgb = line; sh.line.width = Pt(lw)
+    sh.shadow.inherit = False
+    return sh
+
+
+def label(s, x, y, w, h, t, size=12, color=INK, bold=False, align=PP_ALIGN.LEFT, anchor=MSO_ANCHOR.MIDDLE):
+    return text(s, x, y, w, h, t, size=size, color=color, bold=bold, align=align, anchor=anchor)
+
+
+def seg_line(s, x1, y1, x2, y2, color, lw=1.5):
+    c = s.shapes.add_connector(MSO_CONNECTOR.STRAIGHT, Inches(x1), Inches(y1), Inches(x2), Inches(y2))
+    c.line.color.rgb = color; c.line.width = Pt(lw)
+    return c
+
+
+# воронка: 499 файлов → 252 уникальных снимка, 247 точных копий убраны до любой оценки
+label(s, 0.56, 3.32, 6, 0.3, '499 файлов DICOM в 100 исследованиях', size=12, color=GREY, bold=True)
+W = 12.2; w1 = W * 252 / 499
+r1 = shp(s, MSO_SHAPE.ROUNDED_RECTANGLE, 0.56, 3.66, w1 - 0.04, 0.46, fill=PINK, radius=0.3)
+r2 = shp(s, MSO_SHAPE.ROUNDED_RECTANGLE, 0.56 + w1 + 0.04, 3.66, W - w1 - 0.04, 0.46, fill=LAV_L, line=LINE_L, radius=0.3)
+label(s, 0.8, 3.66, w1 - 0.5, 0.46, '252 уникальных снимка — их и оцениваем', size=13, color=WHITE, bold=True)
+label(s, 0.56 + w1 + 0.3, 3.66, W - w1 - 0.5, 0.46, '247 точных копий — убраны до любой оценки', size=13, color=PURPLE, bold=True)
+
+# четыре карточки-инфографики
+CW, CG, CY, CH = 2.95, 0.133, 4.4, 2.62
+cx = lambda i: 0.56 + i * (CW + CG)
+titles = ['Без утечки', 'Честная оценка', 'Дисбаланс классов', 'Интервалы 95 %']
+for i, t in enumerate(titles):
+    box(s, cx(i), CY, CW, CH, fill=WHITE, line=LINE_L, radius=0.06)
+    label(s, cx(i) + 0.2, CY + 0.12, CW - 0.4, 0.36, t, size=15, color=DEEP, bold=True)
+
+# 1. Без утечки: пять фолдов из исследований, тестовый — розовый; общие снимки в одной группе
+x0 = cx(0) + 0.24
+for f in range(5):
+    fx = x0 + f * 0.52
+    test = f == 2
+    shp(s, MSO_SHAPE.ROUNDED_RECTANGLE, fx, CY + 0.62, 0.44, 1.02, fill=PINK_L if test else LAV_L, line=PINK if test else LINE_L, lw=1.5 if test else 0.75, radius=0.12)
+    for k in range(4):
+        shp(s, MSO_SHAPE.ROUNDED_RECTANGLE, fx + 0.08, CY + 0.7 + k * 0.23, 0.28, 0.17, fill=PINK if test else LAV, radius=0.2)
+    label(s, fx - 0.04, CY + 1.68, 0.52, 0.22, str(f + 1), size=11, color=GREY, bold=True, align=PP_ALIGN.CENTER)
+label(s, cx(0) + 0.2, CY + 1.9, CW - 0.4, 0.64, 'фолды — по исследованиям; общие снимки — всегда в одной группе', size=11.5, color=INK, anchor=MSO_ANCHOR.TOP)
+
+# 2. Честная оценка: 5 × 50, пороги только на обучающей части
+label(s, cx(1) + 0.2, CY + 0.52, CW - 0.4, 0.78, '5 × 50', size=40, color=PINK, bold=True)
+label(s, cx(1) + 0.2, CY + 1.24, CW - 0.4, 0.28, 'фолдов × повторов', size=12, color=GREY, bold=True)
+bx = cx(1) + 0.2; bw = CW - 0.4
+shp(s, MSO_SHAPE.ROUNDED_RECTANGLE, bx, CY + 1.64, bw * 0.8 - 0.03, 0.28, fill=LAV, radius=0.4)
+shp(s, MSO_SHAPE.ROUNDED_RECTANGLE, bx + bw * 0.8 + 0.03, CY + 1.64, bw * 0.2 - 0.03, 0.28, fill=PINK, radius=0.4)
+label(s, bx + 0.1, CY + 1.64, bw * 0.8 - 0.2, 0.28, 'обучение — пороги', size=10.5, color=WHITE, bold=True)
+label(s, bx + bw * 0.8 + 0.03, CY + 1.64, bw * 0.2 - 0.03, 0.28, 'тест', size=10.5, color=WHITE, bold=True, align=PP_ALIGN.CENTER)
+label(s, cx(1) + 0.2, CY + 2.0, CW - 0.4, 0.5, 'пороги подбираются только на обучающей части', size=11.5, color=INK, anchor=MSO_ANCHOR.TOP)
+
+# 3. Дисбаланс: доля брака на позвоночнике и бедре
+for k, (name, bad) in enumerate([('Поясница', 32), ('Бедро', 27)]):
+    yy = CY + 0.66 + k * 0.72
+    label(s, cx(2) + 0.2, yy, CW - 0.4, 0.26, f'{name}: брак {bad} %', size=12, color=DEEP, bold=True)
+    bw2 = CW - 0.4
+    shp(s, MSO_SHAPE.ROUNDED_RECTANGLE, cx(2) + 0.2, yy + 0.3, bw2, 0.3, fill=LAV_L, line=LINE_L, radius=0.4)
+    shp(s, MSO_SHAPE.ROUNDED_RECTANGLE, cx(2) + 0.2, yy + 0.3, bw2 * bad / 100, 0.3, fill=PINK, radius=0.4)
+label(s, cx(2) + 0.2, CY + 2.02, CW - 0.4, 0.5, 'веса классов, порог по F1, метрики F1 и ROC-AUC', size=11.5, color=INK, anchor=MSO_ANCHOR.TOP)
+
+# 4. Интервалы: точка и «усы» 95 % для поясницы и бедра (шкала ROC-AUC 0,4…0,8)
+ax0, ax1 = cx(3) + 0.32, cx(3) + CW - 0.32
+sc = lambda v: ax0 + (v - 0.4) / 0.4 * (ax1 - ax0)
+for k, (name, lo, mid, hi) in enumerate([('поясница, F1', 0.46, 0.58, 0.74), ('бедро, ROC-AUC', 0.62, 0.66, 0.69)]):
+    yy = CY + 0.72 + k * 0.62
+    label(s, ax0 - 0.12, yy - 0.28, 2.4, 0.24, f'{name}: {str(mid).replace(".", ",")}', size=11, color=DEEP, bold=True)
+    seg_line(s, sc(lo), yy + 0.14, sc(hi), yy + 0.14, LAV, 3.0)
+    for v in (lo, hi):
+        seg_line(s, sc(v), yy + 0.04, sc(v), yy + 0.24, LAV, 2.0)
+    shp(s, MSO_SHAPE.OVAL, sc(mid) - 0.09, yy + 0.05, 0.18, 0.18, fill=PINK, line=WHITE, lw=1.5)
+seg_line(s, ax0, CY + 1.72, ax1, CY + 1.72, LINE_L, 1.0)
+for v in (0.4, 0.6, 0.8):
+    label(s, sc(v) - 0.2, CY + 1.74, 0.4, 0.2, str(v).replace('.', ','), size=9.5, color=GREY, align=PP_ALIGN.CENTER)
+label(s, cx(3) + 0.2, CY + 2.02, CW - 0.4, 0.5, 'по повторам и бутстрепом по исследованиям', size=11.5, color=INK, anchor=MSO_ANCHOR.TOP)
 
 # 17. Результаты — диаграмма
 s = new_slide(dark=True, title='РЕЗУЛЬТАТЫ')

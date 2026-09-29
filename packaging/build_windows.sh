@@ -19,7 +19,7 @@ echo "[win] версия $VER → $OUT"
 # 1) библиотеки под Windows: готовые сборки win_amd64 и чистый Python
 cd "$BUILD"
 [ -f python-$PYV-embed-amd64.zip ] || curl -fsSL -o python-$PYV-embed-amd64.zip https://www.python.org/ftp/python/$PYV/python-$PYV-embed-amd64.zip
-W="$BUILD/wheels-win"; P="$BUILD/pure"; mkdir -p "$W" "$P"
+W="$BUILD/wheels-win"; P="$BUILD/pure-win"; rm -rf "$P"; mkdir -p "$W" "$P"   # чистая папка: старые версии pythonnet ломают подбор
 grep -v '^pywebview' "$REPO/packaging/requirements-desktop.txt" > req-win.txt
 $PIP download -q --platform win_amd64 --python-version 3.12 --implementation cp --only-binary=:all: -d "$W" -r req-win.txt
 $PIP download -q --platform win_amd64 --python-version 3.12 --implementation cp --only-binary=:all: --no-deps -d "$W" cffi pycparser

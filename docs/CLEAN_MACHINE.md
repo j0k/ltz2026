@@ -15,7 +15,7 @@
 ./serve.sh                               # веб-интерфейс и API на http://localhost:8000, ./serve.sh stop — остановить
 ```
 
-`run.sh` принимает папку с DICOM любой вложенности (zip внутри папки тоже распаковываются) или один zip-архив.
+[`run.sh`](../run.sh) принимает папку с DICOM любой вложенности (zip внутри папки тоже распаковываются) или один zip-архив.
 Исходные данные монтируются только на чтение. В выходной папке:
 
 - `results.csv` и `results.xlsx` — строка на снимок в формате ТЗ 2.5, `path_to_study` относительно входа;
@@ -26,7 +26,7 @@
 Проверено на обучающем наборе организатора (252 снимка, 100 исследований): 90 секунд на весь набор, не больше
 0,7 с на снимок, 252 из 252 обработаны без ошибок, два прогона дают побайтно одинаковые таблицы и разметку.
 
-Стенд собирается и перезапускается одной командой `infra/app/deploy.sh`. Пакетная обработка через HTTP API —
+Стенд собирается и перезапускается одной командой [`infra/app/deploy.sh`](../infra/app/deploy.sh). Пакетная обработка через HTTP API —
 ответ приходит после обработки, со ссылками на таблицы и архив разметки:
 
 ```bash
@@ -45,7 +45,7 @@ python3 -m venv .venv && .venv/bin/pip install -r infra/app/requirements.txt pyt
 Linux x86_64 и Docker 20.10+; 2 ядра, 4 ГБ памяти, 3 ГБ диска (образ 2,3 ГБ); видеокарта не нужна; сеть —
 только на время сборки. Подробно — [DEPLOY.md](../doc/DEPLOY.md).
 
-Внутри образа (Python 3.12, версии зафиксированы в `infra/app/requirements.txt` и `infra/app/Dockerfile`):
+Внутри образа (Python 3.12, версии зафиксированы в [`infra/app/requirements.txt`](../infra/app/requirements.txt) и [`infra/app/Dockerfile`](../infra/app/Dockerfile)):
 pydicom 3.0 и декодеры сжатых DICOM (pylibjpeg: JPEG Lossless, JPEG-LS, JPEG 2000), numpy, Pillow, openpyxl —
 анализ и таблицы; FastAPI, Uvicorn, Jinja2 — веб и API; piper-tts и faster-whisper — голос; RapidOCR
 (onnxruntime, OpenCV без GUI) с кириллической моделью PaddlePaddle PP-OCRv5 — надписи на отклонённых картинках.

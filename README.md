@@ -47,7 +47,7 @@
 Бедро (150 размеченных снимков) — модель ExtraTrees по 47 признакам формы кости, краёв кадра и ориентиров атласа,
 кросс-валидация по исследованиям: брак бедра ROC-AUC 0,66 [0,62–0,69], F1 0,47; укладка ROC-AUC 0,62; поля вокруг зоны
 интереса ROC-AUC 0,80 (всего 7 примеров). Это слабее позвоночника: для бедра вердикт — подсказка для проверки.
-Обучение — `scripts/train_hip.py` (scikit-learn), веса — `dxaqc/models/hip_trees.npz`, предсказание на numpy.
+Обучение — [`scripts/train_hip.py`](scripts/train_hip.py) (scikit-learn), веса — [`dxaqc/models/hip_trees.npz`](dxaqc/models/hip_trees.npz), предсказание на numpy.
 
 Разметки позвонков и зон от аппарата или врача в данных нет, поэтому анатомию сервис размечает сам. План — в
 [роудмапе](https://ltz2026.ru/tz/roadmap.html), все нарушения с примерами — в
@@ -104,7 +104,7 @@
 
 ## API
 
-Веб-сервис (`./serve.sh`, http://localhost:8000) — интерактивное описание на `/docs` (OpenAPI).
+Веб-сервис ([`./serve.sh`](serve.sh), http://localhost:8000) — интерактивное описание на `/docs` (OpenAPI).
 
 | метод | путь | что делает |
 |---|---|---|
@@ -179,7 +179,7 @@ curl "http://localhost:8000/api/runs/<run_id>?pretty=true"
 | Windows, на компьютер (тихо: `msiexec /i … /qn`) | `Kostik-<версия>.msi` |
 | Ubuntu 22.04–26.04, Debian 12–13 | `kostik_<версия>_amd64.deb` |
 
-Код приложения — `dxaqc/desktop/` и `dxaqc/web/desktop.py` (режим `DXAQC_MODE=desktop`). Сборка на Linux:
+Код приложения — [`dxaqc/desktop/`](dxaqc/desktop/) и [`dxaqc/web/desktop.py`](dxaqc/web/desktop.py) (режим `DXAQC_MODE=desktop`). Сборка на Linux:
 
 ```bash
 packaging/build_windows.sh     # .exe (NSIS) и .msi (wixl): переносимый Python 3.12 + библиотеки win_amd64
@@ -188,12 +188,12 @@ packaging/publish.sh           # SHA256SUMS, latest.json, каталог мод�
 python -m dxaqc.desktop --selftest   # самопроверка: анализ фантома, сервер, страницы, MCP
 ```
 
-Проверка на настоящей Windows — `.github/workflows/desktop.yml` (вручную или по тегу `v*`).
+Проверка на настоящей Windows — [`.github/workflows/desktop.yml`](.github/workflows/desktop.yml) (вручную или по тегу `v*`).
 
 ## Данные
 
 Данные организатора — медицинские, **в репозиторий не входят**: `data/`, архивы, модели и собранные документы
-лежат рядом с репозиторием и подключаются к контейнеру томами (`infra/app/docker-compose.yml`). Тесты, которым
+лежат рядом с репозиторием и подключаются к контейнеру томами ([`infra/app/docker-compose.yml`](infra/app/docker-compose.yml)). Тесты, которым
 нужны эти данные, без них пропускаются. Что именно дал организатор — на странице
 [«Данные задачи 04»](https://ltz2026.ru/tz/data.html).
 
@@ -223,5 +223,5 @@ tools/          трекер из командной строки, брокер 
 scripts/        обучение и оценка (train_hip, evaluate, make_labels, эксперименты), e2e-проверки, документы
 ```
 
-В репозитории также лежат материалы первых дней: `tunnelguard/` — прототип по задаче 05 (не выбран,
-см. [его README](tunnelguard/README.md)), `crew_*.py`, `infographic.py`, `web/`, `results/`.
+В репозитории также лежат материалы первых дней: [`tunnelguard/`](tunnelguard/) — прототип по задаче 05 (не выбран,
+см. [его README](tunnelguard/README.md)), `crew_*.py`, [`infographic.py`](infographic.py), [`web/`](web/), [`results/`](results/).

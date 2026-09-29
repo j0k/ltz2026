@@ -23,11 +23,11 @@ git clone <репозиторий> kostik && cd kostik
 ```
 
 При сборке из сети скачиваются:
-- Python-пакеты с зафиксированными версиями (`infra/app/requirements.txt` и строка OCR в `infra/app/Dockerfile`);
+- Python-пакеты с зафиксированными версиями ([`infra/app/requirements.txt`](../infra/app/requirements.txt) и строка OCR в [`infra/app/Dockerfile`](../infra/app/Dockerfile));
 - модель голоса Piper `ru_RU-irina-medium` и Whisper small — для озвучки и голосовых вопросов в веб-интерфейсе;
 - кириллическая модель распознавания текста PaddlePaddle PP-OCRv5 — по зафиксированной ревизии, с проверкой SHA-256.
 
-Модели для проверки качества (правила позвоночника и веса модели бедра `dxaqc/models/hip_trees.npz`) лежат
+Модели для проверки качества (правила позвоночника и веса модели бедра [`dxaqc/models/hip_trees.npz`](../dxaqc/models/hip_trees.npz)) лежат
 в репозитории и в сети не нуждаются.
 
 Сборка с нуля занимает 3–10 минут в зависимости от сети. Повторная сборка из кэша — секунды.
@@ -79,7 +79,7 @@ curl -s http://localhost:8000/api/health            # {"status":"ok","version":"
 
 ## 6. Стенд с доменом (как ltz2026.ru)
 
-`infra/app/docker-compose.yml` и `infra/app/deploy.sh` — сборка и перезапуск одной командой, прогон примера
+[`infra/app/docker-compose.yml`](../infra/app/docker-compose.yml) и [`infra/app/deploy.sh`](../infra/app/deploy.sh) — сборка и перезапуск одной командой, прогон примера
 после запуска. Наборы организатора подключаются томом только на чтение (`DXAQC_DATASETS`), результаты — том
 `/data`. Перед контейнером — nginx с TLS (Let's Encrypt), лимит загрузки 64 МБ.
 
@@ -109,4 +109,4 @@ packaging/publish.sh       "$PWD/../dist"                           # суммы
 ## 8. Обновление и откат
 
 - Обновление: `git pull && ./build.sh`; образы помечаются версией `dxaqc:<версия>`, прошлая версия остаётся.
-- Откат: `DXAQC_IMAGE=dxaqc:<прошлая версия> ./run.sh …` (или `./serve.sh`).
+- Откат: `DXAQC_IMAGE=dxaqc:<прошлая версия> ./run.sh …` (или [`./serve.sh`](../serve.sh)).

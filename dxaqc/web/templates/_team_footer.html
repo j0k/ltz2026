@@ -1,7 +1,7 @@
 {# подвал сайта (29.09, Юрий): команда «Квантовый Скачок» и сам квантовый скачок — электрон поглощает фотон,
    прыгает на верхний уровень энергии и, падая обратно, излучает фотон ΔE = hν #}
 <footer class="qf">
-  <svg class="qf-art" viewBox="54 8 156 78" role="img" aria-label="Квантовый скачок: электрон поглощает фотон, переходит на верхний уровень энергии и излучает фотон, возвращаясь">
+  <span class="qf-ic"><svg class="qf-art" viewBox="54 8 156 78" role="img" aria-label="Квантовый скачок: электрон поглощает фотон, переходит на верхний уровень энергии и излучает фотон, возвращаясь">
     <defs>
       <radialGradient id="qfGlow"><stop offset="0" stop-color="#7cc4ff"/><stop offset=".45" stop-color="#2f7cf6" stop-opacity=".55"/><stop offset="1" stop-color="#2f7cf6" stop-opacity="0"/></radialGradient>
       <linearGradient id="qfPh" x1="0" x2="1"><stop offset="0" stop-color="#ff4fa3" stop-opacity="0"/><stop offset=".3" stop-color="#ff4fa3"/><stop offset="1" stop-color="#a45cff"/></linearGradient>
@@ -15,7 +15,7 @@
     <path class="qf-out" d="M0 0 q3 -6 6 0 t6 0 t6 0 t6 0 t6 0 t6 0"/>
     <g class="qf-e"><circle r="11" fill="url(#qfGlow)"/><circle r="4" fill="#dff0ff" stroke="#2f7cf6" stroke-width="1.4"/></g>
     <text class="qf-f" x="106" y="90">ΔE = hν</text>
-  </svg>
+  </svg></span>
   <div class="qf-text">
     <div class="qf-team">Команда «Квантовый Скачок»</div>
     <div class="qf-names"><a href="https://juri-konoplev.pro/ltz2026/" target="_blank" rel="noopener" title="страница проекта на GitHub Pages">Юрий Коноплёв</a> · Алексей Чуркин</div>
@@ -23,18 +23,20 @@
   </div>
 </footer>
 <style>
-.qf{display:flex;align-items:center;gap:6px;width:max-content;max-width:calc(100% - 24px);margin:30px auto 18px;padding:6px 18px 6px 10px;border-radius:14px;
-  background:#12151c;color:#e8edf3;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;border:1px solid rgba(255,255,255,.07)}
-.qf-art{flex:none;width:104px;height:52px;overflow:visible}
+.qf{display:flex;align-items:center;gap:16px;width:max-content;max-width:calc(100% - 24px);margin:36px auto 22px;padding:12px 26px 12px 12px;border-radius:22px;
+  background:linear-gradient(180deg,#fff,#fbfbfd);color:#2b3140;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+  border:1px solid rgba(40,55,110,.08);box-shadow:0 10px 34px rgba(40,55,110,.08),0 1px 3px rgba(40,55,110,.05)}
+.qf-ic{flex:none;display:grid;place-items:center;padding:8px 12px;border-radius:16px;background:linear-gradient(180deg,#f4f7ff,#eaf0fc)}
+.qf-art{width:88px;height:44px;overflow:visible;display:block}
 .qf-levels text,.qf-f{display:none}
-.qf-levels line{stroke:#3a4352;stroke-width:3;stroke-linecap:round}
-.qf-in,.qf-out{fill:none;stroke:url(#qfPh);stroke-width:3.2;stroke-linecap:round}
-.qf-trail{fill:none;stroke:#7cc4ff;stroke-width:2.2;stroke-dasharray:3 4;opacity:0}
-.qf-team{font-size:13px;font-weight:800;letter-spacing:-.005em;color:#fff;line-height:1.25}
-.qf-names{font-size:11.5px;color:#c9d3df;margin-top:1px;line-height:1.3}
-.qf-names a{color:#fff;text-decoration:underline;text-decoration-color:rgba(255,255,255,.3);text-underline-offset:2px}.qf-names a:hover{text-decoration-color:#7cc4ff;color:#dff0ff}
-.qf-meta{font-size:10.5px;color:#7f8a9b;margin-top:2px;line-height:1.35}
-.qf-meta a{color:#8fc1ff}
+.qf-levels line{stroke:#ccd5e8;stroke-width:3;stroke-linecap:round}
+.qf-in,.qf-out{fill:none;stroke:url(#qfPh);stroke-width:3;stroke-linecap:round}
+.qf-trail{fill:none;stroke:#7fb0ff;stroke-width:2;stroke-dasharray:3 5;opacity:0}
+.qf-team{font-size:14.5px;font-weight:700;letter-spacing:0;color:#1f2533;line-height:1.3}
+.qf-names{font-size:12.5px;color:#5d6577;margin-top:3px;line-height:1.35}
+.qf-names a{color:#3d6fd6;text-decoration:none;border-bottom:1px solid rgba(61,111,214,.28)}.qf-names a:hover{border-bottom-color:#3d6fd6}
+.qf-meta{font-size:11.5px;color:#98a0b0;margin-top:4px;line-height:1.4}
+.qf-meta a{color:#7b8bb0;text-decoration:none;border-bottom:1px solid rgba(123,139,176,.3)}.qf-meta a:hover{color:#3d6fd6}
 /* цикл 6 с: фотон прилетает → электрон прыгает на n=3 → держится → падает на n=1 и излучает фотон */
 .qf-e{animation:qfE 6s cubic-bezier(.5,0,.3,1) infinite}
 .qf-in{animation:qfIn 6s linear infinite}
@@ -45,6 +47,6 @@
 @keyframes qfTr{0%,24%{opacity:0}28%{opacity:.9}40%,100%{opacity:0}}
 @keyframes qfOut{0%,72%{transform:translate(100px,66px) rotate(-14deg);opacity:0}75%{opacity:1}95%{transform:translate(196px,42px) rotate(-14deg);opacity:1}100%{transform:translate(206px,40px) rotate(-14deg);opacity:0}}
 @media (prefers-reduced-motion:reduce){.qf-e,.qf-in,.qf-out,.qf-trail{animation:none}.qf-e{transform:translate(118px,18px)}}
-@media print{.qf{background:none;color:#000}.qf-art{display:none}}
-@media (max-width:560px){.qf{width:auto;margin:22px 12px 14px}.qf-art{width:84px;height:42px}.qf-meta{display:none}}
+@media print{.qf{box-shadow:none}.qf-ic{display:none}}
+@media (max-width:560px){.qf{width:auto;gap:12px;margin:26px 12px 16px;padding:10px 16px 10px 10px}.qf-ic{padding:6px 8px}.qf-art{width:58px;height:29px}.qf-team{font-size:13.5px}.qf-names{font-size:12px}.qf-meta{display:none}}
 </style>

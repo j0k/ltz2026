@@ -65,6 +65,9 @@ def test_upload_goes_to_new_result_page(client):
     assert html.count('<article class="d-img') == 1 and "Поясничный отдел" in html
     assert "годен" in html or "нарушение" in html
     assert 'class="d-kpis"' in html and 'class="d-checks"' in html and "Таблица результатов" in html, "дашборд по ТЗ"
+    for f in ('data-f="all"', 'data-f="ok"', 'data-f="bad"', 'id="dFilterBar"'):
+        assert f in html, f"плитки фильтруют снимки (29.09, Юрий): {f}"
+    assert 'data-k="' in html and '<article class="d-img' in html
     assert 'class="d-card d-rej"' in html and "Что на картинке:" in html and "photo.jpg" in html and "не DICOM" in html.replace("а не DICOM", "не DICOM"), "отказ с причиной"
     for f in ("results.csv", "results.xlsx", "overlays.zip"):
         assert f'/runs/{rid}/files/{f}' in html, f

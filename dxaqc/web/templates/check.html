@@ -55,10 +55,10 @@
 
 <div class="d-kpis">
   <div class="d-kpi"><b>{{ s.studies or 0 }}</b><span>исследований</span></div>
-  <div class="d-kpi"><b>{{ s.images or 0 }}</b><span>снимков</span></div>
-  <div class="d-kpi ok"><b>{{ s.good or 0 }}</b><span>качественные</span></div>
-  <div class="d-kpi bad"><b>{{ s.bad or 0 }}</b><span>с нарушениями</span></div>
-  <div class="d-kpi"><b>{{ s.not_evaluated or 0 }}</b><span>не оценено</span></div>
+  <button type="button" class="d-kpi d-f" data-f="all" aria-pressed="true" title="показать все снимки"><b>{{ s.images or 0 }}</b><span>снимков</span></button>
+  <button type="button" class="d-kpi d-f ok" data-f="ok" aria-pressed="false" title="показать только качественные"><b>{{ s.good or 0 }}</b><span>качественные</span></button>
+  <button type="button" class="d-kpi d-f bad" data-f="bad" aria-pressed="false" title="показать только с нарушениями"><b>{{ s.bad or 0 }}</b><span>с нарушениями</span></button>
+  <button type="button" class="d-kpi d-f" data-f="na" aria-pressed="false" title="показать неоценённые"{% if not s.not_evaluated %} disabled{% endif %}><b>{{ s.not_evaluated or 0 }}</b><span>не оценено</span></button>
   <div class="d-kpi {{ 'bad' if s.failures else '' }}"><b>{{ s.failures or 0 }}</b><span>не прочитано</span></div>
   <div class="d-kpi"><b>{{ '%.2f'|format(s.mean_time or 0)|replace('.', ',') }} с</b><span>в среднем на снимок</span></div>
   <div class="d-kpi"><b>{{ '%.1f'|format(s.wall_time or 0)|replace('.', ',') }} с</b><span>вся проверка</span></div>
@@ -69,11 +69,12 @@
   <section class="d-card d-gal">
     <div class="d-card-h"><h2>Снимки исследования</h2><span class="faint">нажмите на снимок — откроется его карточка</span></div>
     {% for study in dash.studies %}
+    <div class="d-gal-study">
     {% if dash.studies|length > 1 %}<p class="faint d-gal-sub">Исследование {{ study.key }}{% if loop.first and study.verdict == 'bad' %} · с нарушениями показано первым{% endif %}</p>{% endif %}
     <div class="d-gal-grid">
       {% for r in study.rows %}
       {% set kind = 'bad' if r.quality_class == 1 else 'ok' if r.quality_class == 0 else 'na' %}
-      <a class="d-thumb {{ kind }}" href="#{{ r.key }}">
+      <a class="d-thumb {{ kind }}" href="#{{ r.key }}" data-k="{{ kind }}" data-v="{{ (r.violation_list or [])|join(' ') }}">
         <img src="/runs/{{ run_id }}/files/{{ r.overlay_png }}" alt="{{ region_ru.get(r.anatomical_region, 'снимок') }}" loading="lazy">
         <span class="cap"><b>{{ region_ru.get(r.anatomical_region, 'снимок')|capitalize }}</b>
           <i class="pill {{ kind }}">{{ 'нарушение' if kind == 'bad' else 'годен' if kind == 'ok' else 'не оценено' }}</i></span>
@@ -82,15 +83,17 @@
       </a>
       {% endfor %}
     </div>
+    </div>
     {% endfor %}
+    <p class="d-f-empty faint" hidden>Таких снимков нет.</p>
   </section>
   <div class="d-side">
     <section class="d-card">
       <h2>Нарушения по типам</h2>
       <ul class="d-bars">
         {% for code, title, n in dash.violations %}
-        <li class="{{ 'on' if n else '' }}"><span class="t">{{ title }}</span><span class="n">{{ n }}</span>
-          <i style="width:{{ (n / dash.viol_max * 100) if dash.viol_max else 0 }}%"></i></li>
+        <li class="{{ 'on' if n else '' }}">{% if n %}<button type="button" class="d-f d-f-v" data-f="v:{{ code }}" aria-pressed="false" title="показать снимки: {{ title }}">{% endif %}<span class="t">{{ title }}</span><span class="n">{{ n }}</span>
+          <i style="width:{{ (n / dash.viol_max * 100) if dash.viol_max else 0 }}%"></i>{% if n %}</button>{% endif %}</li>
         {% endfor %}
       </ul>
     </section>
@@ -111,6 +114,7 @@
 </div>
 {% endif %}
 
+<div class="d-f-bar" id="dFilterBar" hidden><span id="dFilterText"></span> <button type="button" class="d-f" data-f="all">показать все</button></div>
 <div class="d-h2-row"><h2 class="d-h2">Снимки</h2>
   <span class="pic-sw all" role="group" aria-label="вид всех снимков"><span class="faint">все:</span><button type="button" data-p="atlas" aria-pressed="true">атлас с разметкой</button><button type="button" data-p="raw" aria-pressed="false">чистый снимок</button></span></div>
 {% for study in dash.studies %}
@@ -123,7 +127,7 @@
   {% for r in study.rows %}
     {% set kind = 'bad' if r.quality_class == 1 else 'ok' if r.quality_class == 0 else 'na' %}
     {% set viol = r.violation_list or [] %}
-    <article class="d-img {{ kind }}" id="{{ r.key }}">
+    <article class="d-img {{ kind }}" id="{{ r.key }}" data-k="{{ kind }}" data-v="{{ viol|join(' ') }}">
       {% set atlas_url = '/runs/' ~ run_id ~ '/files/' ~ r.overlay_png %}
       {% set raw_url = ('/runs/' ~ run_id ~ '/files/' ~ r.original_png) if r.original_png else '' %}
       <div class="pic" data-atlas="{{ atlas_url }}" data-raw="{{ raw_url }}" data-view="atlas">
@@ -259,6 +263,41 @@
   }));
   document.querySelectorAll('.pic-sw.all button').forEach(x => x.addEventListener('click', () => all(x.dataset.p)));
   try { if (localStorage.getItem(KEY) === 'raw') all('raw'); } catch (e) {}
+})();
+</script>
+<script>
+(function () {   // фильтр снимков по плиткам и типам нарушений (29.09, Юрий): «качественные», «с нарушениями», «снимков» — все
+  const btns = [...document.querySelectorAll('.d-f')];
+  if (!btns.length) return;
+  const items = [...document.querySelectorAll('.d-thumb[data-k], .d-img[data-k]')];
+  const names = {ok: 'качественные', bad: 'с нарушениями', na: 'не оценено'};
+  function apply(f, push) {
+    const match = el => f === 'all' || (f.startsWith('v:') ? (' ' + el.dataset.v + ' ').includes(' ' + f.slice(2) + ' ') : el.dataset.k === f);
+    let shown = 0;
+    items.forEach(el => { const on = match(el); el.hidden = !on; if (on && el.classList.contains('d-thumb')) shown++; });
+    document.querySelectorAll('.d-gal-study').forEach(g => g.hidden = !g.querySelector('.d-thumb:not([hidden])'));
+    document.querySelectorAll('.d-study').forEach(g => g.hidden = !g.querySelector('.d-img:not([hidden])'));
+    const empty = document.querySelector('.d-f-empty'); if (empty) empty.hidden = shown > 0;
+    btns.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.f === f)));
+    const bar = document.getElementById('dFilterBar'), txt = document.getElementById('dFilterText');
+    if (bar) {
+      bar.hidden = f === 'all';
+      const vb = btns.find(b => b.dataset.f === f && b.classList.contains('d-f-v'));
+      txt.textContent = f === 'all' ? '' : 'Показаны снимки: ' + (vb ? vb.querySelector('.t').textContent : names[f]) + ' — ' + shown + '.';
+    }
+    if (push) {
+      const u = new URL(location.href);
+      if (f === 'all') u.searchParams.delete('f'); else u.searchParams.set('f', f);
+      history.replaceState(null, '', u);
+    }
+  }
+  btns.forEach(b => b.addEventListener('click', () => {
+    const f = b.getAttribute('aria-pressed') === 'true' && b.dataset.f !== 'all' ? 'all' : b.dataset.f;   // повторное нажатие — сброс
+    apply(f, true);
+  }));
+  document.querySelectorAll('.d-bars li').forEach(li => { const b = li.querySelector('.d-f-v'); if (b) li.addEventListener('click', e => { if (e.target === li || e.target.tagName === 'I') b.click(); }); });
+  const start = new URLSearchParams(location.search).get('f');
+  if (start && btns.some(b => b.dataset.f === start)) apply(start, false);
 })();
 </script>
 {% endif %}

@@ -205,3 +205,18 @@
 .pic-sw.all button{color:var(--ink3,#6b7383)}.pic-sw.all button[aria-pressed=true]{background:#fff;color:var(--ink,#1a1f2b);box-shadow:0 1px 3px rgba(0,0,0,.12)}
 .d-img .pic a{display:flex;align-items:center;justify-content:center;width:100%;height:100%}
 .d-img .pic[data-view=raw] img{image-rendering:auto}
+/* фильтр по плиткам и типам нарушений (29.09) */
+button.d-kpi{font:inherit;text-align:left;cursor:pointer;color:inherit;transition:border-color .15s,box-shadow .15s,transform .1s}
+button.d-kpi:hover:not(:disabled){border-color:var(--accent,#2a6fdb)}
+button.d-kpi:active:not(:disabled){transform:translateY(1px)}
+button.d-kpi[aria-pressed="true"]{border-color:var(--accent,#2a6fdb);box-shadow:0 0 0 2px rgba(42,111,219,.18)}
+button.d-kpi.ok[aria-pressed="true"]{border-color:var(--ok);box-shadow:0 0 0 2px rgba(12,163,12,.16)}
+button.d-kpi.bad[aria-pressed="true"]{border-color:var(--bad);box-shadow:0 0 0 2px rgba(208,59,59,.16)}
+button.d-kpi:disabled{cursor:default;opacity:.8}
+.d-bars .d-f-v{all:unset;display:contents;cursor:pointer}
+.d-bars li:has(.d-f-v){cursor:pointer}
+.d-bars li:has(.d-f-v[aria-pressed="true"]){outline:2px solid var(--bad);outline-offset:1px;border-radius:8px}
+.d-bars li:has(.d-f-v):hover{filter:brightness(.97)}
+.d-f-bar{display:flex;gap:10px;align-items:center;margin:14px 0 4px;padding:10px 14px;border-radius:12px;background:#eef3fd;font-size:14px}
+.d-f-bar .d-f{font:inherit;border:0;background:none;color:var(--accent,#2a6fdb);cursor:pointer;text-decoration:underline;padding:0}
+[hidden]{display:none !important}

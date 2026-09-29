@@ -6,9 +6,13 @@
     kostik --selftest          проверка установки: анализ фантома, сервер, MCP — отчёт и код возврата
     kostik --mcp-stdio         MCP-сервер для Claude Desktop по stdio
     kostik --browser           окно в браузере вместо встроенного
+    kostik --host 0.0.0.0      на каком адресе слушает сервер; по умолчанию 127.0.0.1
+    kostik --show-all-hosts    все адреса для --host: этот компьютер, все интерфейсы, каждый интерфейс по имени
+    kostik --check папка/      проверить и напечатать описание по каждому снимку в консоль; --json, --out, --open
+    kostik --results           описание последней или названной проверки; kostik --runs — список проверок
 
 Окно — pywebview (WebView2 в Windows, WebKitGTK в Linux); если его нет — Edge или Chrome в режиме приложения,
-в крайнем случае обычный браузер. Сервер слушает только 127.0.0.1.
+в крайнем случае обычный браузер. Сервер слушает только 127.0.0.1, пока не задан другой адрес: --host.
 
 Три процесса, чтобы окно никогда не подвисало:
   окно      — этот процесс: лёгкий, без numpy и FastAPI; открывается сразу, с заставкой и ходом запуска;
@@ -29,7 +33,7 @@ import threading
 import time
 import urllib.request
 
-from dxaqc.desktop import APP_NAME, DEFAULT_PORT, paths
+from dxaqc.desktop import APP_NAME, DEFAULT_PORT, hosts, paths
 
 
 def configure_env(port: int | None = None):
@@ -48,7 +52,7 @@ def configure_env(port: int | None = None):
     os.makedirs(os.environ["DXAQC_DATASETS"], exist_ok=True)
     port = port or int(os.environ.get("DXAQC_PORT") or DEFAULT_PORT)
     os.environ["DXAQC_PORT"] = str(port)
-    os.environ["DXAQC_PUBLIC_URL"] = f"http://127.0.0.1:{port}"
+    os.environ["DXAQC_PUBLIC_URL"] = hosts.url(port)
 
 
 def _log_to_file():
@@ -59,11 +63,18 @@ def _log_to_file():
     print(f"\n[{time.strftime('%Y-%m-%d %H:%M:%S')}] запуск {APP_NAME}", flush=True)
 
 
+def _log_to_file_quiet():
+    """pythonw без консоли и команды с выводом в файл: печатать некуда — в журнал, без отметки о запуске."""
+    if sys.stdout is None or sys.stderr is None:
+        sys.stdout = sys.stderr = open(paths.log_path(), "a", encoding="utf-8", buffering=1)
+
+
 def _free_port(preferred: int) -> int:
+    host = hosts.bind_host()
     for port in (preferred, 0):
-        with socket.socket() as s:
+        with socket.socket(hosts.family(host)) as s:
             try:
-                s.bind(("127.0.0.1", port))
+                s.bind((host, port))
                 return s.getsockname()[1]
             except OSError:
                 continue
@@ -91,15 +102,21 @@ def _instance_file() -> str:
     return os.path.join(paths.data_dir(), "instance.json")
 
 
-def running_instance() -> int | None:
-    """Порт уже открытой копии приложения или None."""
+def _write_instance(port: int):
+    with open(_instance_file(), "w", encoding="utf-8") as f:
+        json.dump({"port": port, "pid": os.getpid(), "host": hosts.local()}, f)
+
+
+def running_instance() -> str | None:
+    """Адрес уже открытой копии приложения (http://127.0.0.1:8765) или None."""
     try:
         with open(_instance_file(), encoding="utf-8") as f:
-            port = int(json.load(f)["port"])
+            inst = json.load(f)
+        base = hosts.url(int(inst["port"]), inst.get("host") or hosts.DEFAULT)
     except (OSError, ValueError, KeyError):
         return None
-    h = _get(f"http://127.0.0.1:{port}/api/health", 1.5)
-    return port if h and h.get("status") == "ok" else None
+    h = _get(base + "/api/health", 1.5)
+    return base if h and h.get("status") == "ok" else None
 
 
 # ------------------------------------------------------------------ окно
@@ -186,10 +203,10 @@ class Engine:
 
     def __init__(self, port: int):
         self.port, self.proc, self.restarts = port, None, 0
-        self.base = f"http://127.0.0.1:{port}"
+        self.base = hosts.url(port)
 
-    def start(self):
-        kw = {}
+    def start(self, output=None):
+        kw = {} if output is None else {"stdout": output, "stderr": output}
         verbose = os.environ.get("DXAQC_VERBOSE") == "1"
         if sys.platform.startswith("win") and not verbose:
             kw["creationflags"] = 0x08000000                     # CREATE_NO_WINDOW; в подробном режиме движок печатает в ту же консоль
@@ -318,8 +335,10 @@ def open_window(engine: Engine, start_path: str, files: list[str], prefer_browse
             paths.set_app_identity()
             threading.Thread(target=paths.set_window_icon, daemon=True, name="window-icon").start()
             kw = {}
-            if os.path.isfile(os.path.join(paths.ASSETS, "icon.png")):
-                kw["icon"] = os.path.join(paths.ASSETS, "icon.png")          # GTK и Qt: иконка окна Linux
+            # GTK и Qt: иконка окна Linux. В Windows нельзя: pywebview 6 отдаёт файл в System.Drawing.Icon, PNG роняет окно;
+            # там иконку ставит set_window_icon
+            if not sys.platform.startswith("win") and os.path.isfile(os.path.join(paths.ASSETS, "icon.png")):
+                kw["icon"] = os.path.join(paths.ASSETS, "icon.png")
             try:
                 webview.start(ui._watch, private_mode=False, storage_path=os.path.join(paths.data_dir(), "webview"), **kw)
             except TypeError:                                                # pywebview без параметра icon
@@ -400,11 +419,11 @@ def serve(port: int, parent: int | None = None):
     from dxaqc.web import app as webapp
     if vb:
         verbose.ok(f"сервис импортирован за {time.time() - t:.2f} с, режим {'приложение' if webapp.DESKTOP else 'сервер'}, данные {webapp.DATA}")
-    server = uvicorn.Server(uvicorn.Config(webapp.app, host="127.0.0.1", port=port, log_level="debug" if vb else "warning",
+    server = uvicorn.Server(uvicorn.Config(webapp.app, host=hosts.bind_host(), port=port, log_level="debug" if vb else "warning",
                                            access_log=vb))
     if parent:
         threading.Thread(target=_parent_watch, args=(parent, server), daemon=True, name="parent-watch").start()
-    print(f"[engine] http://127.0.0.1:{port}/", flush=True)
+    print(f"[engine] {hosts.url(port)}/ · слушает {hosts.bind_host()}", flush=True)
     if vb:
         def _startup_done():                                            # сервер поднялся — стек зависания больше не нужен
             for _ in range(600):
@@ -435,6 +454,15 @@ def main(argv=None):
     ap.add_argument("--engine", action="store_true", help=argparse.SUPPRESS)       # процесс движка, запускает окно
     ap.add_argument("--parent", type=int, default=0, help=argparse.SUPPRESS)
     ap.add_argument("--port", type=int, default=0)
+    ap.add_argument("--host", default="")
+    ap.add_argument("--show-all-hosts", action="store_true")
+    ap.add_argument("--check", action="store_true")
+    ap.add_argument("--results", nargs="?", const="last", default="")
+    ap.add_argument("--runs", action="store_true")
+    ap.add_argument("--json", action="store_true")
+    ap.add_argument("--out", default="")
+    ap.add_argument("--open", action="store_true")
+    ap.add_argument("--timeout", type=int, default=600)
     a, unknown = ap.parse_known_args(argv)
     from dxaqc.desktop import cli
     if unknown:                                          # неизвестный параметр — не молча, а с подсказкой
@@ -449,6 +477,16 @@ def main(argv=None):
     if a.author:
         print(cli.author_text())
         return 0
+    if a.show_all_hosts:
+        print(hosts.listing(a.host or None))
+        return 0
+    host = a.host or ("" if a.engine else os.environ.get("DXAQC_HOST", ""))     # движок получает адрес через окружение
+    if host:
+        err = hosts.check(host)
+        if err:
+            print(f"{err}\nСправка: {cli.prog()} --help", file=sys.stderr)
+            return 2
+        os.environ["DXAQC_HOST"] = host
     if a.mcp:
         configure_env(a.port or None)
         print(cli.mcp_text())
@@ -457,6 +495,11 @@ def main(argv=None):
         configure_env(a.port or None)
         from dxaqc.desktop import mcp_stdio
         return mcp_stdio.serve()
+    if a.check or a.results or a.runs:                   # консоль: описание проверки без окна и без браузера
+        configure_env(a.port or None)
+        _log_to_file_quiet()
+        from dxaqc.desktop import check
+        return check.main(a, sys.modules[__name__])
     from dxaqc.desktop import verbose
     if a.verbose:
         configure_env(a.port or None)
@@ -482,20 +525,22 @@ def main(argv=None):
     files = [os.path.abspath(f) for f in a.files]
     other = running_instance()
     if verbose.enabled():
-        verbose.log(f"Уже запущенная копия: {'порт ' + str(other) if other else 'нет'}")
+        verbose.log(f"Уже запущенная копия: {other or 'нет'}")
     if other:                                            # вторая копия: передать файлы первой и выйти
         if files:
-            _post(f"http://127.0.0.1:{other}/desktop/run-local", {"paths": files, "navigate": True})
+            _post(other + "/desktop/run-local", {"paths": files, "navigate": True})
         return 0
     port = _free_port(a.port or DEFAULT_PORT)
     configure_env(port)
     if verbose.enabled():
-        verbose.log(f"Порт для сервера: {port}; файлов на проверку: {len(files)}")
+        verbose.log(f"Сервер: слушает {hosts.bind_host()}, порт {port}; файлов на проверку: {len(files)}")
+    if not hosts.is_loopback(hosts.bind_host()):
+        print(f"[внимание] программа открыта по сети: слушает {hosts.bind_host()}, порт {port}. Входа по паролю в ней нет — "
+              "снимки и результаты видны всем, кто достанет до этого адреса.", flush=True)
     if a.no_window:
-        with open(_instance_file(), "w", encoding="utf-8") as f:
-            json.dump({"port": port, "pid": os.getpid()}, f)
+        _write_instance(port)
         try:
-            print(f"[server] http://127.0.0.1:{port}/", flush=True)
+            print(f"[server] {hosts.url(port)}/", flush=True)
             return serve(port)
         finally:
             _remove_instance()
@@ -503,8 +548,7 @@ def main(argv=None):
     proc = engine.start()                                # движок стартует параллельно с окном
     if verbose.enabled():
         verbose.log(f"Процесс движка запущен: pid {proc.pid}, порт {port}")
-    with open(_instance_file(), "w", encoding="utf-8") as f:
-        json.dump({"port": port, "pid": os.getpid()}, f)
+    _write_instance(port)
     try:
         how = open_window(engine, "/", files, prefer_browser=a.browser)
         print(f"[window] закрыто ({how})", flush=True)

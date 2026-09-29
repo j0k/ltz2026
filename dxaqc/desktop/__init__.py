@@ -10,6 +10,11 @@ APP_NAME = "Kostik"
 APP_VERSION = "1.0-Beta"          # версия приложения; версия анализа — dxaqc.__version__
 WIN_VERSION = "1.0.0"             # Windows (MSI, свойства .exe): только цифры
 DEB_VERSION = "1.0~beta"          # Debian: «~» — раньше будущей 1.0
+try:
+    from dxaqc.desktop._build import BUILD       # пишет сборка: дата и время по Москве, 20260930-0015
+except ImportError:
+    BUILD = ""                                   # запуск из исходников
+APP_VERSION_FULL = f"{APP_VERSION}-{BUILD}" if BUILD else APP_VERSION      # показываем человеку: 1.0-Beta-20260930-0015
 APP_ID = "dxaqc"
 DEFAULT_PORT = 8765
 SITE = "https://ltz2026.ru"

@@ -162,7 +162,7 @@ def report(service: bool = True):
     if os.path.isfile(pth):
         log("python312._pth: " + " | ".join(open(pth, encoding="utf-8").read().split()))
     exe_dir = os.path.dirname(sys.executable)
-    for name in ("Kostik.exe", "Kostik-app.exe"):
+    for name in ("Kostik.exe", "Kostik-cli.exe"):
         p = os.path.join(exe_dir, "..", name)
         if os.path.isfile(p):
             ok(f"{name}: {os.path.getsize(p)} байт")

@@ -116,6 +116,179 @@ def test_app_version_is_beta_and_orders_before_release():
     assert W._ver("0.5.4") < W._ver("1.0-Beta") < W._ver("1.0") < W._ver("1.0.1")
 
 
+def test_full_version_carries_build_stamp(monkeypatch):
+    """30.09 Юрий: версия для человека — 1.0-Beta-<дата-время сборки>; из исходников — без метки."""
+    import importlib
+    import types
+    import dxaqc.desktop as D
+    assert D.APP_VERSION_FULL == (f"{D.APP_VERSION}-{D.BUILD}" if D.BUILD else D.APP_VERSION)
+    monkeypatch.setitem(sys.modules, "dxaqc.desktop._build", types.SimpleNamespace(BUILD="20260930-0015"))
+    try:
+        assert importlib.reload(D).APP_VERSION_FULL == "1.0-Beta-20260930-0015" and D.APP_VERSION == "1.0-Beta"
+    finally:
+        monkeypatch.undo()
+        importlib.reload(D)
+
+
+def test_hosts_listing_and_urls(monkeypatch):
+    """30.09 Юрий: --host — где слушает сервер, --show-all-hosts — все варианты."""
+    import ipaddress
+    from dxaqc.desktop import hosts as H
+    monkeypatch.delenv("DXAQC_HOST", raising=False)
+    assert H.bind_host() == "127.0.0.1" and H.url(8765) == "http://127.0.0.1:8765"
+    assert H.url(8765, "0.0.0.0") == "http://127.0.0.1:8765" and H.url(8765, "::") == "http://[::1]:8765"
+    assert H.url(8765, "192.0.2.10") == "http://192.0.2.10:8765"
+    assert H.is_loopback("127.0.0.1") and H.is_loopback("::1") and not H.is_loopback("0.0.0.0")
+    assert H.check("127.0.0.1") is None and H.check("0.0.0.0") is None
+    assert "не IP-адрес" in H.check("kostik.local") and "слушать нельзя" in H.check("203.0.113.7")
+    for ip, _ in H.interfaces():                         # настоящие интерфейсы этой машины: только пригодные адреса
+        a = ipaddress.ip_address(ip)
+        assert not (a.is_loopback or a.is_link_local or a.is_unspecified), ip
+    monkeypatch.setattr(H, "interfaces", lambda: [("192.0.2.10", "Ethernet"), ("2001:db8::1", "VPN")])
+    text = H.listing("192.0.2.10").splitlines()
+    assert "  ✓ 192.0.2.10 — Ethernet" in text
+    assert "    127.0.0.1 — только этот компьютер (по умолчанию)" in text
+    assert "    2001:db8::1 — VPN" in text
+    assert "    :: — все интерфейсы, IPv6" in text
+
+
+def test_cli_host_options(tmp_path):
+    run = lambda *a: subprocess.run([sys.executable, "-X", "utf8", "-W", "ignore", "-m", "dxaqc.desktop", *a],  # noqa: E731
+                                    env=_env(tmp_path), capture_output=True, text=True, encoding="utf-8", timeout=60)
+    r = run("--show-all-hosts")
+    assert r.returncode == 0 and "✓ 127.0.0.1" in r.stdout and "0.0.0.0 — все интерфейсы" in r.stdout, r.stdout + r.stderr
+    assert "✓ 0.0.0.0" in run("--show-all-hosts", "--host", "0.0.0.0").stdout
+    r = run("--host", "203.0.113.7", "--no-window")
+    assert r.returncode == 2 and "--show-all-hosts" in r.stderr, r.stderr
+    r = run("--help")
+    assert r.returncode == 0 and "--host АДРЕС" in r.stdout and "--show-all-hosts" in r.stdout
+
+
+def test_server_listens_on_chosen_host(tmp_path):
+    """Сервер на 0.0.0.0: сама программа ходит к нему через 127.0.0.1, адрес записан в instance.json."""
+    code = """
+import json, os, sys
+os.environ["DXAQC_HOST"] = "0.0.0.0"
+from dxaqc.desktop import __main__ as M
+M.configure_env(0)
+port = M._free_port(0); M.configure_env(port)
+e = M.Engine(port); e.start(); assert e.wait_ready(120), "движок не запустился"
+M._write_instance(port)
+import socket
+s = socket.create_connection((socket.gethostbyname(socket.gethostname()), port), 5); s.close()
+print(json.dumps(dict(base=e.base, public=os.environ["DXAQC_PUBLIC_URL"], running=M.running_instance(),
+                      inst=json.load(open(M._instance_file())))))
+e.stop()
+"""
+    r = subprocess.run([sys.executable, "-W", "ignore", "-c", code], env=_env(tmp_path), capture_output=True, text=True, timeout=300)
+    assert r.returncode == 0, r.stdout + r.stderr[-2000:]
+    res = json.loads(r.stdout.strip().splitlines()[-1])
+    assert res["base"].startswith("http://127.0.0.1:") and res["public"] == res["base"] == res["running"], res
+    assert res["inst"]["host"] == "127.0.0.1", res
+
+
+def test_check_from_console(tmp_path):
+    """30.09 Юрий: kostik --check печатает описание проверки в консоль — без окна и без страниц программы."""
+    from dxaqc.desktop import synth
+    synth.study(str(tmp_path / "in"), "artifact")
+    run = lambda *a: subprocess.run([sys.executable, "-X", "utf8", "-W", "ignore", "-m", "dxaqc.desktop", *a],  # noqa: E731
+                                    env=_env(tmp_path), capture_output=True, text=True, encoding="utf-8", timeout=300)
+    report = str(tmp_path / "report")
+    r = run("--check", str(tmp_path / "in"), "--json", "--out", report)
+    assert r.returncode == 1, r.stdout + r.stderr[-2000:]                    # есть снимок с нарушением
+    d = json.loads(r.stdout)
+    assert d["state"] == "done" and d["summary"]["images"] == 3 and d["summary"]["bad"] == 1 and d["started_by"] == "консоль"
+    bad = [im for im in d["images"] if im["status"] == "bad"]
+    assert len(bad) == 1 and bad[0]["violations"][0]["code"] == "artifact" and bad[0]["explanations"] and bad[0]["region_ru"]
+    assert "http" not in r.stdout, "описание самодостаточно: ссылок на окно программы в нём нет"
+    assert os.path.isfile(d["files"]["results_xlsx"]) and os.path.dirname(d["files"]["results_csv"]) == os.path.abspath(report)
+    marked = [im["overlay"] for im in d["images"] if im["overlay"]]
+    assert marked and all(os.path.isfile(p) and os.path.dirname(p) == os.path.abspath(report) for p in marked)
+    t = run("--results")
+    assert t.returncode == 1 and d["run_id"] in t.stdout and "БРАК" in t.stdout and "ГОДЕН" in t.stdout, t.stdout + t.stderr[-2000:]
+    assert "посторонний предмет" in t.stdout and "разметка:" in t.stdout and "http" not in t.stdout
+    assert d["run_id"] in run("--runs").stdout
+    synth.study(str(tmp_path / "ok"), "ok")
+    assert run("--check", str(tmp_path / "ok")).returncode == 0
+    r = run("--check", str(tmp_path / "нет такой папки"))
+    assert r.returncode == 2 and "Не найдено" in r.stderr
+    assert run("--check", str(tmp_path / "ok") + '"').returncode == 0, "кавычка на конце пути — привычка Windows, путь верный"
+    blocked = tmp_path / "файл вместо папки"
+    blocked.write_text("x")
+    r = run("--check", str(tmp_path / "ok"), "--out", str(blocked))
+    assert r.returncode == 3 and "ГОДЕН" in r.stdout and "Не удалось сложить" in r.stderr
+    r = subprocess.run([sys.executable, "-X", "utf8", "-W", "ignore", "-m", "dxaqc.desktop", "--check", str(tmp_path / "ok"), "--json"],
+                       env=_env(tmp_path, DXAQC_HOST="203.0.113.7"), capture_output=True, text=True, encoding="utf-8", timeout=120)
+    assert r.returncode == 2 and "слушать нельзя" in r.stderr, "адрес из окружения проверяется так же, как из --host"
+    assert run("--results", "20990101-000000-abcdef").returncode == 2
+
+
+def test_network_clients_cannot_change_or_read_paths(monkeypatch):
+    """Проверка враждебным взглядом: программа открыта по сети (--host 0.0.0.0) — чужой компьютер смотрит страницы,
+    но не запускает проверку по пути на диске, не узнаёт пути к файлам и не меняет настройки."""
+    from fastapi import HTTPException
+    from dxaqc.desktop import hosts as H
+    from dxaqc.web import desktop as W
+
+    def ask(method, path, client):
+        req = type("R", (), {"method": method, "url": type("U", (), {"path": path})(), "client": type("C", (), {"host": client})()})()
+        try:
+            W.own_machine(req)
+            return 200
+        except HTTPException as e:
+            return e.status_code
+    monkeypatch.setattr(H, "interfaces", lambda: [("192.0.2.10", "Ethernet")])
+    monkeypatch.setitem(H._own, "at", 0.0)
+    monkeypatch.setenv("DXAQC_HOST", "0.0.0.0")
+    stranger, own = "198.51.100.7", "192.0.2.10"
+    for method, path in (("POST", "/desktop/run-local"), ("GET", "/api/desktop/describe/last"), ("GET", "/api/desktop/runs"),
+                         ("POST", "/settings"), ("POST", "/api/desktop/open-external"), ("POST", "/history/x/delete")):
+        assert ask(method, path, stranger) == 403, (method, path)
+        assert ask(method, path, own) == ask(method, path, "127.0.0.1") == ask(method, path, "::ffff:127.0.0.1") == 200, (method, path)
+    assert ask("GET", "/help", stranger) == ask("GET", "/api/desktop/status", stranger) == 200
+    monkeypatch.setenv("DXAQC_HOST", "127.0.0.1")            # слушаем только петлю: чужих запросов не бывает, проверка не мешает
+    assert ask("POST", "/desktop/run-local", "testclient") == 200
+
+
+def test_mcp_describe_run(tmp_path):
+    """ИИ-ассистент получает всю проверку одним ответом, с путями к файлам на диске."""
+    from dxaqc.desktop import synth
+    synth.study(str(tmp_path / "in"), "artifact")
+    msgs = [{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2025-06-18"}},
+            {"jsonrpc": "2.0", "id": 2, "method": "tools/call",
+             "params": {"name": "analyze_paths", "arguments": {"paths": [str(tmp_path / "in")], "wait": True}}},
+            {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "describe_run", "arguments": {}}}]
+    r = subprocess.run([sys.executable, "-W", "ignore", "-m", "dxaqc.desktop", "--mcp-stdio"], env=_env(tmp_path),
+                       input="\n".join(json.dumps(m) for m in msgs) + "\n", capture_output=True, text=True, timeout=240)
+    out = [json.loads(line) for line in r.stdout.splitlines() if line.strip()]
+    assert [o["id"] for o in out] == [1, 2, 3], r.stderr[-2000:]
+    first, last = out[1]["result"]["structuredContent"], out[2]["result"]["structuredContent"]
+    assert first["description"]["run_id"] == last["run_id"] == first["run_id"]
+    assert len(last["images"]) == 3 and os.path.isfile(last["files"]["results_csv"])
+    assert [im["status"] for im in last["images"]].count("bad") == 1
+
+
+def test_window_icon_is_not_png_on_windows(monkeypatch, tmp_path):
+    """30.09 Юрий: pywebview 6 в Windows читает icon= как .ico — с PNG окно падало сразу после запуска."""
+    import types
+    from dxaqc.desktop import __main__ as M
+    from dxaqc.desktop import paths
+    started = {}
+    closing = type("Event", (), {"__iadd__": lambda self, f: self})()
+    fake = types.SimpleNamespace(create_window=lambda *a, **kw: types.SimpleNamespace(events=types.SimpleNamespace(closing=closing)),
+                                 start=lambda func, **kw: started.update(kw))
+    monkeypatch.setitem(sys.modules, "webview", fake)
+    monkeypatch.delenv("DXAQC_NO_WEBVIEW", raising=False)
+    monkeypatch.setenv("DXAQC_HOME", str(tmp_path / "home"))
+    monkeypatch.setattr(paths, "set_app_identity", lambda: None)
+    monkeypatch.setattr(paths, "set_window_icon", lambda: False)
+    for platform, png in (("win32", False), ("linux", True)):
+        started.clear()
+        monkeypatch.setattr(sys, "platform", platform)
+        assert M.open_window(M.Engine(1), "/", []) == "pywebview"
+        assert started.get("icon", "").endswith("icon.png") is png, (platform, started)
+
+
 def test_engine_process_status_bar_and_cancel(tmp_path):
     """#138, 29.09 Юрий: окно отдельно от движка, проверка в своём процессе, строка состояния всегда отвечает."""
     import time

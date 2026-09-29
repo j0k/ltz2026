@@ -15,16 +15,28 @@ import threading
 import time
 import urllib.request
 
-from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
 from dxaqc import __version__
 from dxaqc import desktop as D
 from dxaqc.desktop import models as M
-from dxaqc.desktop import paths, synth
+from dxaqc.desktop import hosts, paths, synth
 from dxaqc.web.progress import STAGE_LABELS
 
-router = APIRouter(include_in_schema=False)
+LOCAL_READS = ("/api/desktop/describe", "/api/desktop/runs")         # отдают пути к файлам на диске
+
+
+def own_machine(request: Request):
+    """Программа открыта по сети (--host): смотреть страницы можно отовсюду, а менять настройки, запускать проверку
+    по пути на диске и узнавать пути к файлам — только с этого компьютера. Входа по паролю в приложении нет."""
+    if request.method in ("GET", "HEAD") and not request.url.path.startswith(LOCAL_READS):
+        return
+    if not hosts.is_own(request.client.host if request.client else ""):
+        raise HTTPException(403, "это действие доступно только на компьютере, где запущен Kostik")
+
+
+router = APIRouter(include_in_schema=False, dependencies=[Depends(own_machine)])
 ctx: dict = {}
 HELP_DIR = os.path.join(os.path.dirname(D.__file__), "help")
 DEFAULTS = dict(welcomed=False, mcp_enabled=True, mcp_token="", check_updates=False)
@@ -84,7 +96,7 @@ def set_mcp(enabled: bool):
 
 
 def base_url() -> str:
-    return f"http://127.0.0.1:{ctx.get('port', D.DEFAULT_PORT)}"
+    return hosts.url(ctx.get("port", D.DEFAULT_PORT))
 
 
 def stdio_command() -> list[str]:
@@ -299,6 +311,8 @@ async def run_local(request: Request):
         raise HTTPException(400, "файлы не найдены: " + ", ".join(missing[:3]) if missing else "не выбрано ни одного файла")
     title = os.path.basename(os.path.normpath(items[0])) + (f" и ещё {len(items) - 1}" if len(items) > 1 else "")
     run_id = ctx["new_run"](f"Проверка: {title}")
+    if body.get("started_by") == "консоль":   # кто запустил, если не само окно: kostik --check
+        ctx["write_status"](run_id, started_by="консоль")
     dest = os.path.join(ctx["runs_dir"], run_id, "input")
     try:
         for p in items:
@@ -446,9 +460,86 @@ def app_status():
 
 # ------------------------------------------------------------------ MCP в приложении
 
+def describe_run(run_id: str) -> dict | None:
+    """Проверка целиком — словами и с путями к файлам на диске: для консоли (kostik --check) и ИИ-ассистентов.
+    Ссылок на окно программы здесь нет: читателю не нужно открывать http://127.0.0.1. run_id «last» — последняя проверка."""
+    from dxaqc.web import mcp
+    if run_id == "last":
+        run_id = next((r["id"] for r in sorted(ctx["list_runs"](500), key=lambda r: -r.get("created", 0))
+                       if r["id"] != ctx.get("example_id")), "")
+    st = ctx["read"](run_id, "status.json") if mcp.RUN_RE.match(run_id or "") else None
+    if not st:
+        return None
+    out = os.path.join(ctx["runs_dir"], run_id, "out")
+    man = ctx["read"](run_id, os.path.join("out", "manifest.json"))
+    rows = man["rows"] if man else mcp.ctx["partial_rows"](run_id)
+
+    def local(name):
+        p = os.path.join(out, name or "-")
+        return os.path.abspath(p) if os.path.isfile(p) else None
+
+    images = []
+    for r in rows:
+        ok, q = r.get("processing_status") == "Success", r.get("quality_class")
+        images.append(dict(
+            file=r.get("path_to_study"), key=r.get("key"), study_uid=r.get("study_uid"), image_uid=r.get("image_uid"),
+            region=r.get("anatomical_region"), region_ru=mcp.ctx["region_ru"].get(r.get("anatomical_region"), "не определена"),
+            status="failed" if not ok else {0: "good", 1: "bad"}.get(q, "not_evaluated"), quality_class=q,
+            violations=[dict(code=v, text=mcp.ctx["violation_ru"].get(v, v)) for v in r.get("violation_list") or []],
+            explanations=r.get("explanations") or [], measurements=r.get("measurements") or {},
+            error=None if ok else r.get("processing_status"), forced=bool(r.get("forced")), expert=r.get("expert"),
+            seconds=r.get("time_of_processing"), overlay=local(r.get("overlay_png")), original=local(r.get("original_png"))))
+    files = {k: local(n) for k, n in (("results_xlsx", "results.xlsx"), ("results_csv", "results.csv"), ("overlays_zip", "overlays.zip"))}
+    progress = st.get("progress") or {}
+    return dict(run_id=run_id, title=st.get("title"), state=st.get("state"), error=st.get("error"), final=bool(man),
+                started_by=st.get("started_by") or "окно программы",
+                created=time.strftime("%d.%m.%Y %H:%M", time.localtime(st["created"])) if st.get("created") else "",
+                done=progress.get("done", 0), total=progress.get("total", 0),
+                app_version=D.APP_VERSION_FULL, analysis_version=(man or {}).get("version") or __version__,
+                summary=(man or {}).get("summary"), images=images, folder=os.path.abspath(out),
+                files={k: p for k, p in files.items() if p})
+
+
+@router.get("/api/desktop/describe/{run_id}")
+def api_describe(run_id: str):
+    try:
+        d = describe_run(run_id)
+    except OSError:                       # файл состояния как раз переписывается — клиент повторит запрос
+        raise HTTPException(503, "проверка записывается, повторите запрос")
+    if d is None:
+        raise HTTPException(404, "проверка не найдена")
+    return d
+
+
+@router.get("/api/desktop/runs")
+def api_runs(limit: int = 30):
+    runs = [r for r in ctx["list_runs"](500) if r["id"] != ctx.get("example_id")]
+    runs.sort(key=lambda r: -r.get("created", 0))
+    return dict(runs=[dict(run_id=r["id"], title=r.get("title"), state=r.get("state"), summary=r.get("summary") or None,
+                           created=time.strftime("%d.%m.%Y %H:%M", time.localtime(r["created"])) if r.get("created") else "")
+                      for r in runs[:max(1, min(500, limit))]])
+
+
+def _t_describe_run(args, token):
+    from dxaqc.web import mcp
+    d = describe_run(str(args.get("run_id") or "last"))
+    if d is None:
+        raise mcp.ToolError("проверка не найдена — список в list_runs")
+    return d
+
+
 def patch_mcp(mcp):
     """Инструменты для локальной работы: без наборов организатора, зато проверка файлов по пути на диске (#153)."""
     mcp.TOOLS[:] = [t for t in mcp.TOOLS if t["name"] not in ("list_datasets", "analyze_dataset")]
+    if "describe_run" not in mcp.TOOL_BY_NAME:
+        tool = dict(name="describe_run", scope="read", title="Описание проверки целиком",
+                    description="Вся проверка одним ответом: по каждому снимку область, вердикт, нарушения, пояснения, измерения и "
+                                "пути к картинкам разметки и таблицам на этом компьютере. Открывать страницы программы не нужно. "
+                                "run_id не задан — последняя проверка.",
+                    inputSchema=mcp._schema({"run_id": {"type": "string"}}))
+        mcp.TOOLS.append(tool)
+        mcp.TOOL_BY_NAME["describe_run"] = tool
+        mcp.HANDLERS["describe_run"] = _t_describe_run
     if "analyze_paths" not in mcp.TOOL_BY_NAME:
         tool = dict(name="analyze_paths", scope="analyze", title="Проверить файлы и папки на диске",
                     description="Проверяет DICOM, zip-архивы и папки исследований по путям на этом компьютере — без пересылки "
@@ -459,8 +550,9 @@ def patch_mcp(mcp):
         mcp.TOOL_BY_NAME["analyze_paths"] = tool
         mcp.HANDLERS["analyze_paths"] = _t_analyze_paths
     mcp.INSTRUCTIONS = ("Kostik — настольное приложение контроля качества денситометрии DXA, работает на этом компьютере. "
-                        "analyze_paths проверяет файлы и папки по путям, analyze_files — переданные в base64; get_run показывает ход, "
-                        "get_results и get_image — результаты. Не для клинических выводов.")
+                        "analyze_paths проверяет файлы и папки по путям (с wait=true сразу отдаёт описание в поле description), "
+                        "analyze_files — переданные в base64; describe_run — вся проверка словами с путями к файлам на диске; "
+                        "get_run показывает ход, get_results и get_image — результаты по частям. Не для клинических выводов.")
 
 
 def _t_analyze_paths(args, token):
@@ -485,6 +577,7 @@ def _t_analyze_paths(args, token):
                 break
             time.sleep(0.5)
         result.update(mcp.t_get_run({"run_id": run_id}, token))
+        result["description"] = describe_run(run_id)        # всё сразу: ассистенту не нужны ни второй вызов, ни страницы программы
     return result
 
 

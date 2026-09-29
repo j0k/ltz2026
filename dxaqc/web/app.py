@@ -52,8 +52,8 @@ templates.env.globals["og_version"] = og.VERSION       # ?v= у картинки
 DESKTOP = os.environ.get("DXAQC_MODE") == "desktop"
 templates.env.globals["desktop"] = DESKTOP
 if DESKTOP:
-    from dxaqc.desktop import APP_VERSION
-    templates.env.globals["app_version"] = APP_VERSION
+    from dxaqc.desktop import APP_VERSION_FULL
+    templates.env.globals["app_version"] = APP_VERSION_FULL
 DESKTOP_BLOCKED = ("/admin", "/login", "/logout", "/register", "/account", "/cabinet", "/ask", "/api/ask", "/invite", "/tg",
                    "/gallery", "/api/gallery", "/tz", "/trac", "/cookies", "/runs/dataset", "/start")
 executor = ThreadPoolExecutor(max_workers=1)      # сервер слабый: одна пачка за раз

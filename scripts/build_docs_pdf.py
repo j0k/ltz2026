@@ -21,7 +21,9 @@ DOCS = [("readme", "README.md", "Обзор решения"), ("clean", "docs/CL
         ("user", "doc/USER_GUIDE.md", "Руководство пользователя"),
         ("deploy", "doc/DEPLOY.md", "Руководство по развёртыванию"), ("training", "doc/TRAINING.md", "Обучение моделей"),
         ("learning", "doc/LEARNING.md", "Дообучение на правках врачей и плагины"), ("examples", "doc/EXAMPLES.md", "Примеры снимков"),
-        ("demo", "doc/DEMO.md", "Демонстрационный сценарий")]
+        ("demo", "doc/DEMO.md", "Демонстрационный сценарий"),
+        ("plugin", "CLAUDE_PLUGIN.md", "Плагин для Claude Code: установка и проверка"),
+        ("build", "doc/BUILD_WINDOWS.md", "Сборка под Windows")]
 FILE2ID = {}
 for did, path, _ in DOCS:
     FILE2ID[path] = did

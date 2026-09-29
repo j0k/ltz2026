@@ -251,6 +251,18 @@
     gsap.from('tbody tr', { y: 26, opacity: 0, stagger: .1, duration: .7, ease: 'power2.out', scrollTrigger: { trigger: 'table', start: 'top 86%' } });
     $$('.mt i').forEach(i => gsap.to(i, { scaleX: +i.dataset.v, duration: 1.5, ease: 'power3.out', scrollTrigger: { trigger: i, start: 'top 94%', once: true } }));
 
+    /* ---------- «Развитие», пятый пункт: подход за подходом — шаги зажигаются по кругу, пока блок на экране ---------- */
+    const rounds = $('.rounds');
+    if (rounds) {
+      const steps = $$('.rd-step', rounds);
+      gsap.from(steps, { y: 40, opacity: 0, stagger: .14, duration: .9, ease: 'power3.out', scrollTrigger: { trigger: rounds, start: 'top 84%' } });
+      gsap.from($('.rd-loop', rounds), { opacity: 0, duration: 1, delay: .5, scrollTrigger: { trigger: rounds, start: 'top 80%' } });
+      const loop = gsap.timeline({ repeat: -1, paused: true });
+      steps.forEach((st, i) => loop.call(() => steps.forEach((x, k) => x.classList.toggle('on', k === i)), null, i * 1.5));
+      loop.to({}, { duration: steps.length * 1.5 });
+      ScrollTrigger.create({ trigger: rounds, start: 'top 85%', end: 'bottom 10%', onToggle: s => s.isActive ? loop.play() : loop.pause() });
+    }
+
     /* ---------- команда ---------- */
     $$('.team-big span').forEach(s => SplitText.create(s, { type: 'chars', autoSplit: true, onSplit: self =>
       gsap.from(self.chars, { yPercent: () => gsap.utils.random(-140, 140), rotate: () => gsap.utils.random(-25, 25), opacity: 0, stagger: { each: .03, from: 'random' }, duration: 1.1, ease: 'expo.out', scrollTrigger: { trigger: s, start: 'top 88%' } }) }));
@@ -265,7 +277,9 @@
 
     // высота секций зависит от картинок: пересчитать позиции, когда они загрузятся
     $$('img').forEach(img => { if (!img.complete) img.addEventListener('load', () => ScrollTrigger.refresh(), { once: true }); });
-    addEventListener('load', () => ScrollTrigger.refresh());
+    ScrollTrigger.sort();                                   // порядок как на странице: закреплённые сцены сдвигают всё, что ниже них
+    ScrollTrigger.refresh();
+    addEventListener('load', () => { ScrollTrigger.sort(); ScrollTrigger.refresh(); });
   }
   (document.fonts && document.fonts.ready ? Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 1800))]) : Promise.resolve()).then(start);
 })();

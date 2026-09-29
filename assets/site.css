@@ -76,7 +76,7 @@ h1 .hl{color:transparent;-webkit-text-stroke:2px var(--acc)}
 .big .w{opacity:.16}
 .cards{display:grid;gap:18px;margin-top:64px}
 .g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}.g2{grid-template-columns:repeat(2,1fr)}
-.card{position:relative;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:28px 28px 30px;overflow:hidden;transition:border-color .25s,transform .25s}
+.card{position:relative;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:28px 28px 30px;overflow:hidden;transition:border-color .25s}
 .card:before{content:"";position:absolute;inset:0;background:radial-gradient(420px circle at var(--mx,50%) var(--my,0%),rgba(120,140,255,.18),transparent 60%);opacity:0;transition:opacity .3s}
 .card:hover{border-color:rgba(140,160,255,.45)}.card:hover:before{opacity:1}
 .card h3{font-size:22px;letter-spacing:-.02em;margin-bottom:10px}
@@ -287,3 +287,20 @@ td.n{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:700}
 .fin{margin-top:22px;font-size:clamp(50px,7vw,104px);font-weight:800;letter-spacing:-.05em;line-height:1;color:transparent;-webkit-text-stroke:2px var(--c);text-align:center}
 .conf{position:absolute;left:50%;top:60%;width:0;height:0;pointer-events:none}
 .conf i{position:absolute;width:9px;height:14px;border-radius:2px}
+
+/* пятый пункт «Развитие»: разработка вместе с врачами и ИИ */
+.rounds{display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1.6fr);gap:40px;align-items:center;margin-top:18px;padding:34px 34px 30px}
+.rounds .num{margin-bottom:12px}
+.rounds h3{font-size:24px}
+.rounds .rd-text p{font-size:15.5px;margin-top:10px}
+.rd-flow{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,1fr);gap:14px;position:relative}
+.rd-flow:before{content:"";position:absolute;left:8%;right:8%;top:26px;height:0;border-top:2px dashed rgba(255,255,255,.14)}
+.rd-step{position:relative;text-align:center;padding:0 4px}
+.rd-step i{display:grid;place-items:center;width:54px;height:54px;margin:0 auto 12px;border-radius:50%;background:#0d0f18;border:1.5px solid rgba(255,255,255,.18);color:#9db8ff;transition:none}
+.rd-step.on i{border-color:var(--acc);color:#fff;background:linear-gradient(140deg,rgba(90,167,255,.35),rgba(138,107,255,.35));box-shadow:0 0 0 6px rgba(90,167,255,.12),0 0 28px rgba(90,150,255,.55)}
+.rd-step b{display:block;font-size:15px;letter-spacing:-.01em;margin-bottom:5px}
+.rd-step span{display:block;font-size:12.5px;line-height:1.5;color:var(--mut)}
+.rd-loop{position:relative;height:34px;margin-top:16px;color:rgba(255,255,255,.28)}
+.rd-loop svg{width:100%;height:34px;display:block}
+.rd-loop span{position:absolute;left:50%;top:15px;transform:translateX(-50%);padding:0 12px;background:#0d0f18;font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--dim);white-space:nowrap}
+@media (max-width:1000px){.rounds{grid-template-columns:minmax(0,1fr);gap:26px;padding:26px 22px}.rd-flow{grid-template-columns:repeat(2,1fr);row-gap:22px}.rd-flow:before{display:none}}

@@ -372,7 +372,7 @@ def cancel_run(run_id: str, request: Request):
     return dict(ok=True)
 
 
-OPEN_HOSTS = ("ltz2026.ru", "juri-konoplev.pro", "t.me", "github.com")
+OPEN_HOSTS = ("ltz2026.ru", "juri-konoplev.pro", "t.me", "github.com", "i.moscow")
 
 
 @router.post("/api/desktop/open-external")

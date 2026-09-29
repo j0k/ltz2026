@@ -72,7 +72,7 @@ def author_text() -> str:
     lines = [f"{APP_NAME} {APP_VERSION} — {TEAM}", CONTEXT, ""]
     lines += ["Авторы:"] + [f"  {a['name']} — {a['role']}" + (f"\n    {a['url']}" if a.get("url") else "") for a in AUTHORS]
     lines += ["", "Контакты:"] + [f"  {c['kind']}: {c['value']}  {c['url']}" for c in CONTACTS]
-    lines += ["", f"Страница проекта: {AUTHORS[0].get('url', SITE)}", "Исходный код: https://github.com/j0k/ltz2026", "", LICENSE, ""]
+    lines += ["", f"Страница проекта: {AUTHORS[0].get('url', SITE)}", "Исходный код: https://github.com/j0k/ltz2026", "Хакатон ЛЦТ 2026: https://i.moscow/lct", "", LICENSE, ""]
     return "\n".join(lines)
 
 

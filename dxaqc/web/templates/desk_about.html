@@ -8,7 +8,7 @@
   и пояснение решения. Работает на этом компьютере — снимки никуда не отправляются.</p>
 <div class="dk-card">
   <h2>Авторы</h2>
-  <p class="dk-muted" style="margin-top:0">{{ D.TEAM|capitalize }} · {{ D.CONTEXT }}</p>
+  <p class="dk-muted" style="margin-top:0">{{ D.TEAM|capitalize }} · {{ D.CONTEXT|replace('ЛЦТ 2026', '<a href="https://i.moscow/lct" target="_blank" rel="noopener">ЛЦТ 2026</a>')|safe }}</p>
   <table class="dk-table">{% for a in D.AUTHORS %}<tr><td><b>{% if a.url %}<a href="{{ a.url }}" target="_blank" rel="noopener">{{ a.name }}</a>{% else %}{{ a.name }}{% endif %}</b></td><td>{{ a.role }}</td></tr>{% endfor %}</table>
 </div>
 <div class="dk-card">

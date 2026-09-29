@@ -182,6 +182,8 @@ def test_open_external_whitelist_and_header(monkeypatch):
     assert c.post("/api/desktop/open-external", json={"url": url}).status_code == 403, "без заголовка страницы нельзя"
     h = {"X-Kostik": "1"}
     assert c.post("/api/desktop/open-external", json={"url": url}, headers=h).status_code == 200 and opened == [url]
+    assert c.post("/api/desktop/open-external", json={"url": "https://i.moscow/lct"}, headers=h).status_code == 200
+    opened.clear(); opened.append(url)
     for bad in ("https://evil.example/", "file:///etc/passwd", "javascript:alert(1)", "https://ltz2026.ru.evil.example/"):
         assert c.post("/api/desktop/open-external", json={"url": bad}, headers=h).status_code == 400, bad
     assert opened == [url]
@@ -208,6 +210,7 @@ def test_cli_help_version_author_mcp(tmp_path):
     v = _cli(tmp_path, "--version")
     assert v.returncode == 0 and v.stdout.startswith("Kostik 1.0-Beta (анализ ") and "Python" in v.stdout and "Каталог установки" in v.stdout
     a = _cli(tmp_path, "--author")
+    assert "https://i.moscow/lct" in a.stdout
     assert a.returncode == 0 and "Юрий Коноплёв" in a.stdout and "https://juri-konoplev.pro/ltz2026/" in a.stdout and "Алексей Чуркин" in a.stdout
     m = _cli(tmp_path, "--mcp")
     assert m.returncode == 0 and '"mcpServers"' in m.stdout and "--mcp-stdio" in m.stdout and "analyze_paths" in m.stdout

@@ -118,5 +118,5 @@ def videos() -> list[dict]:
 @router.get("/video/", response_class=HTMLResponse)
 def video_page(request: Request):
     return ctx["templates"].TemplateResponse(request, "video.html", dict(
-        videos=videos(), og_title="Видео · Kostik", og_description="Демонстрация работы Kostik: загрузка, дашборд, атлас снимка, "
+        videos=videos(), og_title="Видео · Kostik", og_image="/og/video.jpg", og_description="Демонстрация работы Kostik: загрузка, дашборд, атлас снимка, "
         "граф решения, таблица по ТЗ, приложение для компьютера."))

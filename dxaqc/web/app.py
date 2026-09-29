@@ -44,6 +44,7 @@ ask.setup(templates)
 PUBLIC_URL = os.environ.get("DXAQC_PUBLIC_URL", "https://ltz2026.ru").rstrip("/")
 templates.env.globals["public_url"] = PUBLIC_URL
 templates.env.globals["version"] = __version__          # подвал и ?v= у стилей на всех страницах
+templates.env.globals["og_version"] = og.VERSION       # ?v= у картинки превью: Telegram перечитывает её после смены оформления
 # настольное приложение: тот же сервис локально, без аккаунтов, админки, бота, Claude и cookie (#139)
 DESKTOP = os.environ.get("DXAQC_MODE") == "desktop"
 templates.env.globals["desktop"] = DESKTOP
@@ -1004,10 +1005,19 @@ def site_og():
 
 
 # страницы без собственной картинки: карточка с заголовком, счётчиками и мотивом — чтобы ссылка узнавалась в Telegram
-OG_PAGES = ("tz", "mindmap", "mlmap", "gantt", "roadmap", "data", "violations", "gallery", "control", "ask")
+OG_PAGES = ("video", "tz", "mindmap", "mlmap", "gantt", "roadmap", "data", "violations", "gallery", "control", "ask")
 
 
 def _og_page(key: str):
+    if key == "video":
+        from dxaqc.web import downloads as DL
+        vs = DL.videos()
+        v = vs[0] if vs else {}
+        dur = max((c.get("t", 0) for c in v.get("chapters") or []), default=0)
+        poster = os.path.join(DL.root(), "materials", os.path.basename(v["poster"])) if v.get("poster") else None
+        chapters = [c["title"] for c in (v.get("chapters") or [])[1:4]]
+        return og.video("Как работает Kostik — видео", chapters or ["загрузка, дашборд, атлас снимка, граф решения"],
+                        poster, f"{len(vs)} видео · {len(v.get('chapters') or [])} глав" if vs else "")
     if key == "tz":
         return og.page("Документы задачи 04", [
             "техническое задание ДепЗдрава постранично",

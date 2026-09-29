@@ -219,6 +219,8 @@ def safe_extract(zip_path: str, dest: str) -> list[str]:
             if total > MAX_UNPACKED_BYTES:
                 raise ValueError("архив слишком большой после распаковки")
             os.makedirs(os.path.dirname(target), exist_ok=True)
+            if os.path.exists(target):   # в архиве бывают записи с одним именем (zip -j): вторая не должна затереть первую
+                target = unique_path(os.path.dirname(target), os.path.basename(target))
             with zf.open(m) as src, open(target, "wb") as dst:
                 dst.write(src.read())
             out.append(target)

@@ -112,3 +112,19 @@ def test_same_named_uploads_do_not_overwrite(client):
     rid = r.headers["location"].rsplit("/", 1)[1]
     names = sorted(os.listdir(os.path.join(A.RUNS, rid, "input")))
     assert len(names) == 6 and "CR000000.dcm" in names and "CR000000__2.dcm" in names, names
+
+
+def test_zip_with_repeated_names_extracts_everything(tmp_path):
+    """29.09, Юрий: в zip 6 файлов, а распознаются 3 — записи с одним именем (zip -j) затирали друг друга при распаковке."""
+    import zipfile
+    from dxaqc import io as dio
+    z = tmp_path / "six.zip"
+    with zipfile.ZipFile(z, "w") as zf:
+        for grp in (b"A", b"B"):
+            for i in range(3):
+                zf.writestr(f"CR00000{i}.dcm", grp * (100 + i))
+    out = tmp_path / "out"
+    dio.safe_extract(str(z), str(out))
+    names = sorted(os.listdir(out))
+    assert len(names) == 6 and "CR000000.dcm" in names and "CR000000__2.dcm" in names, names
+    assert (out / "CR000000.dcm").read_bytes() != (out / "CR000000__2.dcm").read_bytes()

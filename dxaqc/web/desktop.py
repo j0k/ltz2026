@@ -372,6 +372,24 @@ def cancel_run(run_id: str, request: Request):
     return dict(ok=True)
 
 
+OPEN_HOSTS = ("ltz2026.ru", "juri-konoplev.pro", "t.me", "github.com")
+
+
+@router.post("/api/desktop/open-external")
+async def open_external(request: Request):
+    """Внешняя ссылка из окна приложения — в системном браузере. Только свои адреса и только с заголовком страницы."""
+    from urllib.parse import urlparse
+    if request.headers.get("x-kostik") != "1":
+        raise HTTPException(403)
+    url = (await request.json()).get("url", "")
+    u = urlparse(url)
+    if u.scheme not in ("http", "https") or not any(u.hostname == h or (u.hostname or "").endswith("." + h) for h in OPEN_HOSTS):
+        raise HTTPException(400, "адрес не разрешён")
+    import webbrowser
+    webbrowser.open(url)
+    return dict(ok=True)
+
+
 @router.get("/desktop/ping-age")
 def ping_age():
     """Окно в обычном браузере: сколько секунд страница молчит — процесс окна по этому решает, пора ли выходить."""

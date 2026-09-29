@@ -166,3 +166,26 @@ sys.stdout.flush(); os._exit(0)          # окно «упало»: движок
         time.sleep(0.5)
     else:
         pytest.fail("движок остался жить после закрытия окна")
+
+
+def test_open_external_whitelist_and_header(monkeypatch):
+    """29.09, Юрий: имя Юрия ведёт на страницу проекта; в приложении внешние ссылки открываются в системном браузере."""
+    import webbrowser
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from dxaqc.web import desktop as WD
+    opened = []
+    monkeypatch.setattr(webbrowser, "open", lambda u: opened.append(u))
+    app = FastAPI(); app.include_router(WD.router)
+    c = TestClient(app)
+    url = "https://juri-konoplev.pro/ltz2026/"
+    assert c.post("/api/desktop/open-external", json={"url": url}).status_code == 403, "без заголовка страницы нельзя"
+    h = {"X-Kostik": "1"}
+    assert c.post("/api/desktop/open-external", json={"url": url}, headers=h).status_code == 200 and opened == [url]
+    for bad in ("https://evil.example/", "file:///etc/passwd", "javascript:alert(1)", "https://ltz2026.ru.evil.example/"):
+        assert c.post("/api/desktop/open-external", json={"url": bad}, headers=h).status_code == 400, bad
+    assert opened == [url]
+    from dxaqc import desktop as D
+    assert next(a for a in D.AUTHORS if a["name"] == "Юрий Коноплёв")["url"] == url
+    foot = open(os.path.join(ROOT, "dxaqc", "web", "templates", "_team_footer.html"), encoding="utf-8").read()
+    assert f'href="{url}"' in foot and ">Юрий Коноплёв</a>" in foot

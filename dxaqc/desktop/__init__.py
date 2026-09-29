@@ -14,7 +14,7 @@ APP_ID = "dxaqc"
 DEFAULT_PORT = 8765
 SITE = "https://ltz2026.ru"
 AUTHORS = [
-    dict(name="Юрий Коноплёв", role="руководитель проекта, продукт"),
+    dict(name="Юрий Коноплёв", role="руководитель проекта, продукт", url="https://juri-konoplev.pro/ltz2026/"),
     dict(name="Алексей Чуркин", role="стенд, Telegram-бот, проверка сервиса, обратная связь"),
 ]
 TEAM = "команда «Квантовый Скачок»"

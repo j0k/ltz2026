@@ -76,5 +76,13 @@ dialog::backdrop{bottom:30px}   /* модальные окна не закрыв
     } finally { clearTimeout(t); setTimeout(tick, busy ? 700 : 1500); }
   }
   tick();
+  // внешние ссылки открываем в системном браузере: встроенное окно не должно уходить со страниц приложения
+  document.addEventListener('click', e => {
+    const a = e.target.closest && e.target.closest('a[href^="http"]');
+    if (!a || a.origin === location.origin) return;
+    e.preventDefault();
+    fetch('/api/desktop/open-external', {method: 'POST', headers: {'X-Kostik': '1', 'Content-Type': 'application/json'},
+                                        body: JSON.stringify({url: a.href})}).catch(() => {});
+  });
 })();
 </script>

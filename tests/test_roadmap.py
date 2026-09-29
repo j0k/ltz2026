@@ -54,4 +54,4 @@ def test_page_renders_board(client):
     assert client.get("/tz/roadmap", follow_redirects=False).headers["location"] == "/tz/roadmap.html"
     assert client.get("/og/roadmap.jpg").status_code == 200
     assert "/tz/roadmap.html" in client.get("/tz/").text
-    assert re.search(r'og:image" content="[^"]+/og/roadmap\.jpg"', html)
+    assert re.search(r'og:image" content="[^"]+/og/roadmap\.jpg(\?v=\d+)?"', html)

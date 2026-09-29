@@ -299,7 +299,15 @@ def open_window(engine: Engine, start_path: str, files: list[str], prefer_browse
             except AttributeError:                       # старый pywebview без событий
                 pass
             print("[window] окно pywebview, движок в отдельном процессе", flush=True)
-            webview.start(ui._watch, private_mode=False, storage_path=os.path.join(paths.data_dir(), "webview"))
+            paths.set_app_identity()
+            threading.Thread(target=paths.set_window_icon, daemon=True, name="window-icon").start()
+            kw = {}
+            if os.path.isfile(os.path.join(paths.ASSETS, "icon.png")):
+                kw["icon"] = os.path.join(paths.ASSETS, "icon.png")          # GTK и Qt: иконка окна Linux
+            try:
+                webview.start(ui._watch, private_mode=False, storage_path=os.path.join(paths.data_dir(), "webview"), **kw)
+            except TypeError:                                                # pywebview без параметра icon
+                webview.start(ui._watch, private_mode=False, storage_path=os.path.join(paths.data_dir(), "webview"))
             ui._closing = True
             return "pywebview"
         except Exception as exc:  # noqa: BLE001 — нет WebView2 / WebKitGTK: браузер в режиме приложения

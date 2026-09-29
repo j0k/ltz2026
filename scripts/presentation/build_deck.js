@@ -261,13 +261,13 @@ function mandatoryTag(s, n) {
 { // 10. Команда
   const s = pres.addSlide(); s.background = { color: C.white }; mandatoryTag(s, 10);
   title(s, 'Команда', '«Квантовый Скачок»', '');
-  const team = [['ЮК', 'Юрий Коноплёв', 'капитан команды', '@bimodaling', C.blue],
-                ['АЧ', 'Алексей Чуркин', 'участник команды', '@lesha_cfc', C.ink]];
-  team.forEach(([ini, name, role, tg, col], i) => {
+  const team = [['team_yuri.png', 'Юрий Коноплёв', 'капитан команды', '@bimodaling', C.blue],
+                ['team_alexey.png', 'Алексей Чуркин', 'участник команды', '@lesha_cfc', C.ink]];
+  team.forEach(([photo, name, role, tg, col], i) => {
     const x = 1.2 + i * 4.0;
     card(s, x, 1.55, 3.6, 3.4, C.soft);
-    s.addShape(pres.shapes.OVAL, { x: x + 1.2, y: 1.85, w: 1.2, h: 1.2, fill: { color: col } });
-    T(s, ini, { x: x + 1.2, y: 1.85, w: 1.2, h: 1.2, fontFace: H, fontSize: 30, bold: true, color: C.white, align: 'center', valign: 'middle' });
+    s.addShape(pres.shapes.OVAL, { x: x + 1.12, y: 1.72, w: 1.36, h: 1.36, fill: { color: col } });
+    img(s, photo, x + 1.17, 1.77, 1.26, 1.0);
     T(s, name, { x: x + 0.2, y: 3.25, w: 3.2, h: 0.45, fontFace: H, fontSize: 21, bold: true, color: C.ink, align: 'center' });
     T(s, role, { x: x + 0.2, y: 3.72, w: 3.2, h: 0.3, fontSize: 13, color: C.blue, align: 'center' });
     T(s, 'Telegram ' + tg, { x: x + 0.2, y: 4.25, w: 3.2, h: 0.3, fontSize: 12, color: C.ink3, align: 'center' });

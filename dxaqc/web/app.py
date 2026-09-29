@@ -27,6 +27,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 
 from dxaqc import __version__, atlas, datasets, pipeline, voice
+from dxaqc import io as dio
 from dxaqc import params as P
 from dxaqc.io import safe_extract, unpack_archives
 from dxaqc.web import accounts, activity, analysis, ask, cabinet, control, datastats, desktop, downloads, gallery, mcp, og, progress, showcase, tgbot, tz, violations
@@ -390,7 +391,7 @@ async def _save_uploads(files: list[UploadFile], dest: str):
         name = os.path.basename(uf.filename or f"file{n}")
         if not name:
             continue
-        path = os.path.join(dest, name)
+        path = dio.unique_path(dest, name)               # одинаковые имена из разных папок не затирают друг друга
         with open(path, "wb") as out:
             while chunk := await uf.read(1024 * 1024):
                 out.write(chunk)

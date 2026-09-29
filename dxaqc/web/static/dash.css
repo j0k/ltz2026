@@ -220,3 +220,5 @@ button.d-kpi:disabled{cursor:default;opacity:.8}
 .d-f-bar{display:flex;gap:10px;align-items:center;margin:14px 0 4px;padding:10px 14px;border-radius:12px;background:#eef3fd;font-size:14px}
 .d-f-bar .d-f{font:inherit;border:0;background:none;color:var(--accent,#2a6fdb);cursor:pointer;text-decoration:underline;padding:0}
 [hidden]{display:none !important}
+
+.d-files-note{margin:0 0 12px;font-size:14px;color:var(--ink2,#4a5361)}.d-files-note b{color:var(--ink,#15181e)}

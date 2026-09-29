@@ -63,6 +63,17 @@ DXA_WORDS = ("dxa", "dexa", "densit", "денсит", "bmd", "lunar", "prodigy",
              "osteosys", "primus", "medix")
 
 
+def unique_path(folder: str, name: str) -> str:
+    """Путь для нового файла: занятое имя не затирается, а получает суффикс __2, __3 … (29.09, Юрий: из 6 файлов с одинаковыми именами
+    CR000000.dcm… у двух исследований оставалось 3 — файлы перезаписывали друг друга)."""
+    base, ext = os.path.splitext(name)
+    path, k = os.path.join(folder, name), 1
+    while os.path.exists(path):
+        k += 1
+        path = os.path.join(folder, f"{base}__{k}{ext}")
+    return path
+
+
 def _dxa_named(ds) -> bool:
     """В описании серии, у производителя или модели есть признаки денситометра."""
     text = " ".join(str(ds.get(k, "")) for k in ("SeriesDescription", "StudyDescription", "ProtocolName", "Manufacturer",

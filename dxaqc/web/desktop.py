@@ -280,8 +280,9 @@ def history_delete(run_id: str):
 # ------------------------------------------------------------------ проверка локальных файлов и демо
 
 def _copy_into(src: str, dest: str):
+    from dxaqc import io as dio
     name = os.path.basename(os.path.normpath(src)) or "input"
-    target = os.path.join(dest, name)
+    target = dio.unique_path(dest, name)                 # одинаковые имена файлов и папок из разных мест не затирают друг друга
     if os.path.isdir(src):
         shutil.copytree(src, target, dirs_exist_ok=True)
     else:

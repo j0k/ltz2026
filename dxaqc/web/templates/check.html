@@ -53,6 +53,8 @@
 <p class="note">Проверка не завершилась{% if st.error %}: {{ st.error }}{% endif %}. <a href="/">Загрузить файлы ещё раз</a></p>
 {% else %}
 
+{% if s.duplicates %}<p class="d-files-note">Получено файлов: <b>{{ (s.images or 0) + (s.duplicates or 0) + (s.failures or 0) }}</b> · уникальных снимков: <b>{{ s.images or 0 }}</b> · точных копий убрано: <b>{{ s.duplicates }}</b>
+  <span class="faint">— копии одного снимка проверять дважды незачем</span></p>{% endif %}
 <div class="d-kpis">
   <div class="d-kpi"><b>{{ s.studies or 0 }}</b><span>исследований</span></div>
   <button type="button" class="d-kpi d-f" data-f="all" aria-pressed="true" title="показать все снимки"><b>{{ s.images or 0 }}</b><span>снимков</span></button>

@@ -101,3 +101,14 @@ def test_demo_from_example_run(client):
     finally:
         if not existed:
             shutil.rmtree(ex, ignore_errors=True)
+
+
+def test_same_named_uploads_do_not_overwrite(client):
+    """29.09, Юрий: 6 файлов CR000000/1/2.dcm из двух исследований превращались в 3 — одинаковые имена затирали друг друга."""
+    import sys
+    A = sys.modules["dxaqc.web.app"]
+    files = [("files", ("CR000000.dcm", bytes([i]) * 64, "application/dicom")) for i in range(6)]
+    r = client.post("/runs", files=files, data={"ui": "v2"}, follow_redirects=False)
+    rid = r.headers["location"].rsplit("/", 1)[1]
+    names = sorted(os.listdir(os.path.join(A.RUNS, rid, "input")))
+    assert len(names) == 6 and "CR000000.dcm" in names and "CR000000__2.dcm" in names, names

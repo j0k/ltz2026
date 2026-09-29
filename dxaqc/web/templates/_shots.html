@@ -16,13 +16,15 @@
     <div class="sh-stage">
       {% for key, t, d in shots %}
       <figure class="sh-slide{{ ' on' if loop.first }}" aria-roledescription="слайд" aria-label="{{ loop.index }} из {{ shots|length }}: {{ t }}"{{ '' if loop.first else ' aria-hidden="true"' }}>
-        <img {{ 'src' if loop.first else 'data-src' }}="/static/shots/{{ key }}.webp?v={{ version }}" alt="{{ t }}: {{ d }}" width="1600" height="1018">
+        {# настоящие снимки обучающего набора организатора лежат на стенде вне git; в репозитории — синтетический запасной вариант #}
+        <img {{ 'src' if loop.first else 'data-src' }}="/downloads/materials/shots/{{ key }}.webp" alt="{{ t }}: {{ d }}" width="1600" height="1018" onerror="this.onerror=null;this.src=this.src.replace(/.*\/shots\//, '/static/shots/')">
       </figure>
       {% endfor %}
       <button type="button" class="sh-nav prev" aria-label="предыдущий скриншот">‹</button>
       <button type="button" class="sh-nav next" aria-label="следующий скриншот">›</button>
     </div>
   </div>
+  <p class="sh-note">Скриншоты сделаны на настоящих обезличенных снимках обучающего набора организатора: в приложении их нет, пользователь загружает свои.</p>
   <div class="sh-cap" aria-live="polite">
     {% for key, t, d in shots %}<div class="sh-text{{ ' on' if loop.first }}"><b>{{ t }}</b><span>{{ d }}</span></div>{% endfor %}
   </div>

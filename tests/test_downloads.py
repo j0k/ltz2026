@@ -31,7 +31,8 @@ def test_download_page_has_screenshot_gallery(client):
     html = client.get("/download").text
     assert 'id="shots"' in html and "/static/shots.js" in html
     assert html.count('class="sh-slide') == 9 and html.count('class="sh-text') == 9, "9 скриншотов с подписями"
-    assert 'src="/static/shots/home.webp' in html and 'data-src="/static/shots/dashboard.webp' in html, "первый сразу, остальные лениво"
+    assert "настоящих обезличенных снимках" in html
+    assert 'src="/downloads/materials/shots/home.webp' in html and 'data-src="/downloads/materials/shots/dashboard.webp' in html, "первый сразу, остальные лениво"
     for key in ("home", "dashboard", "card", "text", "control", "help", "mcp", "models", "history"):
         assert client.get(f"/static/shots/{key}.webp").status_code == 200, key
     assert "Kostik 1.0-Beta" in html
@@ -61,3 +62,13 @@ def test_video_page_lists_materials(client, tmp_path, monkeypatch):
         assert "Проба" in html and "/downloads/materials/Demo_x.mp4" in html and "1:15" in html and "Место для следующего видео" in html
     r = client.get("/downloads/materials/Demo_x.mp4")
     assert r.status_code == 200 and r.headers["content-type"] == "video/mp4" and "attachment" not in r.headers.get("content-disposition", "")
+
+
+def test_webp_and_jpg_served_inline(client, tmp_path, monkeypatch):
+    """29.09, Юрий: скриншоты с настоящими снимками лежат на стенде (downloads/materials/shots), открываются в браузере."""
+    from dxaqc.web import downloads as D
+    m = tmp_path / "downloads" / "materials" / "shots"; m.mkdir(parents=True)
+    (m / "card.webp").write_bytes(b"RIFF\0\0\0\0WEBP")
+    monkeypatch.setitem(D.ctx, "data", str(tmp_path))
+    r = client.get("/downloads/materials/shots/card.webp")
+    assert r.status_code == 200 and r.headers["content-type"] == "image/webp" and "attachment" not in r.headers.get("content-disposition", "")

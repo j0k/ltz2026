@@ -70,3 +70,4 @@ html.native .web-only{display:none}
 .sh-play{margin-left:auto;border:0;background:none;color:var(--ink3,#6b7383);font-size:12px;cursor:pointer;padding:4px 6px}
 @media (prefers-reduced-motion:reduce){.sh-slide,.sh-text{transition:opacity .2s}.sh-slide{transform:none}}
 @media (max-width:640px){.sh-dots [role=tab]{width:22px}.sh-nav{opacity:.85;width:36px;height:36px;font-size:22px}}
+.sh-note{margin:10px 2px 0;font-size:12.5px;color:var(--ink3,#7a8494)}

@@ -81,7 +81,7 @@ def download_file(path: str):
     full = os.path.join(root(), path)
     if not os.path.isfile(full):
         raise HTTPException(404, "файла нет")
-    inline = {".mp4": "video/mp4", ".webm": "video/webm", ".pdf": "application/pdf", ".jpg": "image/jpeg", ".png": "image/png",
+    inline = {".mp4": "video/mp4", ".webm": "video/webm", ".pdf": "application/pdf", ".jpg": "image/jpeg", ".png": "image/png", ".webp": "image/webp",
               ".vtt": "text/vtt; charset=utf-8"}                # открываются в браузере: плеер, PDF, картинки
     ext = os.path.splitext(path)[1].lower()
     media = inline.get(ext) or ("application/json" if path.endswith(".json") else

@@ -462,8 +462,8 @@ for i, r in enumerate(rows):
                 v0 = float(v.split()[0].replace(',', '.'))
                 f.bold = True; f.color.rgb = PURPLE if v0 >= 0.8 else LAV if v0 >= 0.7 else PINK
 box(s, 0.56, 6.1, 12.2, 0.72, fill=PINK_L)
-text(s, 0.85, 6.1, 11.7, 0.72, [[('Сводная фитнес-функция 0,58  ', {'bold': True, 'color': DEEP}),
-      ('= 0,35·F1 + 0,35·ROC-AUC по областям + 0,30·macro-F1 типов; базовая линия 0,570 (0,477–0,644)', {})]], size=13, anchor=MSO_ANCHOR.MIDDLE)
+text(s, 0.85, 6.1, 11.7, 0.72, [[('Сводная фитнес-функция 0,57  ', {'bold': True, 'color': DEEP}),
+      ('= 0,35·F1 + 0,35·ROC-AUC по областям + 0,30·macro-F1 типов; 95 % ДИ 0,477–0,644', {})]], size=13, anchor=MSO_ANCHOR.MIDDLE)
 
 # 19. Эксперименты
 s = new_slide(title='ЭКСПЕРИМЕНТЫ')

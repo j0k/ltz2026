@@ -18,7 +18,8 @@ ROOT = Path(__file__).resolve().parents[1]
 GH = "https://github.com/j0k/ltz2026/blob/main/"
 DOCS = [("readme", "README.md", "Обзор решения"), ("user", "doc/USER_GUIDE.md", "Руководство пользователя"),
         ("deploy", "doc/DEPLOY.md", "Руководство по развёртыванию"), ("training", "doc/TRAINING.md", "Обучение моделей"),
-        ("learning", "doc/LEARNING.md", "Дообучение на правках врачей и плагины"), ("demo", "doc/DEMO.md", "Демонстрационный сценарий")]
+        ("learning", "doc/LEARNING.md", "Дообучение на правках врачей и плагины"), ("examples", "doc/EXAMPLES.md", "Примеры снимков"),
+        ("demo", "doc/DEMO.md", "Демонстрационный сценарий")]
 FILE2ID = {}
 for did, path, _ in DOCS:
     FILE2ID[path] = did
@@ -60,6 +61,7 @@ for did, path, title in DOCS:
 
     body = re.sub(r"<h([1-3])>(.*?)</h\1>", add_id, body)
     body = re.sub(r'href="([^"]+)"', link, body)
+    body = re.sub(r'src="(?!https?:)([^"]+)"', lambda m, d=(ROOT / path).parent: f'src="file://{(d / m.group(1)).resolve()}"', body)
     toc.append((did, title, [h for h in heads if h[0] == 2]))
     parts.append(f'<section class="doc" id="sec-{did}"><div class="doc-tag">{html.escape(title)}</div>{body}</section>')
 
@@ -92,6 +94,8 @@ pre code {{ background: none; padding: 0; }}
 table {{ border-collapse: collapse; width: 100%; margin: 2mm 0 4mm; font-size: 9pt; page-break-inside: auto; }}
 th {{ background: #520977; color: #fff; text-align: left; }} th, td {{ border: 1px solid #E5E7E9; padding: 1.4mm 2mm; vertical-align: top; }}
 tr:nth-child(even) td {{ background: #FAF8FC; }}
+img {{ max-width: 100%; border: 1px solid #E5E7E9; border-radius: 2mm; margin: 1mm 0 3mm; page-break-inside: avoid; }}
+p:has(> img) {{ page-break-inside: avoid; }}
 </style></head><body>
 <div class="cover"><h1>Kostik</h1><p>Контроль качества снимков денситометрии DXA</p>
 <p>Документация · версия 0.5.4 · приложение 1.0-Beta · {time.strftime('%d.%m.%Y')}</p>

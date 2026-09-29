@@ -17,7 +17,7 @@
 
 **Документация:** [руководство пользователя](doc/USER_GUIDE.md) · [развёртывание](doc/DEPLOY.md) ·
 [обучение](doc/TRAINING.md) · [дообучение на правках врачей и плагины](doc/LEARNING.md) ·
-[демонстрационный сценарий](doc/DEMO.md) · [всё одним PDF](https://ltz2026.ru/downloads/materials/Kostik_docs.pdf) ·
+[примеры снимков](doc/EXAMPLES.md) · [демонстрационный сценарий](doc/DEMO.md) · [всё одним PDF](https://ltz2026.ru/downloads/materials/Kostik_docs.pdf) ·
 [итоговая метрика](FITNESS.md).
 
 ## Что делает

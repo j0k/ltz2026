@@ -109,6 +109,18 @@ def _grid_boxes(mask: np.ndarray, cell: int = 12, min_px: int = 6):
     return boxes
 
 
+def _rib_like(boxes: list, axis_x: np.ndarray, h: int) -> list[int]:
+    """Номера пятен, похожих на рёбра: крупные, в верхней трети кадра, по обе стороны от оси на сходном расстоянии."""
+    big = [(i, (b[0] + b[2]) / 2 - axis_x[min(h - 1, (b[1] + b[3]) // 2)]) for i, b in enumerate(boxes)
+           if b[3] <= h * 0.35 and b[2] - b[0] >= 48]
+    left = [(i, -o) for i, o in big if o < 0]
+    right = [(i, o) for i, o in big if o > 0]
+    if not left or not right:
+        return []
+    l, r = max(left, key=lambda t: t[1]), max(right, key=lambda t: t[1])
+    return sorted([l[0], r[0]]) if abs(l[1] - r[1]) < 0.25 * max(l[1], r[1]) else []
+
+
 def analyze_spine(a: np.ndarray, params: dict | None = None) -> dict:
     p = P.normalize(params)
     axis_limit, iliac_min = p["axis_limit_deg"], p["iliac_min_brightness"]
@@ -140,6 +152,11 @@ def analyze_spine(a: np.ndarray, params: dict | None = None) -> dict:
     contrast = float(np.percentile(local[out_band], 99.9)) if out_band.any() else 0.0
     spot = (local > p["artifact_contrast"]) & out_band
     art_boxes = _grid_boxes(spot) if contrast >= p["artifact_contrast"] else []
+    # 29.09, Алексей: на «Для теста» за предмет приняты симметричные пятна вверху кадра — похоже на XII рёбра.
+    # Вердикт не меняем: на 99 размеченных поясницах такой узор у 3 снимков, у 2 из них эксперты отметили
+    # предмет (скорее всего бюстгальтер — он на том же уровне), а исключение верхней зоны роняет ROC-AUC с 0,85
+    # до 0,53–0,74. Но в пояснении и на выноске честно пишем, что это могут быть рёбра.
+    doubt = _rib_like(art_boxes, axis_x, h)
 
     violations, expl = [], []
     if abs(angle) > axis_limit:
@@ -163,6 +180,10 @@ def analyze_spine(a: np.ndarray, params: dict | None = None) -> dict:
         violations.append("artifact")
         expl.append(f"Вне позвоночного столба есть пятно, заметно ярче своего окружения (контраст {contrast:.0f} "
                     f"при пороге {p['artifact_contrast']:g}), в {len(art_boxes)} областях: похоже на посторонний предмет.")
+        if doubt:
+            expl.append("Два крупных пятна в верхней части кадра лежат симметрично по обе стороны от позвоночника. "
+                        "Так выглядят и косточки или застёжка бюстгальтера, и нижние (XII) рёбра — проверьте снимок "
+                        "глазами. В обучающем наборе эксперты в 2 из 3 таких случаев отметили посторонний предмет.")
     else:
         expl.append(f"Пятен, заметно ярче окружения, вне позвоночного столба не найдено (контраст {contrast:.0f} "
                     f"при пороге {p['artifact_contrast']:g}).")
@@ -188,6 +209,7 @@ def analyze_spine(a: np.ndarray, params: dict | None = None) -> dict:
             iliac_boxes=[left_box, right_box],
             iliac_ok=iliac_ok,
             artifact_boxes=art_boxes,
+            artifact_doubt=doubt,
         ),
     )
 

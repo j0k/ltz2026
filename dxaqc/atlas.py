@@ -443,7 +443,9 @@ def render_spine(a: np.ndarray, res: dict):
     r_art = 0
     if g.get("artifact_boxes"):
         art_text = (f"Посторонний предмет: пятно вне позвоночного столба ярче окружения на {met.get('artifact_contrast', 0):.0f}. "
-                    f"Металл, пуговицы и украшения искажают плотность, снимок стоит переснять без них.")
+                    f"Металл, пуговицы и украшения искажают плотность, снимок стоит переснять без них."
+                    + (" Два пятна вверху симметричны по обе стороны от позвоночника: это могут быть и косточки "
+                       "бюстгальтера, и нижние рёбра — проверьте глазами." if g.get("artifact_doubt") else ""))
         r_art = hm.region("artifact", "посторонний предмет", "яркий объект вне столба", CRIT, art_text,
                           ["предмет", "артефакт", "металл", "ярк", "пуговиц", "украш"], "bad")
 
@@ -499,9 +501,11 @@ def render_spine(a: np.ndarray, res: dict):
                 hm.disc(r_iliac, X(px), Y(py), 8)
     else:
         right.append(((X(w - P["cw"] / 2), Y(h - 8)), "гребни не видны", CRIT, "охват снизу недостаточен", r_iliac))
-    for bx in g.get("artifact_boxes", []):
+    doubt = set(g.get("artifact_doubt") or [])
+    for i, bx in enumerate(g.get("artifact_boxes", [])):
         L.draw["artifacts"].rectangle([X(bx[0]), Y(bx[1]), X(bx[2]), Y(bx[3])], outline=CRIT, width=3)
-        right.append(((X(bx[2]), Y((bx[1] + bx[3]) / 2)), "посторонний предмет", CRIT, "яркий объект вне столба", r_art))
+        right.append(((X(bx[2]), Y((bx[1] + bx[3]) / 2)), "посторонний предмет" + ("?" if i in doubt else ""), CRIT,
+                      "или ребро — проверьте" if i in doubt else "яркий объект вне столба", r_art))
     _callouts(d, right, W - 16, "right", top + 14, top + h * S - 10, hm=hm, sink=calls)
 
     d.text((mL + 8, top + 6), "П", font=font(16, True), fill=(250, 210, 90))

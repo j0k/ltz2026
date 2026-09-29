@@ -117,3 +117,16 @@ def test_broken_zip_as_whole_input(tmp_path):
     import json
     m = json.load(open(out / "manifest.json", encoding="utf-8"))
     assert m["summary"]["failures"] == 1 and "архив zip не распакован" in m["rows"][0]["explanations"][0]
+
+
+def test_symmetric_top_spots_flagged_as_maybe_ribs():
+    """29.09, Алексей: на «Для теста» за предмет приняты симметричные пятна вверху — похоже на рёбра.
+    Вердикт не меняется (в данных организатора такой узор чаще — бюстгальтер), но сомнение помечается."""
+    from dxaqc.analyze import _rib_like
+    h = 317
+    axis = np.full(h, 150.0)
+    ribs = [[24, 0, 120, 72], [252, 0, 264, 12], [192, 24, 288, 72], [48, 288, 72, 312]]
+    assert _rib_like(ribs, axis, h) == [0, 2]
+    assert _rib_like([[24, 0, 120, 72]], axis, h) == [], "с одной стороны — не рёбра"
+    assert _rib_like([[24, 0, 120, 72], [192, 200, 288, 260]], axis, h) == [], "второе пятно не вверху"
+    assert _rib_like([[100, 0, 148, 40], [192, 24, 288, 72]], axis, h) == [], "на разном расстоянии от оси"

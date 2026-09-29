@@ -64,9 +64,11 @@ def models() -> list[dict]:
 def download_page(request: Request):
     ua = (request.headers.get("user-agent") or "").lower()
     guess = "windows" if "windows" in ua else "linux" if ("linux" in ua and "android" not in ua) else "other"
-    return ctx["templates"].TemplateResponse(request, "download.html", dict(rel=latest(), guess=guess,
+    resp = ctx["templates"].TemplateResponse(request, "download.html", dict(rel=latest(), guess=guess,
                                                                             app_version=_app_version(),
                                                                             og_title="Скачать приложение Kostik"))
+    resp.headers["Cache-Control"] = "no-cache"        # галерея и ссылки на пакеты обновляются — старую страницу из кэша не показываем
+    return resp
 
 
 def _app_version() -> str:

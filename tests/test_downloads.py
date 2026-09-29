@@ -28,7 +28,9 @@ def test_download_page_and_files(client):
 
 def test_download_page_has_screenshot_gallery(client):
     """Юрий, 28.09: на странице загрузки — галерея скриншотов с подписями и автопролистыванием."""
-    html = client.get("/download").text
+    resp = client.get("/download")
+    html = resp.text
+    assert resp.headers.get("cache-control") == "no-cache", "страницу загрузки не кэшируем: галерея обновляется"
     assert 'id="shots"' in html and "/static/shots.js" in html
     assert html.count('class="sh-slide') == 9 and html.count('class="sh-text') == 9, "9 скриншотов с подписями"
     assert "настоящих обезличенных снимках" in html

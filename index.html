@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kostik — контроль качества снимков денситометрии · ЛЦТ 2026</title>
+<meta name="description" content="Kostik проверяет снимки денситометрии DXA (поясница и бедро, DICOM): область, вердикт о качестве, тип нарушения и объяснение прямо на снимке. Работает локально, без интернета. ЛЦТ 2026, задача 04, команда «Квантовый Скачок».">
+<meta property="og:title" content="Kostik — контроль качества снимков денситометрии">
+<meta property="og:description" content="Вердикт и причина брака по каждому снимку DXA за доли секунды. ЛЦТ 2026, задача 04, команда «Квантовый Скачок».">
+<meta property="og:image" content="https://juri-konoplev.pro/ltz2026/doc/img/04_card.png">
+<meta property="og:url" content="https://juri-konoplev.pro/ltz2026/">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+:root{--ink:#15181e;--ink2:#4a5361;--ink3:#7a8494;--bg:#f6f5f2;--card:#fff;--line:#e4e1da;--accent:#2a6fdb;--dark:#12151c}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+a{color:var(--accent)}
+.wrap{max-width:1100px;margin:0 auto;padding:0 22px}
+header{display:flex;align-items:center;gap:14px;padding:18px 0}
+.logo{font-weight:800;font-size:22px;color:var(--accent);letter-spacing:-.02em;text-decoration:none}
+.tag{color:var(--ink3);font-size:14px}
+nav{margin-left:auto;display:flex;gap:18px;flex-wrap:wrap}
+nav a{color:var(--ink2);text-decoration:none;font-size:15px} nav a:hover{color:var(--accent)}
+.hero{display:grid;grid-template-columns:1.05fr 1fr;gap:36px;align-items:center;padding:34px 0 18px}
+h1{font-size:44px;line-height:1.08;letter-spacing:-.03em;margin:0 0 14px;font-weight:800}
+.lead{font-size:18px;color:var(--ink2);margin:0 0 22px}
+.btns{display:flex;gap:10px;flex-wrap:wrap}
+.btn{display:inline-block;padding:11px 18px;border-radius:12px;background:var(--accent);color:#fff;text-decoration:none;font-weight:600}
+.btn.ghost{background:#e8effb;color:var(--accent)}
+.shot{width:100%;height:auto;border-radius:14px;border:1px solid var(--line);box-shadow:0 12px 40px rgba(20,30,50,.12);display:block}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:30px 0}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 18px}
+.stat b{display:block;font-size:30px;letter-spacing:-.02em;color:var(--accent)} .stat span{color:var(--ink2);font-size:14px}
+h2{font-size:28px;letter-spacing:-.02em;margin:44px 0 16px}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.step{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.step img{width:100%;display:block;border-bottom:1px solid var(--line)}
+.step div{padding:14px 16px} .step b{display:block;margin-bottom:4px} .step p{margin:0;color:var(--ink2);font-size:15px}
+.links{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.links a{display:block;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;text-decoration:none;color:var(--ink)}
+.links a:hover{border-color:var(--accent)} .links b{display:block} .links span{color:var(--ink3);font-size:14px}
+pre{background:var(--dark);color:#e6ecf3;border-radius:14px;padding:16px 18px;overflow:auto;font:14px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.note{color:var(--ink2);font-size:15px}
+@media (max-width:860px){.hero{grid-template-columns:1fr}h1{font-size:34px}.stats{grid-template-columns:repeat(2,1fr)}.steps,.links{grid-template-columns:1fr}nav{display:none}}
+
+.qf{display:flex;align-items:center;gap:22px;max-width:1100px;margin:40px auto 24px;padding:16px 22px;border-radius:18px;
+  background:#12151c;color:#e8edf3;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+.qf-art{flex:none;width:260px;height:100px;overflow:visible}
+.qf-levels line{stroke:#3a4352;stroke-width:2;stroke-linecap:round}
+.qf-levels text{fill:#7f8b9b;font-size:9px;font-family:inherit;text-anchor:end}
+.qf-f{fill:#a9b4c2;font-size:10px;font-style:italic;text-anchor:middle;font-family:Georgia,"Times New Roman",serif}
+.qf-in,.qf-out{fill:none;stroke:url(#qfPh);stroke-width:2.2;stroke-linecap:round}
+.qf-trail{fill:none;stroke:#7cc4ff;stroke-width:1.6;stroke-dasharray:3 4;opacity:0}
+.qf-team{font-size:19px;font-weight:800;letter-spacing:-.01em;color:#fff}
+.qf-names{font-size:14px;color:#c9d3df;margin-top:2px}
+.qf-meta{font-size:12px;color:#8793a3;margin-top:6px;line-height:1.5}
+.qf-meta a{color:#8fc1ff}
+/* цикл 6 с: фотон прилетает → электрон прыгает на n=3 → держится → падает на n=1 и излучает фотон */
+.qf-e{animation:qfE 6s cubic-bezier(.5,0,.3,1) infinite}
+.qf-in{animation:qfIn 6s linear infinite}
+.qf-out{animation:qfOut 6s linear infinite}
+.qf-trail{animation:qfTr 6s linear infinite}
+@keyframes qfE{0%,24%{transform:translate(92px,72px)}32%,62%{transform:translate(118px,18px)}66%{transform:translate(110px,18px)}74%,100%{transform:translate(92px,72px)}}
+@keyframes qfIn{0%{transform:translate(30px,122px) rotate(-40deg);opacity:0}8%{opacity:1}22%{transform:translate(62px,95px) rotate(-40deg);opacity:1}25%,100%{transform:translate(66px,92px) rotate(-40deg);opacity:0}}
+@keyframes qfTr{0%,24%{opacity:0}28%{opacity:.9}40%,100%{opacity:0}}
+@keyframes qfOut{0%,72%{transform:translate(100px,66px) rotate(-14deg);opacity:0}75%{opacity:1}95%{transform:translate(196px,42px) rotate(-14deg);opacity:1}100%{transform:translate(206px,40px) rotate(-14deg);opacity:0}}
+@media (prefers-reduced-motion:reduce){.qf-e,.qf-in,.qf-out,.qf-trail{animation:none}.qf-e{transform:translate(118px,18px)}}
+@media (max-width:640px){.qf{flex-direction:column;align-items:flex-start;gap:8px;margin:24px 12px 14px}.qf-art{width:210px;height:80px}}
+@media print{.qf{background:none;color:#000}.qf-art{display:none}}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <a class="logo" href="./">Kostik</a><span class="tag">контроль качества денситометрии · ЛЦТ 2026</span>
+  <nav><a href="https://ltz2026.ru/">Стенд</a><a href="https://ltz2026.ru/video/">Видео</a><a href="https://ltz2026.ru/downloads/materials/Kostik_docs.pdf">Документация</a><a href="https://github.com/j0k/ltz2026">GitHub</a></nav>
+</header>
+
+<section class="hero">
+  <div>
+    <h1>Проверка снимков денситометрии за доли секунды</h1>
+    <p class="lead">Kostik принимает DICOM поясницы и бедра и по каждому снимку говорит: годен или брак, какое нарушение
+      по ТЗ и почему — прямо на снимке, в стиле анатомического атласа. Работает локально: снимки не покидают больницу.</p>
+    <div class="btns">
+      <a class="btn" href="https://ltz2026.ru/">Открыть стенд</a>
+      <a class="btn ghost" href="https://ltz2026.ru/video/">Смотреть видео · 2 мин</a>
+      <a class="btn ghost" href="https://ltz2026.ru/download">Скачать приложение</a>
+    </div>
+  </div>
+  <img class="shot" src="doc/img/04_card.png" alt="Карточка снимка: атлас позвонков, ось и найденный предмет, вердикт и причина" width="1440" height="860">
+</section>
+
+<div class="stats">
+  <div class="stat"><b>0,31 с</b><span>на снимок, 2 ядра CPU без видеокарты</span></div>
+  <div class="stat"><b>0,85</b><span>ROC-AUC: посторонние предметы</span></div>
+  <div class="stat"><b>100 %</b><span>файлов обработано: чужой файл — понятный отказ</span></div>
+  <div class="stat"><b>офлайн</b><span>сервер, Docker или приложение .exe · .msi · .deb</span></div>
+</div>
+
+<h2>Как это работает</h2>
+<div class="steps">
+  <div class="step"><img src="doc/img/02_upload.png" alt="Загрузка исследования" loading="lazy"><div><b>1. Загрузка</b><p>Файлы DICOM, папка или zip — перетащить в окно. Область определяется сама.</p></div></div>
+  <div class="step"><img src="doc/img/03_dashboard.png" alt="Дашборд проверки" loading="lazy"><div><b>2. Вердикт</b><p>Сколько годных, где брак и какой — охват, наклон оси, предметы, укладка бедра.</p></div></div>
+  <div class="step"><img src="doc/img/06_graph.png" alt="Граф решения" loading="lazy"><div><b>3. Объяснение</b><p>Атлас с разметкой, граф «измерение → норма → вердикт» и текст. Таблица по ТЗ — в CSV и XLSX.</p></div></div>
+</div>
+
+<h2>Материалы</h2>
+<div class="links">
+  <a href="https://ltz2026.ru/"><b>Прототип</b><span>ltz2026.ru — проверка своих файлов и примеров</span></a>
+  <a href="https://ltz2026.ru/video/"><b>Видео</b><span>демонстрация работы с главами</span></a>
+  <a href="https://ltz2026.ru/downloads/materials/Kostik_presentation.pdf"><b>Презентация</b><span>PDF, по шаблону ЛЦТ</span></a>
+  <a href="https://ltz2026.ru/downloads/materials/Kostik_docs.pdf"><b>Документация</b><span>PDF с оглавлением и ссылками</span></a>
+  <a href="https://ltz2026.ru/download"><b>Приложение</b><span>Windows (.exe, .msi) и Linux (.deb), без интернета</span></a>
+  <a href="https://github.com/j0k/ltz2026"><b>Исходный код</b><span>репозиторий, тесты, скрипты обучения</span></a>
+  <a href="https://github.com/j0k/ltz2026/blob/main/docs/CLEAN_MACHINE.md"><b>Запуск на чистой машине</b><span>сборка, пакетная проверка, требования</span></a>
+  <a href="https://github.com/j0k/ltz2026/blob/main/doc/USER_GUIDE.md"><b>Руководство пользователя</b><span>путь пользователя по шагам</span></a>
+  <a href="https://ltz2026.ru/docs"><b>API</b><span>OpenAPI: пакетная обработка, MCP для ИИ-ассистентов</span></a>
+</div>
+
+<h2>Запуск за три команды</h2>
+<pre>git clone https://github.com/j0k/ltz2026 &amp;&amp; cd ltz2026
+./build.sh                               # образ Docker, интернет нужен только здесь
+./run.sh &lt;папка или архив.zip&gt; &lt;выход&gt;   # results.csv, results.xlsx, overlays.zip
+./serve.sh                               # веб-интерфейс и API на http://localhost:8000</pre>
+<p class="note">Честно о пределах: позвоночник проверяется уверенно, для бедра вердикт — подсказка для проверки (ROC-AUC 0,66).
+  Все метрики с доверительными интервалами — в <a href="https://github.com/j0k/ltz2026#readme">README</a>.
+  Сервис — для контроля качества снимков, не для постановки диагноза. На этой странице — синтетические фантомы, не снимки пациентов.</p>
+</div>
+
+<footer class="qf">
+  <svg class="qf-art" viewBox="0 0 240 92" role="img" aria-label="Квантовый скачок: электрон поглощает фотон, переходит на верхний уровень энергии и излучает фотон, возвращаясь">
+    <defs>
+      <radialGradient id="qfGlow"><stop offset="0" stop-color="#7cc4ff"/><stop offset=".45" stop-color="#2f7cf6" stop-opacity=".55"/><stop offset="1" stop-color="#2f7cf6" stop-opacity="0"/></radialGradient>
+      <linearGradient id="qfPh" x1="0" x2="1"><stop offset="0" stop-color="#ff4fa3" stop-opacity="0"/><stop offset=".3" stop-color="#ff4fa3"/><stop offset="1" stop-color="#a45cff"/></linearGradient>
+    </defs>
+    <g class="qf-levels">
+      <line x1="62" x2="150" y1="72" y2="72"/><line x1="62" x2="150" y1="45" y2="45"/><line x1="62" x2="150" y1="18" y2="18"/>
+      <text x="56" y="75">n=1</text><text x="56" y="48">n=2</text><text x="56" y="21">n=3</text>
+    </g>
+    <path class="qf-in" d="M0 0 q3 -6 6 0 t6 0 t6 0 t6 0 t6 0 t6 0"/>
+    <path class="qf-trail" d="M92 72 C 94 42, 108 22, 118 18"/>
+    <path class="qf-out" d="M0 0 q3 -6 6 0 t6 0 t6 0 t6 0 t6 0 t6 0"/>
+    <g class="qf-e"><circle r="11" fill="url(#qfGlow)"/><circle r="4" fill="#dff0ff" stroke="#2f7cf6" stroke-width="1.4"/></g>
+    <text class="qf-f" x="106" y="90">ΔE = hν</text>
+  </svg>
+  <div class="qf-text">
+    <div class="qf-team">Команда «Квантовый Скачок»</div>
+    <div class="qf-names">Юрий Коноплёв · Алексей Чуркин</div>
+    <div class="qf-meta">Kostik · ЛЦТ 2026 · задача 04 Департамента здравоохранения Москвы · <a href="https://ltz2026.ru/">ltz2026.ru</a> · <a href="https://github.com/j0k/ltz2026">GitHub</a></div>
+  </div>
+</footer>
+</body>
+</html>

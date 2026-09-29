@@ -6,22 +6,39 @@ Telegram и другие мессенджеры показывают их ряд
 """
 from __future__ import annotations
 
-from PIL import Image, ImageDraw
+import os
+
+from PIL import Image, ImageDraw, ImageFont
 
 from dxaqc import atlas as T
 
 W, H = 1200, 630   # логическая раскладка; рисуется в S раз крупнее — Telegram растягивает превью, 1× выглядел мыльно
 S = 2
-VERSION = 3  # поднять при смене оформления: кэшированные картинки пересоздадутся
+VERSION = 6  # поднять при смене оформления: кэшированные картинки пересоздадутся
 BG, PANEL = (18, 20, 24), (28, 32, 39)
-WHITE, BODY, MUTED, ACCENT = (240, 243, 247), (214, 220, 227), (143, 154, 167), (90, 167, 255)
+WHITE, BODY, MUTED, ACCENT = (246, 248, 251), (226, 231, 237), (156, 166, 178), (96, 172, 255)
 VERDICT = {0: ("качественное", (12, 163, 12)), 1: ("нарушение", (208, 59, 59)), None: ("не оценено", (120, 128, 138))}
 FOOTER = "ЛЦТ 2026 · задача 04 Департамента здравоохранения Москвы"
 FOOTER_SHORT = "ЛЦТ 2026 · задача 04 ДепЗдрава"
 
 
-def _font(size: int, bold: bool = False):
-    return T.font(size * S, bold)
+_FONTS: dict = {}
+
+
+def _font(size: int, bold: bool = False, weight: int | None = None):
+    """Inter Display в плотных начертаниях, как системный шрифт Mac: после сжатия превью Telegram тонкий текст мылится."""
+    w = weight or (760 if bold else 480)
+    key = (size, w)
+    if key not in _FONTS:
+        if not os.path.exists(T.INTER):
+            return T.font(size * S, bold)
+        f = ImageFont.truetype(T.INTER, size * S, layout_engine=ImageFont.Layout.BASIC)
+        try:
+            f.set_variation_by_axes([32, w])      # оптический размер Display и насыщенность
+        except (OSError, ValueError):
+            pass
+        _FONTS[key] = f
+    return _FONTS[key]
 
 
 class _Draw:
@@ -102,9 +119,9 @@ def _fit(im: Image.Image, box_w: int, box_h: int) -> Image.Image:
 
 
 def _brand(d, x: int, y: int):
-    fb = _font(26, True)
+    fb = _font(32, weight=820)
     d.text((x, y), "Kostik", font=fb, fill=ACCENT, anchor="ls")
-    d.text((x + d.textlength("Kostik", font=fb) + 12, y), "контроль качества денситометрии", font=_font(21), fill=MUTED, anchor="ls")
+    d.text((x + d.textlength("Kostik", font=fb) + 14, y), "контроль качества денситометрии", font=_font(23, weight=520), fill=MUTED, anchor="ls")
 
 
 def _pill(d, x: int, y: int, text: str, color, size: int = 27) -> int:
@@ -193,26 +210,26 @@ def run(title: str, summary: dict, thumbs: list[str], state: str = "") -> Image.
 def site(example_atlas: str | None) -> Image.Image:
     """Общая картинка стенда: что умеет сервис и пример атласа."""
     img, d = _canvas()
-    x, width = 60, 560
+    x, width = 60, 520
     _brand(d, x, 84)
-    y = 118
-    ft = _font(52, True)
-    for ln in _wrap(d, "Контроль качества денситометрии DXA", ft, width, 3):
+    y = 116
+    ft = _font(60, weight=820)
+    for ln in _wrap(d, "Проверка снимков DXA за доли секунды", ft, width, 3):
         d.text((x, y), ln, font=ft, fill=WHITE, anchor="la")
-        y += 62
-    y += 18
-    f = _font(25)
-    for text in ("область, вердикт и причина брака по каждому снимку", "разметка в стиле анатомического атласа",
-                 "сравнение с экспертами: F1 и ROC-AUC", "работает локально, снимки не уходят наружу"):
-        d.ellipse([x + 1, y + 11, x + 10, y + 20], fill=ACCENT)
-        for ln in _wrap(d, text, f, width - 24, 2):
-            d.text((x + 24, y), ln, font=f, fill=BODY, anchor="la")
-            y += 34
-        y += 8
+        y += 66
+    y += 16
+    f = _font(29, weight=540)
+    for text in ("вердикт и причина брака по каждому снимку", "разметка как в анатомическом атласе",
+                 "снимки не уходят наружу"):
+        d.ellipse([x + 1, y + 13, x + 13, y + 25], fill=ACCENT)
+        for ln in _wrap(d, text, f, width - 28, 2):
+            d.text((x + 28, y), ln, font=f, fill=BODY, anchor="la")
+            y += 40
+        y += 10
     d.text((x, H - 38), FOOTER, font=_font(18), fill=MUTED, anchor="ls")
     if example_atlas:
         try:
-            a = _fit(Image.open(example_atlas), 520, H - 60)
+            a = _fit(Image.open(example_atlas), 540, H - 40)
             _paste(img, a, W - 40 - a.width / S, (H - a.height / S) / 2)
         except (OSError, ValueError):
             pass
@@ -402,22 +419,22 @@ def video(title: str, bullets: list[str], poster: str | None, duration: str = ""
     x, width = 60, 470
     _brand(d, x, 84)
     y = 118
-    ft = _font(50, True)
+    ft = _font(58, weight=820)
     for ln in _wrap(d, title, ft, width, 3):
         d.text((x, y), ln, font=ft, fill=WHITE, anchor="la")
-        y += 60
+        y += 66
     if duration:
         y = _pill(d, x, y + 12, duration, ACCENT, 24) + 22
-    f = _font(24)
+    f = _font(29, weight=540)
     for text in bullets[:4]:
-        wrapped = _wrap(d, text, f, width - 24, 2)
-        if y + 32 * len(wrapped) > H - 70:
+        wrapped = _wrap(d, text, f, width - 28, 2)
+        if y + 40 * len(wrapped) > H - 70:
             break
-        d.ellipse([x + 1, y + 10, x + 10, y + 19], fill=ACCENT)
+        d.ellipse([x + 1, y + 13, x + 13, y + 25], fill=ACCENT)
         for ln in wrapped:
-            d.text((x + 24, y), ln, font=f, fill=BODY, anchor="la")
-            y += 32
-        y += 6
+            d.text((x + 28, y), ln, font=f, fill=BODY, anchor="la")
+            y += 40
+        y += 8
     d.text((x, H - 38), FOOTER_SHORT, font=_font(18), fill=MUTED, anchor="ls")
     bx0, by0, bx1, by1 = x + width + 40, 60, W - 40, H - 60
     try:

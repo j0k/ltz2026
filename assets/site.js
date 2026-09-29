@@ -131,13 +131,100 @@
       $$('.pn,.hs-intro,.hs-out').forEach(el => gsap.from(el, { y: 60, opacity: 0, duration: .9, ease: 'power3.out', scrollTrigger: { trigger: el, start: 'top 88%' } }));
     });
 
-    /* ---------- роудмап: линия рисуется, шаги вспыхивают ---------- */
-    gsap.to('.rm-line i', { scaleY: 1, ease: 'none', scrollTrigger: { trigger: '.rm', start: 'top 60%', end: 'bottom 62%', scrub: true } });
-    $$('.rs').forEach((r, i) => {
-      ScrollTrigger.create({ trigger: r, start: 'top 62%', onEnter: () => r.classList.add('on'), onLeaveBack: () => r.classList.remove('on') });
-      const wide = innerWidth > 900;
-      gsap.from($('.bx', r), { x: wide ? (i % 2 ? 110 : -110) : 0, y: wide ? 0 : 50, opacity: 0, duration: 1, ease: 'power3.out', scrollTrigger: { trigger: r, start: 'top 84%' } });
-      gsap.from($$('li', r), { x: -18, opacity: 0, stagger: .09, duration: .6, ease: 'power2.out', scrollTrigger: { trigger: r, start: 'top 76%' } });
+    /* ---------- роудмап: у каждого этапа своя сцена, закреплённая на экране и управляемая прокруткой ---------- */
+    const stages = $$('.rmx');
+    stages.forEach(st => {
+      const h = $('h3', st);
+      SplitText.create(h, { type: 'lines,words', mask: 'lines', autoSplit: true, onSplit: self =>
+        gsap.from(self.words, { yPercent: 115, rotate: 3, duration: .9, stagger: .05, ease: 'power4.out', scrollTrigger: { trigger: st, start: 'top 72%' } }) });
+      gsap.from($$('.rmx-meta > *, .tags > *', st), { y: 26, opacity: 0, stagger: .08, duration: .7, ease: 'power3.out', scrollTrigger: { trigger: st, start: 'top 72%' } });
+      gsap.from($$('li', st), { x: -22, opacity: 0, stagger: .1, duration: .7, ease: 'power2.out', scrollTrigger: { trigger: st, start: 'top 62%' } });
+      gsap.fromTo($('.ghost', st), { yPercent: -44, opacity: .2 }, { yPercent: -56, opacity: .7, ease: 'none', scrollTrigger: { trigger: st, start: 'top bottom', end: 'bottom top', scrub: true } });
+    });
+    const SCENES = [
+      (st, tl) => {                                                        // 1 · терминал: команды печатаются, деплой заполняется
+        tl.fromTo($$('.term .ln', st), { clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0% 0 0)', stagger: .11, duration: .11 }, 0.04)
+          .to($('.dp i', st), { scaleX: 1, duration: .32 }, 0.42)
+          .fromTo($('.live', st), { scale: .3, opacity: 0 }, { scale: 1, opacity: 1, duration: .12, ease: 'back.out(2.4)' }, 0.78);
+      },
+      (st, tl) => {                                                        // 2 · 499 квадратов схлопываются в 252
+        const grid = $('.dgrid', st); grid.innerHTML = '';
+        const dots = Array.from({ length: 499 }, () => grid.appendChild(document.createElement('i')));
+        const dup = new Set(gsap.utils.shuffle(dots.map((_, i) => i)).slice(0, 247));
+        const dead = dots.filter((_, i) => dup.has(i)), live = dots.filter((_, i) => !dup.has(i));
+        const n = { v: 499 }, out = $('.dn', st); out.textContent = 499;
+        tl.to(live, { backgroundColor: getComputedStyle(st).getPropertyValue('--c').trim(), stagger: { amount: .25, from: 'random' }, duration: .05 }, 0.12)
+          .to(dead, { scale: 0, opacity: 0, stagger: { amount: .42, from: 'random' }, duration: .1 }, 0.34)
+          .to(n, { v: 252, duration: .42, onUpdate: () => out.textContent = Math.round(n.v) }, 0.34)
+          .from($('.dd .cap', st), { opacity: 0, y: 14, duration: .1 }, 0.8);
+      },
+      (st, tl) => {                                                        // 3 · чужие файлы получают понятный ответ, ошибки 135 → 0
+        const rows = $$('.rb', st), n = { v: 135 }, en = $('.en', st); en.textContent = 135;
+        rows.forEach((r, i) => {
+          const at = 0.04 + i * .14;
+          tl.from($('.ch', r), { x: -50, opacity: 0, duration: .09 }, at).from($('.ar2', r), { scaleX: 0, duration: .07 }, at + .07)
+            .from($('.pl', r), { scale: .7, opacity: 0, duration: .09, ease: 'back.out(2)' }, at + .12);
+        });
+        tl.to(n, { v: 0, duration: .5, onUpdate: () => { en.textContent = Math.round(n.v); if (n.v < 1) en.style.color = 'var(--ok)'; else en.style.color = ''; } }, 0.3);
+      },
+      (st, tl) => {                                                        // 4 · кривые ROC рисуются, AUC растёт 0,55 → 0,85
+        const p1 = $('.r1', st), p2 = $('.r2', st), l1 = p1.getTotalLength(), l2 = p2.getTotalLength(), a = { v: .55 }, an = $('.an', st); an.textContent = '0,55';
+        gsap.set(p1, { strokeDasharray: l1, strokeDashoffset: l1 }); gsap.set(p2, { strokeDasharray: l2, strokeDashoffset: l2 });
+        tl.to(p1, { strokeDashoffset: 0, duration: .3 }, 0.04)
+          .to(p2, { strokeDashoffset: 0, duration: .42 }, 0.36)
+          .to($('.ra', st), { opacity: 1, duration: .2 }, 0.62)
+          .to(a, { v: .85, duration: .42, onUpdate: () => an.textContent = fmt(a.v, 2) }, 0.36)
+          .fromTo($('.roc svg', st), { scale: 1 }, { scale: 1.035, yoyo: true, repeat: 1, duration: .04, transformOrigin: '50% 50%' }, 0.86);
+      },
+      (st, tl) => {                                                        // 5 · три пакета падают в коробку, шкала AUC бедра заполняется
+        const ga = $('.ga', st), len = ga.getTotalLength(), g = { v: 0 }, gn = $('.gn', st); gn.textContent = '0,00';
+        gsap.set(ga, { strokeDasharray: len, strokeDashoffset: len });
+        tl.from($$('.t', st), { yPercent: -260, opacity: 0, stagger: .1, duration: .14, ease: 'bounce.out' }, 0.05)
+          .to($$('.t', st), { yPercent: 190, opacity: 0, stagger: .05, duration: .12 }, 0.36)
+          .from($('.lid', st), { yPercent: -70, opacity: 0, duration: .1 }, 0.5)
+          .to(ga, { strokeDashoffset: len * (1 - .66), duration: .42 }, 0.36)
+          .to(g, { v: .66, duration: .42, onUpdate: () => gn.textContent = fmt(g.v, 2) }, 0.36);
+      },
+      (st, tl) => {                                                        // 6 · гипотезы против границы 0,66 и доверительного интервала
+        tl.from($('.band', st), { opacity: 0, scaleY: 0, transformOrigin: '50% 100%', duration: .16 }, 0.03)
+          .from($('.base', st), { scaleY: 0, transformOrigin: '50% 100%', duration: .14 }, 0.08);
+        $$('.hr', st).forEach((r, i) => {
+          const at = .24 + i * .28;
+          tl.from($('b', r), { opacity: 0, y: 12, duration: .08 }, at).from($('.bar i', r), { scaleX: 0, duration: .22 }, at + .04)
+            .from($('.bar em', r), { opacity: 0, x: -14, duration: .08 }, at + .2).from($('.vd', r), { scale: .6, opacity: 0, duration: .1, ease: 'back.out(2)' }, at + .24);
+        });
+      },
+      (st, tl) => {                                                        // 7 · чек-лист закрывается, конфетти
+        const items = $$('.ck li', st), fin = $('.fin', st), conf = $('.conf', st);
+        conf.innerHTML = '';
+        const cols = ['#ff5a5f', '#ffb84d', '#5aa7ff', '#3fe0b0', '#a78bfa', '#fff'];
+        const bits = Array.from({ length: 70 }, () => { const i = document.createElement('i'); i.style.background = gsap.utils.random(cols); conf.appendChild(i); return i; });
+        let fired = false;
+        const burst = () => { if (fired) return; fired = true;
+          gsap.fromTo(bits, { x: 0, y: 0, opacity: 1, rotation: 0, scale: 1 }, { x: () => gsap.utils.random(-320, 320), y: () => gsap.utils.random(-300, 60), rotation: () => gsap.utils.random(-540, 540), opacity: 0, duration: 1.8, ease: 'power3.out', stagger: .004,
+            }); };
+        items.forEach((li, i) => tl.from($('i', li), { scale: .4, duration: .06, ease: 'back.out(3)' }, 0.06 + i * .11));
+        tl.fromTo(fin, { scale: .6, opacity: 0 }, { scale: 1, opacity: 1, duration: .14, ease: 'back.out(2.4)' }, 0.72);
+        // отметки и конфетти считаем по прогрессу, а не колбэками: при быстрой прокрутке колбэки теряются
+        tl.eventCallback('onUpdate', () => {
+          const p = tl.progress();
+          items.forEach((li, i) => li.classList.toggle('done', p >= .06 + i * .11));
+          if (p >= .8) burst(); else if (p < .7) fired = false;
+        });
+      }
+    ];
+    const mm2 = gsap.matchMedia();
+    mm2.add('(min-width: 900px) and (min-height: 680px)', () => {
+      stages.forEach((st, i) => {
+        const tl = gsap.timeline({ defaults: { ease: 'none' }, scrollTrigger: { trigger: st, start: 'top top', end: '+=110%', pin: true, scrub: .6, anticipatePin: 1 } });
+        SCENES[i](st, tl); tl.to({}, { duration: .12 }, 0.9);
+      });
+    });
+    mm2.add('(max-width: 899px), (max-height: 679px)', () => {
+      stages.forEach((st, i) => {
+        const tl = gsap.timeline({ defaults: { ease: 'none' }, scrollTrigger: { trigger: $('.rmx-viz', st), start: 'top 82%', end: 'bottom 48%', scrub: .5 } });
+        SCENES[i](st, tl);
+      });
     });
     // было → сейчас: точка едет по шкале
     $$('.db').forEach(db => {

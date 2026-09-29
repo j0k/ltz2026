@@ -308,3 +308,41 @@ a.lct{color:inherit;text-decoration:underline;text-decoration-color:rgba(90,167,
 a.lct:hover{color:#fff;text-decoration-color:var(--acc)}
 .eyebrow a.lct{color:var(--acc);text-decoration-color:rgba(90,167,255,.4)}.eyebrow a.lct:hover{color:#fff}
 .qf-meta a.lct{color:#8fc1ff}
+/* ===== ссылки на алгоритмы в этапах и раздел «Что мы пробовали» ===== */
+.algos{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
+.algos .al-cap{width:100%;font-size:10.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--c)}
+.algos a{display:inline-flex;gap:6px;align-items:center;padding:6px 13px;border-radius:999px;font-size:12.5px;font-weight:600;color:#e8ecff;background:color-mix(in srgb,var(--c) 13%,transparent);border:1px solid color-mix(in srgb,var(--c) 42%,transparent);transition:background .2s,color .2s,transform .2s}
+.algos a:hover{background:color-mix(in srgb,var(--c) 30%,transparent);color:#fff;transform:translateY(-1px)}
+.algos a i{font-style:normal;opacity:.65;font-size:11px}
+.al-chart{margin-top:44px;padding:30px 30px 22px;border-radius:28px;background:linear-gradient(150deg,rgba(255,255,255,.07),rgba(255,255,255,.015));border:1px solid var(--line)}
+.al-ch h3{font-size:26px;letter-spacing:-.03em}.al-ch span{display:block;margin-top:4px;font-size:13.5px;color:var(--mut)}
+.al-bars{position:relative;display:grid;gap:13px;margin-top:34px}
+.ab{display:grid;grid-template-columns:250px 1fr 56px;gap:14px;align-items:center;font-size:14px}
+.ab-n{color:#dfe5f7;font-weight:600}
+.ab-t{position:relative;height:12px;border-radius:6px;background:rgba(255,255,255,.07);overflow:hidden}
+.ab-t i{position:absolute;left:0;top:0;bottom:0;width:var(--w);border-radius:6px;transform-origin:0 50%;background:linear-gradient(90deg,#596279,#9aa3b8)}
+.ab.take .ab-t i{background:linear-gradient(90deg,#2fae8a,var(--ok))}
+.ab b{text-align:right;font-variant-numeric:tabular-nums}
+.al-line{position:absolute;top:-8px;bottom:-8px;left:calc(264px + (100% - 334px) * var(--x));width:2px;background:var(--acc);box-shadow:0 0 16px var(--acc)}
+.al-line em{position:absolute;top:-24px;left:50%;transform:translateX(-50%);font-style:normal;font-size:11.5px;font-weight:700;color:#fff;white-space:nowrap}
+.al-axis{display:flex;justify-content:space-between;margin:12px 70px 0 264px;font-size:11px;color:var(--dim)}
+.al-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:44px 0 22px}
+.af{font:600 13px "Montserrat",system-ui,sans-serif;padding:9px 16px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--mut);cursor:pointer;transition:background .2s,color .2s,border-color .2s}
+.af:hover{color:#fff;border-color:rgba(140,160,255,.5)}.af[aria-pressed="true"]{background:linear-gradient(120deg,var(--acc),var(--vio));border-color:transparent;color:#fff}
+.al-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.al{--vc:var(--dim);position:relative;display:flex;flex-direction:column;gap:9px;padding:22px 22px 18px;border-radius:22px;background:var(--card);border:1px solid var(--line);overflow:hidden}
+.al[data-v="take"]{--vc:var(--ok)}.al[data-v="drop"]{--vc:var(--no)}.al[data-v="plan"]{--vc:#a78bfa}
+.al:after{content:"";position:absolute;right:-46px;top:-46px;width:140px;height:140px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--vc) 26%,transparent),transparent 70%);pointer-events:none}
+.al.hide{display:none}
+.al header{display:flex;justify-content:space-between;align-items:center;gap:10px;position:relative;z-index:1}
+.al-g{font-size:10.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.al-v{font-size:11.5px;font-weight:800;padding:4px 11px;border-radius:999px;color:var(--vc);background:color-mix(in srgb,var(--vc) 15%,transparent)}
+.al h3{font-size:18px;letter-spacing:-.02em;line-height:1.25;position:relative;z-index:1}
+.al p{margin:0;font-size:14px;line-height:1.55;color:var(--mut);position:relative;z-index:1}
+.al-r{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-top:auto;padding-top:6px;position:relative;z-index:1}
+.al-r b{font-size:26px;font-weight:800;letter-spacing:-.03em;color:var(--vc);font-variant-numeric:tabular-nums}.al-r span{font-size:12.5px;color:var(--dim)}
+.al footer{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px;padding-top:12px;border-top:1px solid var(--line);position:relative;z-index:1}
+.al-d{font-size:12px;font-weight:700;color:var(--dim)}
+.al-l{display:flex;gap:12px;flex-wrap:wrap}.al-l a{font-size:12.5px;font-weight:600;color:var(--acc)}.al-l a:hover{color:#fff}.al-l a i{font-style:normal;opacity:.7;margin-left:2px}
+@media (max-width:1000px){.al-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:760px){.al-grid{grid-template-columns:minmax(0,1fr)}.ab{grid-template-columns:minmax(0,1fr) 52px}.ab-n{grid-column:1/-1}.ab-t{grid-column:1}.al-line,.al-axis{display:none}.al-chart{padding:22px 18px}}

@@ -139,6 +139,7 @@
         gsap.from(self.words, { yPercent: 115, rotate: 3, duration: .9, stagger: .05, ease: 'power4.out', scrollTrigger: { trigger: st, start: 'top 72%' } }) });
       gsap.from($$('.rmx-meta > *, .tags > *', st), { y: 26, opacity: 0, stagger: .08, duration: .7, ease: 'power3.out', scrollTrigger: { trigger: st, start: 'top 72%' } });
       gsap.from($$('li', st), { x: -22, opacity: 0, stagger: .1, duration: .7, ease: 'power2.out', scrollTrigger: { trigger: st, start: 'top 62%' } });
+      gsap.from($$('.algos a', st), { y: 16, opacity: 0, stagger: .05, duration: .6, ease: 'power3.out', scrollTrigger: { trigger: st, start: 'top 55%' } });
       gsap.fromTo($('.ghost', st), { yPercent: -44, opacity: .2 }, { yPercent: -56, opacity: .7, ease: 'none', scrollTrigger: { trigger: st, start: 'top bottom', end: 'bottom top', scrub: true } });
     });
     const SCENES = [
@@ -233,6 +234,16 @@
       gsap.to(s, { p: 1, ease: 'none', onUpdate: () => place(db, a, b, s.p), scrollTrigger: { trigger: db, start: 'top 88%', end: 'top 48%', scrub: .6 } });
     });
     gsap.from('.chart', { y: 70, opacity: 0, duration: 1, ease: 'power3.out', scrollTrigger: { trigger: '.chart', start: 'top 88%' } });
+
+    /* ---------- алгоритмы: столбцы растут, линия «нашей модели» выезжает, карточки появляются ---------- */
+    $$('.ab').forEach(r => {
+      const bar = $('.ab-t i', r), num = $('b', r), v = +r.dataset.v, o = { v: 0.5 };
+      gsap.from(bar, { scaleX: 0, duration: 1.3, ease: 'power3.out', scrollTrigger: { trigger: r, start: 'top 92%', once: true } });
+      gsap.to(o, { v, duration: 1.3, ease: 'power3.out', onUpdate: () => num.textContent = fmt(o.v, Math.round(v * 1000) % 10 ? 3 : 2), scrollTrigger: { trigger: r, start: 'top 92%', once: true } });
+    });
+    gsap.from('.al-line', { scaleY: 0, transformOrigin: '50% 100%', duration: .9, delay: .5, ease: 'power3.out', scrollTrigger: { trigger: '.al-bars', start: 'top 85%', once: true } });
+    gsap.from('.al-chart', { y: 60, opacity: 0, duration: 1, ease: 'power3.out', scrollTrigger: { trigger: '.al-chart', start: 'top 90%' } });
+    gsap.from('.al-grid .al', { y: 60, opacity: 0, stagger: .05, duration: .8, ease: 'power3.out', scrollTrigger: { trigger: '.al-grid', start: 'top 88%', once: true }, clearProps: 'transform' });
 
     /* ---------- решение ---------- */
     const chips = $$('.flow .fs');

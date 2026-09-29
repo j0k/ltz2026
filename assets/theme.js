@@ -14,3 +14,21 @@
     setTimeout(function () { location.href = to + location.hash; }, 300);
   });
 })();
+
+
+/* Фильтр карточек «Что мы пробовали»: работает на обеих версиях страницы, с GSAP — с плавным появлением. */
+(function () {
+  var tabs = document.querySelectorAll('.af'), cards = document.querySelectorAll('.al');
+  if (!tabs.length) return;
+  tabs.forEach(function (t) {
+    t.addEventListener('click', function () {
+      var f = t.getAttribute('data-f'), shown = [];
+      tabs.forEach(function (x) { x.setAttribute('aria-pressed', String(x === t)); });
+      cards.forEach(function (c) {
+        var on = f === 'all' || c.getAttribute('data-g') === f || c.getAttribute('data-v') === f;
+        c.classList.toggle('hide', !on); if (on) shown.push(c);
+      });
+      if (window.gsap) { window.gsap.fromTo(shown, { y: 24, opacity: 0, scale: .97 }, { y: 0, opacity: 1, scale: 1, duration: .5, stagger: .035, ease: 'power3.out', overwrite: true, clearProps: 'transform' }); }
+    });
+  });
+})();

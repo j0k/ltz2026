@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Видео{% endblock %}
+{% block head %}<link rel="stylesheet" href="/static/v2.css?v={{ version }}"><link rel="stylesheet" href="/static/dash.css?v={{ version }}">
+<style>
+.vd-page{max-width:1100px;margin:0 auto;padding:10px 0 40px}
+.vd-card{background:var(--card,#fff);border:1px solid var(--line,#e3e1dc);border-radius:16px;padding:18px;margin:18px 0}
+.vd-player{display:block;width:100%;aspect-ratio:16/9;border-radius:12px;background:#0b1320}
+.vd-head{display:flex;justify-content:space-between;gap:12px;align-items:baseline;flex-wrap:wrap;margin-bottom:10px}
+.vd-head h2{margin:0;font-size:20px}
+.vd-ch{list-style:none;padding:0;margin:14px 0 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:6px}
+.vd-ch button{width:100%;text-align:left;border:1px solid var(--line,#e3e1dc);background:#fafaf8;border-radius:10px;padding:8px 10px;cursor:pointer;font:inherit;font-size:14px}
+.vd-ch button:hover,.vd-ch button.on{border-color:var(--accent);background:#eef3fd}
+.vd-ch b{font-variant-numeric:tabular-nums;color:var(--accent);margin-right:6px}
+.vd-slot{border:2px dashed var(--line,#d9d6cf);border-radius:16px;padding:26px;text-align:center;color:var(--ink3,#6b7383);margin:18px 0}
+</style>{% endblock %}
+{% block header %}{% include "_kiosk_header.html" %}{% endblock %}
+{% block content %}
+<div class="vd-page">
+<h1>Видео</h1>
+<p class="faint" style="font-size:16px">Как работает Kostik — контроль качества снимков денситометрии. Всё показанное можно повторить на
+  <a href="/">главной</a> или в <a href="/download">приложении для компьютера</a>.</p>
+{% for v in videos %}
+<section class="vd-card" id="{{ v.id }}">
+  <div class="vd-head"><h2>{{ v.title }}</h2>
+    <a class="v2-btn ghost" href="{{ v.url }}" download>⤓ Скачать MP4 · {{ '%.1f'|format(v.size_mb)|replace('.', ',') }} МБ</a></div>
+  <video class="vd-player" controls preload="metadata" playsinline {% if v.poster %}poster="{{ v.poster }}"{% endif %} data-video>
+    <source src="{{ v.url }}" type="video/mp4">Браузер не показывает видео — <a href="{{ v.url }}">скачайте файл</a>.</video>
+  {% if v.description %}<p class="faint" style="margin:12px 0 0">{{ v.description }}</p>{% endif %}
+  {% if v.chapters %}
+  <ul class="vd-ch" aria-label="главы">
+    {% for c in v.chapters %}<li><button type="button" data-t="{{ c.t }}"><b>{{ '%d:%02d'|format((c.t // 60)|int, (c.t % 60)|int) }}</b>{{ c.title }}</button></li>{% endfor %}
+  </ul>
+  {% endif %}
+</section>
+{% else %}
+<div class="vd-slot">Здесь будет видео демонстрации — оно появится, как только файл загружен.</div>
+{% endfor %}
+<div class="vd-slot">Место для следующего видео: положите MP4 в папку материалов стенда (<code>downloads/materials</code>) — он появится здесь.
+  Заголовок, описание, обложку и главы задаёт файл <code>&lt;имя&gt;.json</code> рядом.</div>
+</div>
+<script>
+document.querySelectorAll('.vd-card').forEach(card => {
+  const v = card.querySelector('[data-video]'), bs = [...card.querySelectorAll('.vd-ch button')];
+  bs.forEach(b => b.addEventListener('click', () => { v.currentTime = parseFloat(b.dataset.t); v.play(); }));
+  v.addEventListener('timeupdate', () => {
+    let cur = null; bs.forEach(b => { if (parseFloat(b.dataset.t) <= v.currentTime + 0.2) cur = b; });
+    bs.forEach(b => b.classList.toggle('on', b === cur));
+  });
+});
+</script>
+{% endblock %}

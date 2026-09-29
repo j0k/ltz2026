@@ -43,6 +43,7 @@ ask.setup(templates)
 # абсолютные адреса для превью ссылок: за nginx request.base_url видит внутренний http-адрес
 PUBLIC_URL = os.environ.get("DXAQC_PUBLIC_URL", "https://ltz2026.ru").rstrip("/")
 templates.env.globals["public_url"] = PUBLIC_URL
+templates.env.globals["version"] = __version__          # подвал и ?v= у стилей на всех страницах
 # настольное приложение: тот же сервис локально, без аккаунтов, админки, бота, Claude и cookie (#139)
 DESKTOP = os.environ.get("DXAQC_MODE") == "desktop"
 templates.env.globals["desktop"] = DESKTOP

@@ -47,3 +47,17 @@ def test_linux_install_command_uses_real_file_name(client):
     if names:
         assert f"sudo apt install ./{names[0]}" in html
     assert "Алексей Чуркин и Юрий Коноплёв" in html
+
+
+def test_video_page_lists_materials(client, tmp_path, monkeypatch):
+    """Страница /video/ (29.09, Юрий): ролики из downloads/materials, главы из <имя>.json, файлы отдаются для плеера."""
+    from dxaqc.web import downloads as D
+    m = tmp_path / "downloads" / "materials"; m.mkdir(parents=True)
+    (m / "Demo_x.mp4").write_bytes(b"\0" * 64)
+    (m / "Demo_x.json").write_text('{"title": "Проба", "chapters": [{"t": 75, "title": "Глава"}]}', encoding="utf-8")
+    monkeypatch.setitem(D.ctx, "data", str(tmp_path))
+    for url in ("/video", "/video/"):
+        html = client.get(url).text
+        assert "Проба" in html and "/downloads/materials/Demo_x.mp4" in html and "1:15" in html and "Место для следующего видео" in html
+    r = client.get("/downloads/materials/Demo_x.mp4")
+    assert r.status_code == 200 and r.headers["content-type"] == "video/mp4" and "attachment" not in r.headers.get("content-disposition", "")

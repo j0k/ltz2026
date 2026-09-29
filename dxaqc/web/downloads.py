@@ -81,6 +81,42 @@ def download_file(path: str):
     full = os.path.join(root(), path)
     if not os.path.isfile(full):
         raise HTTPException(404, "файла нет")
-    media = "application/json" if path.endswith(".json") else \
-        "text/plain; charset=utf-8" if path.endswith(("SUMS", ".asc", ".fpr")) else "application/octet-stream"
+    inline = {".mp4": "video/mp4", ".webm": "video/webm", ".pdf": "application/pdf", ".jpg": "image/jpeg", ".png": "image/png",
+              ".vtt": "text/vtt; charset=utf-8"}                # открываются в браузере: плеер, PDF, картинки
+    ext = os.path.splitext(path)[1].lower()
+    media = inline.get(ext) or ("application/json" if path.endswith(".json") else
+                                "text/plain; charset=utf-8" if path.endswith(("SUMS", ".asc", ".fpr")) else "application/octet-stream")
     return FileResponse(full, media_type=media, filename=os.path.basename(full) if media == "application/octet-stream" else None)
+
+
+# ------------------------------------------------------------------ видео: /video/
+def videos() -> list[dict]:
+    """Ролики из DATA/downloads/materials/*.mp4; рядом <имя>.json — заголовок, описание, обложка, главы, порядок.
+    Новый ролик появляется на странице, как только файл положен в папку — без перезапуска."""
+    d = os.path.join(root(), "materials")
+    out = []
+    for f in sorted(os.listdir(d)) if os.path.isdir(d) else []:
+        if not f.lower().endswith((".mp4", ".webm")):
+            continue
+        stem = os.path.splitext(f)[0]
+        meta = {}
+        try:
+            with open(os.path.join(d, stem + ".json"), encoding="utf-8") as fh:
+                meta = json.load(fh)
+        except (OSError, ValueError):
+            pass
+        poster = meta.get("poster") or (stem + ".jpg" if os.path.isfile(os.path.join(d, stem + ".jpg")) else "")
+        size = os.path.getsize(os.path.join(d, f))
+        out.append(dict(file=f, url=f"/downloads/materials/{f}", title=meta.get("title") or stem.replace("_", " "),
+                        description=meta.get("description", ""), poster=f"/downloads/materials/{poster}" if poster else "",
+                        chapters=meta.get("chapters") or [], order=meta.get("order", 100), size_mb=round(size / 1048576, 1),
+                        id=re.sub(r"[^a-z0-9]+", "-", stem.lower()).strip("-")))
+    return sorted(out, key=lambda v: (v["order"], v["file"]))
+
+
+@router.get("/video", response_class=HTMLResponse)
+@router.get("/video/", response_class=HTMLResponse)
+def video_page(request: Request):
+    return ctx["templates"].TemplateResponse(request, "video.html", dict(
+        videos=videos(), og_title="Видео · Kostik", og_description="Демонстрация работы Kostik: загрузка, дашборд, атлас снимка, "
+        "граф решения, таблица по ТЗ, приложение для компьютера."))

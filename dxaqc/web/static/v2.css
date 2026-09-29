@@ -73,3 +73,7 @@
   .v2-hero-greet .cta{justify-content:center}
   .v2-hi{border-radius:18px}
 }
+
+/* перетаскивание файлов на любую часть страницы: подсказка поверх всего (29.09) */
+body.dragging:after{content:"Отпустите файлы — Kostik проверит их";position:fixed;inset:14px;z-index:999;display:grid;place-items:center;pointer-events:none;
+  border:3px dashed var(--accent,#2a6fdb);border-radius:26px;background:rgba(238,244,255,.9);color:var(--accent,#2a6fdb);font:700 clamp(20px,3vw,32px) system-ui,sans-serif;text-align:center;padding:20px}

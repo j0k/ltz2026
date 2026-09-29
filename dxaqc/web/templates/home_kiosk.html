@@ -79,9 +79,21 @@
     xhr.send(data);
   }
   input.addEventListener('change', () => send(input.files));
-  ['dragenter', 'dragover'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add('over'); }));
-  ['dragleave', 'drop'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove('over'); }));
-  drop.addEventListener('drop', e => send(e.dataTransfer.files));
+  // Перетаскивание принимает вся страница, а не только рамка: файл, брошенный мимо неё, браузер иначе открывает или скачивает
+  // (29.09, Юрий: «перетаскиваю zip, а он предлагает скачать архив»).
+  const hasFiles = e => e.dataTransfer && [...(e.dataTransfer.types || [])].includes('Files');
+  const hasFolder = e => [...((e.dataTransfer && e.dataTransfer.items) || [])].some(i => i.webkitGetAsEntry && (i.webkitGetAsEntry() || {}).isDirectory);
+  let depth = 0;
+  const over = on => { drop.classList.toggle('over', on); document.body.classList.toggle('dragging', on); };
+  window.addEventListener('dragenter', e => { if (!hasFiles(e)) return; e.preventDefault(); depth++; over(true); });
+  window.addEventListener('dragover', e => { if (!hasFiles(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+  window.addEventListener('dragleave', e => { if (!hasFiles(e)) return; depth = Math.max(0, depth - 1); if (!depth) over(false); });
+  window.addEventListener('drop', e => {
+    if (!hasFiles(e)) return;
+    e.preventDefault(); depth = 0; over(false);
+    if (hasFolder(e)) { prog.hidden = false; bar.style.width = '0'; msg.textContent = 'Папку в браузере перетащить нельзя: заархивируйте её в zip или выберите файлы кнопкой. В приложении для компьютера папки открываются целиком.'; return; }
+    send(e.dataTransfer.files);
+  });
   form.addEventListener('submit', e => { e.preventDefault(); send(input.files); });
   const dlg = document.getElementById('kPresets'), open = document.getElementById('kPresetBtn');
   if (dlg && open) {

@@ -19,6 +19,7 @@ needs_data = pytest.mark.skipif(not TEST_DIR.exists(), reason="нет данны
 def test_home_is_just_upload_and_3d(client):
     html = client.get("/").text
     assert 'id="v2Upload"' in html and 'action="/runs"' in html and 'name="ui" value="v2"' in html
+    assert "window.addEventListener('drop'" in html and "window.addEventListener('dragover'" in html, "файл, брошенный мимо рамки, не скачивается браузером"
     assert 'id="bone3d"' in html and "/static/bone3d.js" in html and "/static/bone/poster.jpg" in html, "справа 3D-модель таза"
     for extra in ('href="/login"', 'href="/register"', 'href="/v1"', 'href="/tz/"', 'id="cookieBar"', "<footer>", "Подробнее"):
         assert extra not in html, f"на главной только загрузка: лишнее {extra}"

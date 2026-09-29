@@ -43,6 +43,7 @@ printf '%s\r\n' "Kostik $VER — контроль качества денсит�
   "Сторонние компоненты и их лицензии — в программе: «О программе»." > "$STAGE/LICENSE.txt"
 printf '@echo off\r\nchcp 65001 >nul\r\n"%%~dp0python\\python.exe" -m dxaqc.desktop --selftest\r\necho.\r\npause\r\n' > "$STAGE/selftest.cmd"
 printf '@echo off\r\n"%%~dp0python\\python.exe" -m dxaqc.desktop --mcp-stdio\r\n' > "$STAGE/dxaqc-mcp.cmd"
+printf '@echo off\r\n"%%~dp0Kostik.exe" --verbose\r\necho.\r\necho Журнал сохранён в dxaqc-verbose.log в папке данных (%%LOCALAPPDATA%%\\DXA QC).\r\npause\r\n' > "$STAGE/verbose.cmd"
 
 # 2б) байт-код заранее: в C:\Program Files обычный пользователь не может писать .pyc, без этого каждый запуск — холодный
 "$REPO/.venv/bin/python" -m compileall -q -j 2 --invalidation-mode unchecked-hash "$STAGE/app" "$STAGE/python/Lib" 2>/dev/null || \
@@ -50,7 +51,8 @@ printf '@echo off\r\n"%%~dp0python\\python.exe" -m dxaqc.desktop --mcp-stdio\r\n
 SHORTVER=$(echo "$WINVER" | cut -d. -f1,2)
 
 # 3) запускатель и установщики
-makensis -V2 -DOUTFILE="$STAGE/Kostik.exe" -DICON="$STAGE/icon.ico" -DVERSION="$WINVER" -DDISPLAYVER="$VER" "$REPO/packaging/windows/launcher.nsi"
+# Kostik.exe — консольный (--help, --version, --author, --mcp, --verbose), Kostik-app.exe — оконный для ярлыков
+"$REPO/packaging/windows/launcher/build.sh" "$STAGE" "$STAGE/icon.ico" "$WINVER" "$VER"
 makensis -V2 -DOUTFILE="$OUT/Kostik-$FVER-setup.exe" -DICON="$STAGE/icon.ico" -DVERSION="$WINVER" -DSHORTVER="$SHORTVER" -DDISPLAYVER="$VER" -DSTAGE="$STAGE" \
   -DLICENSE="$STAGE/LICENSE.txt" "$REPO/packaging/windows/installer.nsi"
 python3 "$REPO/packaging/windows/make_wxs.py" "$STAGE" "$WINVER" "$BUILD/dxaqc.wxs" "$VER"

@@ -1,0 +1,25 @@
+1 ICON "icon.ico"
+1 VERSIONINFO
+FILEVERSION @COMMA@
+PRODUCTVERSION @COMMA@
+FILEOS 0x4
+FILETYPE 0x1
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904B0"
+    BEGIN
+      VALUE "ProductName", "Kostik"
+      VALUE "FileDescription", "@DESC@"
+      VALUE "FileVersion", "@VERSION@"
+      VALUE "ProductVersion", "@DISPLAY@"
+      VALUE "CompanyName", "команда «Квантовый Скачок»"
+      VALUE "LegalCopyright", "© 2026 авторы Kostik"
+      VALUE "OriginalFilename", "@NAME@"
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x0409, 1200
+  END
+END

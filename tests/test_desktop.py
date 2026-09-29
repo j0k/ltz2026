@@ -189,3 +189,39 @@ def test_open_external_whitelist_and_header(monkeypatch):
     assert next(a for a in D.AUTHORS if a["name"] == "Юрий Коноплёв")["url"] == url
     foot = open(os.path.join(ROOT, "dxaqc", "web", "templates", "_team_footer.html"), encoding="utf-8").read()
     assert f'href="{url}"' in foot and ">Юрий Коноплёв</a>" in foot
+
+
+def _cli(tmp_path, *args, timeout=240):
+    env = _env(tmp_path)
+    env["KOSTIK_PROG"] = "Kostik.exe"
+    return subprocess.run([sys.executable, "-W", "ignore", "-m", "dxaqc.desktop", *args], env=env, capture_output=True, text=True,
+                          timeout=timeout, encoding="utf-8")
+
+
+def test_cli_help_version_author_mcp(tmp_path):
+    """29.09, Юрий: Kostik.exe --help / --version / --author / --mcp печатают в консоль и выходят с кодом 0."""
+    h = _cli(tmp_path, "--help")
+    assert h.returncode == 0 and "Kostik.exe --verbose" in h.stdout and "--author" in h.stdout and "--mcp" in h.stdout
+    for flag in ("--selftest", "--browser", "--no-window", "--port", "--mcp-stdio"):
+        assert flag in h.stdout, flag
+    assert _cli(tmp_path, "-h").stdout == h.stdout
+    v = _cli(tmp_path, "--version")
+    assert v.returncode == 0 and v.stdout.startswith("Kostik 1.0-Beta (анализ ") and "Python" in v.stdout and "Каталог установки" in v.stdout
+    a = _cli(tmp_path, "--author")
+    assert a.returncode == 0 and "Юрий Коноплёв" in a.stdout and "https://juri-konoplev.pro/ltz2026/" in a.stdout and "Алексей Чуркин" in a.stdout
+    m = _cli(tmp_path, "--mcp")
+    assert m.returncode == 0 and '"mcpServers"' in m.stdout and "--mcp-stdio" in m.stdout and "analyze_paths" in m.stdout
+    bad = _cli(tmp_path, "--foo")
+    assert bad.returncode == 2 and "Неизвестный параметр" in bad.stderr and "--help" in bad.stderr
+
+
+def test_verbose_report_and_file(tmp_path):
+    """--verbose --selftest: подробный журнал компонентов в консоль и в файл dxaqc-verbose.log, ошибок нет."""
+    r = _cli(tmp_path, "--verbose", "--selftest")
+    assert r.returncode == 0, r.stdout[-2500:] + r.stderr[-1500:]
+    out = r.stdout
+    for part in ("=== Система", "=== Установка", "=== Библиотеки", "=== Окно", "=== Сеть", "=== Анализ и сервис", "import numpy", "import pydicom",
+                 "import fastapi", "Анализ фантома", "Итог проверки компонентов", "ошибок: 0", "ВСЁ В ПОРЯДКЕ"):
+        assert part in out, part
+    log = tmp_path / "home" / "dxaqc-verbose.log"
+    assert log.is_file() and "=== Библиотеки" in log.read_text(encoding="utf-8")

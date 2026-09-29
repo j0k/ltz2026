@@ -43,7 +43,7 @@ def walk(folder, rel, depth):
 
 
 walk(stage, "", 6)
-exe_id = ident("f", "Kostik.exe")
+exe_id = ident("f", "Kostik-app.exe")           # ярлыки — на оконный запускатель; Kostik.exe консольный (--help, --verbose)
 cmd_id = ident("f", "selftest.cmd")
 wxs = f'''<?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
@@ -64,8 +64,9 @@ wxs = f'''<?xml version="1.0" encoding="utf-8"?>
       <Directory Id="ProgramMenuFolder">
         <Directory Id="MenuDir" Name="Kostik">
           <Component Id="MenuShortcuts" Guid="{guid('menu')}" Win64="yes">
-            <Shortcut Id="scApp" Name="Kostik" Target="[INSTALLDIR]Kostik.exe" WorkingDirectory="INSTALLDIR" Icon="dxaqc.ico"/>
+            <Shortcut Id="scApp" Name="Kostik" Target="[INSTALLDIR]Kostik-app.exe" WorkingDirectory="INSTALLDIR" Icon="dxaqc.ico"/>
             <Shortcut Id="scTest" Name="Проверка установки" Target="[INSTALLDIR]selftest.cmd" WorkingDirectory="INSTALLDIR" Icon="dxaqc.ico"/>
+            <Shortcut Id="scVerbose" Name="Подробный журнал запуска" Target="[INSTALLDIR]verbose.cmd" WorkingDirectory="INSTALLDIR" Icon="dxaqc.ico"/>
             <RemoveFolder Id="rmMenu" On="uninstall"/>
             <RegistryValue Root="HKLM" Key="Software\\DXA QC" Name="menu" Type="integer" Value="1" KeyPath="yes"/>
           </Component>

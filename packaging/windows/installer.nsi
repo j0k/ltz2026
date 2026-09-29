@@ -50,7 +50,7 @@ FunctionEnd
 
 Function LaunchKostik
   ; установщик работает с правами администратора, а программа должна идти от обычного пользователя — запускаем через проводник
-  Exec '"$WINDIR\explorer.exe" "$INSTDIR\Kostik.exe"'
+  Exec '"$WINDIR\explorer.exe" "$INSTDIR\Kostik-app.exe"'
 FunctionEnd
 
 Function SelfTest
@@ -82,8 +82,9 @@ Section "Kostik (обязательно)" SecMain
   Delete "$INSTDIR\DXA QC.exe"
   Delete "$INSTDIR\Удалить DXA QC.exe"
   CreateDirectory "$SMPROGRAMS\Kostik"
-  CreateShortcut "$SMPROGRAMS\Kostik\Kostik.lnk" "$INSTDIR\Kostik.exe" "" "$INSTDIR\icon.ico"
+  CreateShortcut "$SMPROGRAMS\Kostik\Kostik.lnk" "$INSTDIR\Kostik-app.exe" "" "$INSTDIR\icon.ico"
   CreateShortcut "$SMPROGRAMS\Kostik\Проверка установки.lnk" "$INSTDIR\selftest.cmd" "" "$INSTDIR\icon.ico"
+  CreateShortcut "$SMPROGRAMS\Kostik\Подробный журнал запуска.lnk" "$INSTDIR\verbose.cmd" "" "$INSTDIR\icon.ico"
   CreateShortcut "$SMPROGRAMS\Kostik\Удалить Kostik.lnk" "$INSTDIR\Удалить Kostik.exe"
   WriteRegStr HKLM "Software\DXA QC" "InstallDir" "$INSTDIR"
   !define UNKEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\DXAQC"
@@ -101,13 +102,13 @@ Section "Kostik (обязательно)" SecMain
 SectionEnd
 
 Section "Ярлык на рабочем столе" SecDesktop
-  CreateShortcut "$DESKTOP\Kostik.lnk" "$INSTDIR\Kostik.exe" "" "$INSTDIR\icon.ico"
+  CreateShortcut "$DESKTOP\Kostik.lnk" "$INSTDIR\Kostik-app.exe" "" "$INSTDIR\icon.ico"
 SectionEnd
 
 Section /o "Открывать файлы .dcm в Kostik" SecAssoc
   WriteRegStr HKLM "Software\Classes\DXAQC.dcm" "" "Снимок DICOM"
   WriteRegStr HKLM "Software\Classes\DXAQC.dcm\DefaultIcon" "" "$INSTDIR\icon.ico"
-  WriteRegStr HKLM "Software\Classes\DXAQC.dcm\shell\open\command" "" '"$INSTDIR\Kostik.exe" "%1"'
+  WriteRegStr HKLM "Software\Classes\DXAQC.dcm\shell\open\command" "" '"$INSTDIR\Kostik-app.exe" "%1"'
   WriteRegStr HKLM "Software\Classes\.dcm\OpenWithProgids" "DXAQC.dcm" ""
 SectionEnd
 

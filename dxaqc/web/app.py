@@ -254,9 +254,9 @@ def _process_child(run_id, stop: threading.Event):
     except OSError:
         pass
     kw = {}
-    if sys.platform.startswith("win"):
-        kw["creationflags"] = 0x08000000                 # CREATE_NO_WINDOW: без мигающей консоли
-    env = dict(os.environ, PYTHONIOENCODING="utf-8")
+    if sys.platform.startswith("win") and os.environ.get("DXAQC_VERBOSE") != "1":
+        kw["creationflags"] = 0x08000000                 # CREATE_NO_WINDOW: без мигающей консоли (подробный режим — в общую консоль)
+    env = dict(os.environ, PYTHONIOENCODING="utf-8", DXAQC_PROC="проверка")
     try:
         proc = subprocess.Popen([sys.executable, "-X", "utf8", "-m", "dxaqc.desktop.worker", run_id], env=env,
                                 stdin=subprocess.DEVNULL, **kw)

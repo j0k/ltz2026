@@ -175,9 +175,13 @@ curl "http://localhost:8000/api/runs/<run_id>?pretty=true"
 
 | система | файл |
 |---|---|
-| Windows 10/11, для пользователя | `Kostik-<версия>-setup.exe` |
-| Windows, на компьютер (тихо: `msiexec /i … /qn`) | `Kostik-<версия>.msi` |
+| Windows 10/11, для всех пользователей, по умолчанию `C:\Program Files\Kostik-1.0\` (запрос администратора) | `Kostik-<версия>-setup.exe` |
+| Windows, на компьютер (тихо: `msiexec /i … /qn`), та же папка | `Kostik-<версия>.msi` |
 | Ubuntu 22.04–26.04, Debian 12–13 | `kostik_<версия>_amd64.deb` |
+
+Командная строка (`Kostik.exe` в Windows, `kostik` в Linux): `--help`, `--version`, `--author`, `--mcp` (настройка ИИ-ассистента),
+`--verbose` (подробный журнал запуска всех компонентов, файл `dxaqc-verbose.log`), `--selftest`, `--browser`, `--no-window`, `--port`.
+`Kostik.exe` — консольный запускатель, ярлыки идут через оконный `Kostik-app.exe`; исходник — [`packaging/windows/launcher/`](packaging/windows/launcher/).
 
 Код приложения — [`dxaqc/desktop/`](dxaqc/desktop/) и [`dxaqc/web/desktop.py`](dxaqc/web/desktop.py) (режим `DXAQC_MODE=desktop`). Сборка на Linux:
 

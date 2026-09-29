@@ -190,9 +190,12 @@ class Engine:
 
     def start(self):
         kw = {}
-        if sys.platform.startswith("win"):
-            kw["creationflags"] = 0x08000000                     # CREATE_NO_WINDOW
-        env = dict(os.environ, DXAQC_LOG_TO_FILE="1", PYTHONIOENCODING="utf-8")
+        verbose = os.environ.get("DXAQC_VERBOSE") == "1"
+        if sys.platform.startswith("win") and not verbose:
+            kw["creationflags"] = 0x08000000                     # CREATE_NO_WINDOW; в подробном режиме движок печатает в ту же консоль
+        env = dict(os.environ, PYTHONIOENCODING="utf-8", DXAQC_PROC="движок")
+        if not verbose:
+            env["DXAQC_LOG_TO_FILE"] = "1"
         self.proc = subprocess.Popen([sys.executable, "-X", "utf8", "-m", "dxaqc.desktop", "--engine", "--port", str(self.port),
                                       "--parent", str(os.getpid())], env=env, stdin=subprocess.DEVNULL, **kw)
         return self.proc
@@ -201,15 +204,25 @@ class Engine:
         return self.proc is not None and self.proc.poll() is None
 
     def wait_ready(self, timeout: float = 90.0, on_wait=None) -> bool:
-        t0 = time.time()
+        from dxaqc.desktop import verbose
+        t0, last = time.time(), 0.0
         while time.time() - t0 < timeout:
             if not self.alive():
+                if verbose.enabled():
+                    verbose.fail(f"движок завершился до готовности, код {self.proc.returncode if self.proc else '?'}")
                 return False
             if _get(self.base + "/api/health", 1.0):
+                if verbose.enabled():
+                    verbose.ok(f"движок отвечает на /api/health через {time.time() - t0:.1f} с")
                 return True
             if on_wait:
                 on_wait(time.time() - t0)
+            if verbose.enabled() and time.time() - t0 - last >= 2.0:
+                last = time.time() - t0
+                verbose.log(f"жду движок: {last:.0f} с, процесс {'жив' if self.alive() else 'ЗАВЕРШИЛСЯ'}, порт {self.port}")
             time.sleep(0.15)
+        if verbose.enabled():
+            verbose.fail(f"движок не ответил за {timeout:.0f} с")
         return False
 
     def stop(self):
@@ -237,6 +250,9 @@ class Ui(Api):
         self._engine, self._start_path, self._files, self._closing = engine, start_path, files, False
 
     def _status(self, text: str, bad: bool = False, log: str = ""):
+        from dxaqc.desktop import verbose
+        if verbose.enabled():
+            (verbose.fail if bad else verbose.log)(f"окно: {text}")
         if self._window is not None:
             try:
                 self._window.evaluate_js(f"window.kostikStatus && kostikStatus({json.dumps(text)}, {json.dumps(bad)}, {json.dumps(log)})")
@@ -371,62 +387,122 @@ def _parent_watch(pid: int, server):
 
 def serve(port: int, parent: int | None = None):
     """Движок: сервер FastAPI в этом процессе."""
+    from dxaqc.desktop import verbose
+    vb = verbose.enabled()
+    if vb:
+        import faulthandler
+        faulthandler.dump_traceback_later(40, repeat=False)              # запуск завис — увидим, где именно
+        verbose.log("импорт uvicorn")
     import uvicorn
+    if vb:
+        verbose.log("импорт сервиса dxaqc.web.app (модели, шаблоны, маршруты)")
+    t = time.time()
     from dxaqc.web import app as webapp
-    server = uvicorn.Server(uvicorn.Config(webapp.app, host="127.0.0.1", port=port, log_level="warning", access_log=False))
+    if vb:
+        verbose.ok(f"сервис импортирован за {time.time() - t:.2f} с, режим {'приложение' if webapp.DESKTOP else 'сервер'}, данные {webapp.DATA}")
+    server = uvicorn.Server(uvicorn.Config(webapp.app, host="127.0.0.1", port=port, log_level="debug" if vb else "warning",
+                                           access_log=vb))
     if parent:
         threading.Thread(target=_parent_watch, args=(parent, server), daemon=True, name="parent-watch").start()
     print(f"[engine] http://127.0.0.1:{port}/", flush=True)
+    if vb:
+        def _startup_done():                                            # сервер поднялся — стек зависания больше не нужен
+            for _ in range(600):
+                if getattr(server, "started", False):
+                    faulthandler.cancel_dump_traceback_later()
+                    verbose.ok("сервер принимает соединения")
+                    return
+                time.sleep(0.1)
+        threading.Thread(target=_startup_done, daemon=True, name="startup-watch").start()
     server.run()
+    if vb:
+        verbose.log("движок остановлен")
     return 0
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(prog="dxaqc", description=f"{APP_NAME} — контроль качества денситометрии DXA")
+    ap = argparse.ArgumentParser(prog="dxaqc", add_help=False)
     ap.add_argument("files", nargs="*", help="файлы или папки для проверки")
-    ap.add_argument("--selftest", action="store_true", help="проверить установку и выйти")
-    ap.add_argument("--mcp-stdio", action="store_true", help="MCP-сервер по stdio для ИИ-ассистентов")
-    ap.add_argument("--browser", action="store_true", help="открыть в браузере вместо встроенного окна")
-    ap.add_argument("--no-window", action="store_true", help="только сервер, без окна (для отладки)")
+    ap.add_argument("--help", "-h", action="store_true")
+    ap.add_argument("--version", "-V", action="store_true")
+    ap.add_argument("--author", action="store_true")
+    ap.add_argument("--mcp", action="store_true")
+    ap.add_argument("--verbose", action="store_true")
+    ap.add_argument("--selftest", action="store_true")
+    ap.add_argument("--mcp-stdio", action="store_true")
+    ap.add_argument("--browser", action="store_true")
+    ap.add_argument("--no-window", action="store_true")
     ap.add_argument("--engine", action="store_true", help=argparse.SUPPRESS)       # процесс движка, запускает окно
     ap.add_argument("--parent", type=int, default=0, help=argparse.SUPPRESS)
     ap.add_argument("--port", type=int, default=0)
-    ap.add_argument("--version", action="store_true")
-    a = ap.parse_args(argv)
+    a, unknown = ap.parse_known_args(argv)
+    from dxaqc.desktop import cli
+    if unknown:                                          # неизвестный параметр — не молча, а с подсказкой
+        print(f"Неизвестный параметр: {' '.join(unknown)}\nСправка: {cli.prog()} --help", file=sys.stderr)
+        return 2
+    if a.help:
+        print(cli.help_text())
+        return 0
     if a.version:
-        from dxaqc import __version__
-        from dxaqc.desktop import APP_VERSION
-        print(f"{APP_NAME} {APP_VERSION} (анализ {__version__})")
+        print(cli.version_text())
+        return 0
+    if a.author:
+        print(cli.author_text())
+        return 0
+    if a.mcp:
+        configure_env(a.port or None)
+        print(cli.mcp_text())
         return 0
     if a.mcp_stdio:
         configure_env(a.port or None)
         from dxaqc.desktop import mcp_stdio
         return mcp_stdio.serve()
+    from dxaqc.desktop import verbose
+    if a.verbose:
+        configure_env(a.port or None)
+        verbose.enable()
+        print(f"Подробный журнал запуска {APP_NAME}. Файл журнала: {verbose.log_path()}", flush=True)
+    elif verbose.enabled() and (a.engine or os.environ.get("DXAQC_PROC")):
+        verbose.enable(fresh=False)                      # дочерний процесс: дописываем в тот же файл
     if a.selftest:
+        rc = 0
+        if a.verbose:
+            rc = 1 if verbose.report(service=False) else 0
         from dxaqc.desktop import selftest
-        return selftest.run()
+        return selftest.run() or rc
 
     configure_env(a.port or None)
-    _log_to_file()
+    if not a.verbose:
+        _log_to_file()
     if a.engine:
         return serve(a.port, a.parent or None)
+    if a.verbose:
+        verbose.report()
+        verbose.header("Запуск программы")
     files = [os.path.abspath(f) for f in a.files]
     other = running_instance()
+    if verbose.enabled():
+        verbose.log(f"Уже запущенная копия: {'порт ' + str(other) if other else 'нет'}")
     if other:                                            # вторая копия: передать файлы первой и выйти
         if files:
             _post(f"http://127.0.0.1:{other}/desktop/run-local", {"paths": files, "navigate": True})
         return 0
     port = _free_port(a.port or DEFAULT_PORT)
     configure_env(port)
+    if verbose.enabled():
+        verbose.log(f"Порт для сервера: {port}; файлов на проверку: {len(files)}")
     if a.no_window:
         with open(_instance_file(), "w", encoding="utf-8") as f:
             json.dump({"port": port, "pid": os.getpid()}, f)
         try:
+            print(f"[server] http://127.0.0.1:{port}/", flush=True)
             return serve(port)
         finally:
             _remove_instance()
     engine = Engine(port)
-    engine.start()                                       # движок стартует параллельно с окном
+    proc = engine.start()                                # движок стартует параллельно с окном
+    if verbose.enabled():
+        verbose.log(f"Процесс движка запущен: pid {proc.pid}, порт {port}")
     with open(_instance_file(), "w", encoding="utf-8") as f:
         json.dump({"port": port, "pid": os.getpid()}, f)
     try:

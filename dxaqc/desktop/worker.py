@@ -42,9 +42,16 @@ def main(argv=None) -> int:
     if os.environ.get("DXAQC_LOG_TO_FILE") or sys.stdout is None:
         from dxaqc.desktop import paths
         sys.stdout = sys.stderr = open(paths.log_path(), "a", encoding="utf-8", buffering=1)
+    from dxaqc.desktop import verbose
+    if verbose.enabled():
+        verbose.enable(fresh=False)
+        verbose.log(f"проверка {argv[0]}: процесс запущен, pid {os.getpid()}, приоритет понижен")
     from dxaqc.web import app as A
     run_id = os.path.basename(argv[0])
     A._process(run_id, StopFile(os.path.join(A.RUNS, run_id, "stop")))
+    if verbose.enabled():
+        st = A._read(run_id, "status.json") or {}
+        verbose.log(f"проверка {run_id}: завершена, состояние {st.get('state')} {st.get('error') or ''}")
     return 0
 
 

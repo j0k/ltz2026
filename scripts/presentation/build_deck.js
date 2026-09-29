@@ -68,6 +68,8 @@ const tone = (auc) => (auc >= 0.8 ? [C.good, C.goodSoft] : auc >= 0.7 ? [C.mid, 
     T(s, b, { x, y: 3.35, w: 1.55, h: 0.6, fontFace: H, fontSize: 28, bold: true, color: i === 0 ? '5EE0A8' : C.white });
     T(s, t, { x, y: 3.95, w: 1.55, h: 0.45, fontSize: 10.5, color: C.nightMute });
   });
+  T(s, [{ text: 'https://ltz2026.ru/', options: { hyperlink: { url: 'https://ltz2026.ru/' }, bold: true, color: '7FA6FF' } }],
+    { x: 0.55, y: 4.5, w: 4, h: 0.3, fontFace: H, fontSize: 14 });
   T(s, 'Команда «Квантовый Скачок»: Юрий Коноплёв · Алексей Чуркин', { x: 0.55, y: 4.85, w: 6, h: 0.3, fontSize: 11, color: C.nightMute });
   s.addNotes('Мы — команда «Квантовый Скачок». Наш продукт — Kostik: имя от слова «кость». Kostik проверяет качество снимков денситометрии сразу после исследования: область, вердикт, тип нарушения и объяснение прямо на снимке. Работает локально, без интернета.');
 }
@@ -139,7 +141,7 @@ const tone = (auc) => (auc >= 0.8 ? [C.good, C.goodSoft] : auc >= 0.7 ? [C.mid, 
     T(s, t, { x: x + 0.18, y: 2.86, w: 1.32, h: 0.9, fontSize: 11, color: C.ink2, valign: 'top' });
     if (i < steps.length - 1) T(s, '→', { x: x + 1.6, y: 2.55, w: 0.2, h: 0.3, fontSize: 14, color: C.ink3, align: 'center' });
   });
-  const stack = [['Стенд', 'ltz2026.ru · FastAPI, Docker, nginx'], ['Контейнер по ТЗ', 'build.sh · run.sh · serve.sh, без сети'],
+  const stack = [['Стенд', 'https://ltz2026.ru/ · FastAPI, Docker'], ['Контейнер по ТЗ', 'build.sh · run.sh · serve.sh, без сети'],
                  ['Приложение 1.0-Beta', 'Windows, Ubuntu, Debian · офлайн'], ['Интеграции', 'HTTP API · MCP · Telegram-бот']];
   stack.forEach(([h, t], i) => {
     const x = 0.55 + i * 2.25;
@@ -210,7 +212,7 @@ function mandatoryTag(s, n) {
                 ['Решение', 'Область, класс качества 0/1 и типы нарушений — на снимке и в таблице по ТЗ 2.5'],
                 ['Для кого', 'Рентгенолаборанты и врачи отделений денситометрии; руководители — отчёт о качестве'],
                 ['Ценность', 'Брак виден, пока пациент в кабинете: меньше повторных исследований и ошибок диагноза'],
-                ['Где работает', 'Локально: контейнер, приложение для Windows и Linux; стенд ltz2026.ru']];
+                ['Где работает', 'Локально: контейнер, приложение для Windows и Linux; стенд https://ltz2026.ru/']];
   rows.forEach(([h, t], i) => {
     const y = 1.72 + i * 0.66;
     card(s, 0.55, y, 8.9, 0.56, C.soft);
@@ -276,8 +278,8 @@ function mandatoryTag(s, n) {
 { // 11. Материалы
   const s = pres.addSlide(); s.background = { color: C.white }; mandatoryTag(s, 11);
   title(s, 'Материалы', 'Всё для проверки — в комплекте сдачи', '');
-  const items = [['Стенд', 'ltz2026.ru — загрузка DICOM, дашборд, готовые примеры'], ['Контейнер', 'build.sh · run.sh · serve.sh, запуск без сети'],
-                 ['API', 'пакетная обработка архива, описание — ltz2026.ru/docs'], ['Приложение', '.exe · .msi · .deb 1.0-Beta — ltz2026.ru/download'],
+  const items = [['Стенд', 'https://ltz2026.ru/ — загрузка DICOM, дашборд, примеры'], ['Контейнер', 'build.sh · run.sh · serve.sh, запуск без сети'],
+                 ['API', 'пакетная обработка, описание — https://ltz2026.ru/docs'], ['Приложение', '.exe · .msi · .deb — https://ltz2026.ru/download'],
                  ['Документация', 'README и руководства: пользователь, развёртывание, обучение'], ['Исходный код', 'репозиторий проекта — в комплекте сдачи']];
   items.forEach(([h, t], i) => {
     const y = 1.62 + i * 0.56;
@@ -287,7 +289,7 @@ function mandatoryTag(s, n) {
   });
   card(s, 7.05, 1.62, 2.4, 2.95, C.soft);
   img(s, 'qr.png', 7.3, 1.8, 1.9, 1.0);
-  T(s, 'ltz2026.ru', { x: 7.05, y: 3.85, w: 2.4, h: 0.4, fontFace: H, fontSize: 17, bold: true, color: C.blue, align: 'center' });
+  T(s, [{ text: 'https://ltz2026.ru/', options: { hyperlink: { url: 'https://ltz2026.ru/' } } }], { x: 7.05, y: 3.85, w: 2.4, h: 0.4, fontFace: H, fontSize: 14, bold: true, color: C.blue, align: 'center' });
   pageNo(s);
   s.addNotes('Обязательный слайд 11. Ссылки на все материалы сдачи; QR ведёт на стенд.');
 }
@@ -447,7 +449,7 @@ function mandatoryTag(s, n) {
   title(s, 'Продукт', 'Готово к использованию уже сейчас', 'Стенд, контейнер, API и настольное приложение Kostik 1.0-Beta');
   card(s, 0.55, 1.68, 5.1, 3.4, C.soft);
   img(s, 'download2.png', 0.7, 1.82, 4.8, 1.714);
-  const items = [['Веб-стенд', 'ltz2026.ru — загрузка, дашборд, примеры'], ['Приложение', '.exe · .msi · .deb, офлайн, подписанные суммы'],
+  const items = [['Веб-стенд', 'https://ltz2026.ru/ — дашборд и примеры'], ['Приложение', '.exe · .msi · .deb — работает офлайн'],
                  ['Контейнер', 'сборка и запуск одной командой, как в ТЗ'], ['Интеграции', 'HTTP API · MCP · Telegram-бот'],
                  ['Чужой файл', 'объяснит, что загружено и что делать']];
   items.forEach(([h, t], i) => {
@@ -457,7 +459,7 @@ function mandatoryTag(s, n) {
     T(s, t, { x: 6.38, y: y + 0.3, w: 3.1, h: 0.34, fontSize: 11.5, color: C.ink2, valign: 'top' });
   });
   pageNo(s);
-  s.addNotes('Продукт можно попробовать прямо сейчас: стенд ltz2026.ru, приложение для Windows и Linux со страницы загрузки, контейнер по ТЗ.');
+  s.addNotes('Продукт можно попробовать прямо сейчас: стенд https://ltz2026.ru/, приложение для Windows и Linux со страницы загрузки, контейнер по ТЗ.');
 }
 
 // ------------------------------------------------------------------ 19. Демонстрация
@@ -506,7 +508,7 @@ function mandatoryTag(s, n) {
   const s = pres.addSlide(); s.background = { color: C.night };
   card(s, 6.4, 1.0, 3.0, 3.55, C.white);
   img(s, 'qr.png', 6.65, 1.2, 2.5, 1.0);
-  T(s, 'ltz2026.ru', { x: 6.4, y: 3.85, w: 3.0, h: 0.5, fontFace: H, fontSize: 21, bold: true, color: C.night, align: 'center' });
+  T(s, [{ text: 'https://ltz2026.ru/', options: { hyperlink: { url: 'https://ltz2026.ru/' } } }], { x: 6.4, y: 3.85, w: 3.0, h: 0.5, fontFace: H, fontSize: 17, bold: true, color: C.night, align: 'center' });
   eyebrow(s, 'Kostik', true, 0.55, 0.95);
   T(s, 'Попробуйте сами', { x: 0.52, y: 1.25, w: 5.7, h: 0.8, fontFace: H, fontSize: 36, bold: true, color: C.white });
   T(s, 'Проверка снимка, готовые примеры, приложение для Windows и Linux. Без интернета — снимки не покидают медорганизацию.',
@@ -515,7 +517,7 @@ function mandatoryTag(s, n) {
         { text: 'Юрий Коноплёв · Алексей Чуркин', options: { color: C.nightText, breakLine: true } },
         { text: 'Telegram: @bimodaling · @lesha_cfc', options: { color: C.nightMute } }],
     { x: 0.55, y: 3.55, w: 5.4, h: 1.0, fontSize: 14 });
-  s.addNotes('Спасибо! Всё можно попробовать на ltz2026.ru. Готовы ответить на вопросы.');
+  s.addNotes('Спасибо! Всё можно попробовать на https://ltz2026.ru/. Готовы ответить на вопросы.');
 }
 
 pres.writeFile({ fileName: path.join(__dirname, 'Kostik_presentation.pptx') }).then(f => console.log('готово:', f));

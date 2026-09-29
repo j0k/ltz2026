@@ -76,7 +76,7 @@
       {% set kind = 'bad' if r.quality_class == 1 else 'ok' if r.quality_class == 0 else 'na' %}
       <a class="d-thumb {{ kind }}" href="#{{ r.key }}" data-k="{{ kind }}" data-v="{{ (r.violation_list or [])|join(' ') }}">
         <img src="/runs/{{ run_id }}/files/{{ r.overlay_png }}" alt="{{ region_ru.get(r.anatomical_region, 'снимок') }}" loading="lazy">
-        <span class="cap"><b>{{ region_ru.get(r.anatomical_region, 'снимок')|capitalize }}</b>
+        <span class="cap"><b data-region="{{ r.anatomical_region }}">{{ region_ru.get(r.anatomical_region, 'снимок')|capitalize }}</b>
           <i class="pill {{ kind }}">{{ 'нарушение' if kind == 'bad' else 'годен' if kind == 'ok' else 'не оценено' }}</i></span>
         {% set viol = (r.violation_list or [])|reject('equalto', 'hip_not_evaluated_v0')|list %}
         {% if viol %}<span class="why">{{ viol|map('replace', 'hip_positioning', 'укладка бедра')|map('replace', 'hip_roi', 'поля зоны интереса')|map('replace', 'axis_tilt', 'наклон оси')|map('replace', 'coverage', 'неполный охват')|map('replace', 'artifact', 'посторонний предмет')|join(' · ') }}</span>{% endif %}
@@ -135,7 +135,7 @@
         {% if raw_url %}<span class="pic-sw" role="group" aria-label="вид снимка"><button type="button" data-p="atlas" aria-pressed="true">атлас</button><button type="button" data-p="raw" aria-pressed="false">снимок</button></span>{% endif %}
       </div>
       <div class="body">
-        <div class="d-img-h"><h3>{{ region_ru.get(r.anatomical_region, 'снимок')|capitalize }}</h3>
+        <div class="d-img-h"><h3 class="reg-h" data-region="{{ r.anatomical_region }}">{{ region_ru.get(r.anatomical_region, 'снимок')|capitalize }}</h3>
           <span class="pill {{ kind }}">{{ 'нарушение' if kind == 'bad' else 'годен' if kind == 'ok' else 'не оценено' }}</span></div>
         <ul class="d-checks">
           {% for code, title in checks.get(r.anatomical_region, []) %}
@@ -222,7 +222,7 @@
 <table>
   <tr><th>path_to_study</th><th>study_uid</th><th>image_uid</th><th>anatomical_region</th><th>quality_class</th><th>violation_type</th><th>processing_status</th><th>time_of_processing</th></tr>
   {% for r in rows %}
-  <tr><td class="p">{{ r.path_to_study }}</td><td class="u">{{ r.study_uid }}</td><td class="u">{{ r.image_uid }}</td><td>{{ r.anatomical_region }}</td>
+  <tr><td class="p">{{ r.path_to_study }}</td><td class="u">{{ r.study_uid }}</td><td class="u">{{ r.image_uid }}</td><td data-region="{{ r.anatomical_region }}" tabindex="0" title="наведите — схема, какая это часть тела">{{ r.anatomical_region }}</td>
     <td class="{{ 'bad' if r.quality_class == 1 else 'ok' if r.quality_class == 0 else '' }}">{{ r.quality_class if r.quality_class is not none else '' }}</td>
     <td>{{ r.violation_type }}</td><td>{{ r.processing_status }}</td><td>{{ '%.3f'|format(r.time_of_processing|float) if r.time_of_processing is defined and r.time_of_processing not in (none, '') else '' }}</td></tr>
   {% endfor %}
@@ -301,6 +301,7 @@
 })();
 </script>
 {% endif %}
+{% include "_region_map.html" %}
 {% endblock %}
 {% block footer %}{% include "_team_footer.html" %}{% endblock %}
 {% block cookie %}{% endblock %}

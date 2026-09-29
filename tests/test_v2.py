@@ -66,6 +66,7 @@ def test_upload_goes_to_new_result_page(client):
     assert html.count('<article class="d-img') == 1 and "Поясничный отдел" in html
     assert "годен" in html or "нарушение" in html
     assert 'class="d-kpis"' in html and 'class="d-checks"' in html and "Таблица результатов" in html, "дашборд по ТЗ"
+    assert 'id="regMap"' in html and 'td data-region="lumbar_spine"' in html, "наведение на anatomical_region показывает схему тела (29.09, Юрий)"
     for f in ('data-f="all"', 'data-f="ok"', 'data-f="bad"', 'id="dFilterBar"'):
         assert f in html, f"плитки фильтруют снимки (29.09, Юрий): {f}"
     assert 'data-k="' in html and '<article class="d-img' in html

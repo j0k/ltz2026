@@ -60,8 +60,30 @@ def features(a: np.ndarray, region: str) -> dict:
     return {k: float(v) for k, v in f.items()}
 
 
-@lru_cache(maxsize=2)
-def load(path: str = MODEL_PATH) -> dict | None:
+def active_path() -> str:
+    """Веса модели бедра: версия, установленная плагином дообучения hip_trees, иначе встроенная."""
+    p = os.path.join(os.environ.get("DXAQC_DATA", "/data"), "learning", "hip_trees", "active.json")
+    try:
+        with open(p, encoding="utf-8") as f:
+            path = json.load(f).get("path")
+        if path and os.path.isfile(path):
+            return path
+    except (OSError, ValueError):
+        pass
+    return MODEL_PATH
+
+
+def load(path: str | None = None) -> dict | None:
+    path = path or active_path()
+    try:
+        mt = os.path.getmtime(path)
+    except OSError:
+        return None
+    return _load(path, mt)
+
+
+@lru_cache(maxsize=4)
+def _load(path: str, _mtime: float) -> dict | None:
     if not os.path.isfile(path):
         return None
     z = np.load(path, allow_pickle=False)

@@ -31,9 +31,35 @@ class ParamError(ValueError):
     """Неверное значение параметра; текст можно показать пользователю."""
 
 
+_LEARNED = {"mtime": None, "values": {}}
+
+
+def learned() -> dict:
+    """Пороги, установленные плагином дообучения spine_thresholds (dxaqc/learning), с кешем по времени файла."""
+    import json
+    import os
+    home = os.path.join(os.environ.get("DXAQC_DATA", "/data"), "learning", "spine_thresholds", "active.json")
+    try:
+        mt = os.path.getmtime(home)
+    except OSError:
+        _LEARNED.update(mtime=None, values={})
+        return {}
+    if mt != _LEARNED["mtime"]:
+        try:
+            with open(home, encoding="utf-8") as f:
+                info = json.load(f)
+            with open(info["path"], encoding="utf-8") as f:
+                vals = {k: v for k, v in json.load(f).items() if k in BY_NAME}
+        except (OSError, ValueError, KeyError):
+            vals = {}
+        _LEARNED.update(mtime=mt, values=vals)
+    return dict(_LEARNED["values"])
+
+
 def normalize(values: dict | None) -> dict:
-    """Полный набор параметров: значения по умолчанию, поверх — переданные, с проверкой типа и диапазона."""
-    out = dict(DEFAULTS)
+    """Полный набор параметров: значения по умолчанию (с порогами дообучения, если установлены), поверх — переданные,
+    с проверкой типа и диапазона."""
+    out = dict(DEFAULTS) | learned()
     for s in SPEC:
         raw = (values or {}).get(s["name"])
         if raw is None or raw == "":

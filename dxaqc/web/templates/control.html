@@ -159,8 +159,58 @@ select.src{max-width:100%;font:inherit;font-size:14px;padding:4px}
   {% endif %}
 </div>
 
+<div class="card" id="learning" style="margin-top:16px">
+  <h2 style="margin-top:0">Дообучение на правках врачей</h2>
+  <p class="muted" style="margin-top:0">Правки вердикта в карточках снимков становятся обучающими данными. Плагин обучает новую версию,
+    честно оценивает её кросс-валидацией по исследованиям и устанавливает, только если она не хуже действующей. Прежние версии
+    остаются — откат одной кнопкой. Подробно — <a href="https://github.com/j0k/ltz2026/blob/main/doc/LEARNING.md">doc/LEARNING.md</a>.</p>
+  {% set L = learning %}
+  <p>Правок врачей накоплено: <b>{{ L.feedback }}</b>{% if L.error %} · <span class="bad">{{ L.error }}</span>{% endif %}</p>
+  <div class="scroll-x">
+  <table>
+    <thead><tr><th>Плагин</th><th>Области</th><th>Правок / нужно</th><th>Активная версия</th><th>Качество</th><th></th></tr></thead>
+    <tbody>
+    {% for p in L.plugins %}
+    <tr>
+      <td><b>{{ p.title }}</b><div class="faint">{{ p.name }}{% if not p.available %} · недоступен: {{ p.why }}{% endif %}</div></td>
+      <td>{{ p.regions|map('replace','lumbar_spine','поясница')|map('replace','hip_left','левое бедро')|map('replace','hip_right','правое бедро')|join(', ') }}</td>
+      <td>{{ p.feedback }} / {{ p.min_feedback }}</td>
+      <td>{{ p.active }}</td>
+      <td class="faint">{% for k, v in (p.metrics or {}).items() if k in ('auc_bad', 'f1_cv_learned', 'thresholds') %}{{ k }}: {{ v }}<br>{% endfor %}</td>
+      <td>{% if is_admin and p.active != 'встроенная' %}<form method="post" action="/control/learning/rollback" data-confirm="Откатить {{ p.title }} к предыдущей версии?">
+        <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="plugin" value="{{ p.name }}">
+        <button class="btn small ghost">Откатить</button></form>{% endif %}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% set J = L.job %}
+  {% if J.state == 'running' %}<p class="note" id="learnRunning">Идёт дообучение: {{ J.message }}… страница обновится сама.</p>
+  {% elif J.state == 'error' %}<p class="note bad">Дообучение не удалось: {{ J.error }}</p>
+  {% elif J.message %}<p class="muted">{{ J.message }}</p>{% endif %}
+  {% for r in J.results %}<p><b>{{ r.plugin }}</b>: {{ '✓' if r.ok else '—' }} {{ r.message }}</p>{% endfor %}
+  {% if is_admin %}
+  <form method="post" action="/control/learning/run" class="row" style="gap:8px;flex-wrap:wrap;align-items:center">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <button class="btn" name="mode" value="install" {{ 'disabled' if J.state == 'running' }}>Дообучить</button>
+    <button class="btn ghost" name="mode" value="dry" {{ 'disabled' if J.state == 'running' }}>Пробный запуск (без установки)</button>
+    <label class="faint"><input type="checkbox" name="force" value="1"> даже если правок меньше минимума</label>
+  </form>
+  {% else %}<p class="faint">Запуск и откат — для администратора.</p>{% endif %}
+  {% if L.history %}
+  <details style="margin-top:10px"><summary>Журнал дообучения</summary>
+  <div class="scroll-x"><table>
+    <thead><tr><th>Когда</th><th>Кто</th><th>Плагин</th><th>Итог</th></tr></thead>
+    <tbody>{% for h in L.history %}<tr><td>{{ h.at|msk }}</td><td>{{ h.by or '' }}</td><td>{{ h.plugin }}</td>
+      <td>{{ '✓ установлено' if h.installed else '—' }} <span class="faint">{{ h.message }}</span></td></tr>{% endfor %}</tbody>
+  </table></div></details>
+  {% endif %}
+</div>
+
 <script>
 (function () {
+  if (document.getElementById('learnRunning')) setTimeout(() => location.reload(), 3000);
   // подтверждение удаления
   document.querySelectorAll('form[data-confirm]').forEach(f => f.addEventListener('submit', e => { if (!confirm(f.dataset.confirm)) e.preventDefault(); }));
 

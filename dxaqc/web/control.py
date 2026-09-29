@@ -130,6 +130,30 @@ def _journal(runs: list[dict]) -> list[dict]:
     return out[:100]
 
 
+_learn = dict(state="idle", started=None, finished=None, by="", message="", results=[], error="")
+
+
+def learning_status() -> dict:
+    """Состояние дообучения для пульта: плагины, правки врачей, журнал и текущий запуск."""
+    from dxaqc import learning as L
+    try:
+        st = L.status()
+    except Exception as exc:  # noqa: BLE001 — сломанный плагин не должен ронять пульт
+        st = dict(plugins=[], feedback=0, history=[], error=f"{type(exc).__name__}: {exc}")
+    return st | dict(job=dict(_learn))
+
+
+def _learn_worker(names, dry_run, force, by):
+    from dxaqc import learning as L
+    try:
+        res = L.run(names or None, dry_run=dry_run, force=force, by=by, progress=lambda m: _learn.update(message=m))
+        _learn.update(state="done", results=[dict(plugin=r.plugin, ok=r.ok, message=r.message, metrics=r.metrics,
+                                                  baseline=r.baseline, installed=bool(r.installed)) for r in res])
+    except Exception as exc:  # noqa: BLE001
+        _learn.update(state="error", error=f"{type(exc).__name__}: {exc}")
+    _learn["finished"] = time.time()
+
+
 def _page(request: Request, source: str = "", error: str = "", status_code: int = 200, values: dict | None = None):
     user = request.state.user
     runs = ctx["list_runs"](limit=200)
@@ -145,7 +169,7 @@ def _page(request: Request, source: str = "", error: str = "", status_code: int 
         counts=queue_state()["counts"], spec=P.SPEC, defaults=P.DEFAULTS, values=values, source=source, error=error,
         calib=_calibration(train["id"]) if train else None, calib_run=train["id"] if train else "",
         journal=_journal(runs), example_id=ctx["example_id"], trac_url=ctx["trac_url"], version=__version__,
-        violation_ru=ctx["violation_ru"], og_image="/og/control.jpg",
+        violation_ru=ctx["violation_ru"], og_image="/og/control.jpg", learning=learning_status(),
         og_description="Пороги и параметры анализа, перезапуск прогонов с новыми параметрами, очередь, отмена и правка вердикта снимка."), status_code=status_code)
 
 
@@ -154,6 +178,38 @@ def _page(request: Request, source: str = "", error: str = "", status_code: int 
 @router.get("/control", response_class=HTMLResponse)
 def control_page(request: Request, source: str = ""):
     return _page(request, source=source)
+
+
+@router.get("/api/control/learning")
+def api_learning():
+    return learning_status()
+
+
+@router.post("/control/learning/run")
+async def learning_run(request: Request):
+    admin = _admin(request)
+    form = await request.form()
+    ask._check_csrf(request, str(form.get("csrf", "")))
+    if _learn["state"] == "running":
+        raise HTTPException(409, "дообучение уже идёт — дождитесь окончания")
+    names = [n for n in form.getlist("plugin") if n]
+    _learn.update(state="running", started=time.time(), finished=None, by=admin["login"], message="запуск", results=[], error="")
+    threading.Thread(target=_learn_worker, args=(names, form.get("mode") == "dry", form.get("force") == "1", admin["login"]),
+                     daemon=True, name="learning").start()
+    return RedirectResponse("/control#learning", status_code=303)
+
+
+@router.post("/control/learning/rollback")
+async def learning_rollback(request: Request):
+    from dxaqc import learning as L
+    _admin(request)
+    form = await request.form()
+    ask._check_csrf(request, str(form.get("csrf", "")))
+    name = str(form.get("plugin", ""))
+    if name not in L.plugins():
+        raise HTTPException(400, "нет такого плагина")
+    _learn.update(message=f"{name}: откат — активна {L.rollback(name)}")
+    return RedirectResponse("/control#learning", status_code=303)
 
 
 @router.get("/api/control/queue")

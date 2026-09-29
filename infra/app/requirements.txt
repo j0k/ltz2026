@@ -14,3 +14,5 @@ openpyxl==3.1.5
 piper-tts==1.3.0
 faster-whisper==1.2.1
 markdown-it-py==3.0.0
+# дообучение модели бедра на правках врачей (dxaqc/learning, плагин hip_trees); сервису для работы не нужен
+scikit-learn==1.9.1

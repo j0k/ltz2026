@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -34,3 +35,17 @@ def settings_path() -> str:
 
 def log_path() -> str:
     return os.path.join(data_dir(), "dxaqc.log")
+
+
+def open_path(path: str):
+    """Открыть папку в проводнике или файловом менеджере."""
+    if sys.platform.startswith("win"):
+        os.startfile(path)  # type: ignore[attr-defined]
+    elif sys.platform == "darwin":
+        subprocess.Popen(["open", path])
+    else:
+        subprocess.Popen(["xdg-open", path])
+
+
+def runs_dir() -> str:
+    return os.path.join(data_dir(), "runs")

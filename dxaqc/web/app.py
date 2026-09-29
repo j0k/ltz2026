@@ -12,6 +12,8 @@ import json
 import os
 import re
 import shutil
+import subprocess
+import sys
 import threading
 import time
 import uuid
@@ -236,11 +238,51 @@ def _run_event(run_id: str, action: str):
         print(f"[activity] итог прогона: {exc}", flush=True)
 
 
+# в приложении каждая проверка идёт в своём процессе: окно и сервер отвечают сразу, даже на тяжёлом архиве
+ANALYSIS_PROCESS = DESKTOP or os.environ.get("DXAQC_ANALYSIS_PROCESS") == "1"
+
+
+def _process_child(run_id, stop: threading.Event):
+    """Проверка в отдельном процессе dxaqc.desktop.worker; отмена — файл stop, падение процесса — ошибка прогона."""
+    if stop.is_set():
+        _write_status(run_id, state="cancelled", finished=time.time())
+        _jobs.pop(run_id, None)
+        return
+    stop_file = os.path.join(RUNS, run_id, "stop")
+    try:
+        os.remove(stop_file)
+    except OSError:
+        pass
+    kw = {}
+    if sys.platform.startswith("win"):
+        kw["creationflags"] = 0x08000000                 # CREATE_NO_WINDOW: без мигающей консоли
+    env = dict(os.environ, PYTHONIOENCODING="utf-8")
+    try:
+        proc = subprocess.Popen([sys.executable, "-X", "utf8", "-m", "dxaqc.desktop.worker", run_id], env=env,
+                                stdin=subprocess.DEVNULL, **kw)
+        _jobs.setdefault(run_id, {})["proc"] = proc
+        while proc.poll() is None:
+            if stop.is_set() and not os.path.exists(stop_file):
+                open(stop_file, "w").close()
+            try:
+                proc.wait(timeout=0.3)
+            except subprocess.TimeoutExpired:
+                pass
+        st = _read(run_id, "status.json") or {}
+        if st.get("state") in ("queued", "running"):
+            _write_status(run_id, state="error", error=f"процесс проверки завершился с кодом {proc.returncode}",
+                          finished=time.time())
+    except Exception as exc:  # noqa: BLE001
+        _write_status(run_id, state="error", error=f"не удалось запустить проверку: {exc}"[:300], finished=time.time())
+    finally:
+        _jobs.pop(run_id, None)
+
+
 def _submit(run_id):
     """Поставить прогон в очередь с флагом отмены."""
     stop = threading.Event()
     _jobs[run_id] = {"stop": stop}
-    fut = executor.submit(_process, run_id, stop)
+    fut = executor.submit(_process_child if ANALYSIS_PROCESS else _process, run_id, stop)
     if run_id in _jobs:
         _jobs[run_id]["future"] = fut
     return fut
@@ -1164,7 +1206,7 @@ mcp.setup(read=_read, new_run=_new_run, write_status=_write_status, submit=_subm
           trac_url=TRAC_URL)
 app.include_router(mcp.router)
 if DESKTOP:
-    desktop.setup(read=_read, new_run=_new_run, write_status=_write_status, submit=_submit, runs_dir=RUNS, list_runs=_list_runs,
+    desktop.setup(read=_read, new_run=_new_run, write_status=_write_status, submit=_submit, cancel=_cancel, runs_dir=RUNS, list_runs=_list_runs,
                   has_archives=_has_archives, templates=templates, example_id=EXAMPLE_ID,
                   port=int(os.environ.get("DXAQC_PORT", "8765")))
     app.include_router(desktop.router)

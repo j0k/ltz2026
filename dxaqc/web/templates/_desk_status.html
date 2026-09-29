@@ -1,0 +1,79 @@
+{# строка состояния приложения (#138): всегда внизу окна, что сейчас происходит — проверки, загрузки, дообучение, связь с движком #}
+<div id="deskStatus" class="dst" role="status" aria-live="polite">
+  <span class="dst-dot" id="dstDot"></span>
+  <span class="dst-text" id="dstText">Kostik готов к работе</span>
+  <span class="dst-bar" id="dstBarWrap" hidden><span id="dstBar"></span></span>
+  <a class="dst-link" id="dstLink" hidden>открыть</a>
+  <button type="button" class="dst-cancel" id="dstCancel" hidden>отменить</button>
+  <span class="dst-right" id="dstRight"></span>
+</div>
+<style>
+body{padding-bottom:34px}
+.dst{position:fixed;left:0;right:0;bottom:0;z-index:900;height:30px;display:flex;align-items:center;gap:10px;padding:0 14px;
+  background:#16191f;color:#dfe5ec;font:13px/1 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;border-top:1px solid #2a2f38}
+.dst-dot{width:9px;height:9px;border-radius:50%;background:#3fbf5f;flex:none}
+.dst.busy .dst-dot{background:#5aa7ff;animation:dstp 1.2s ease-in-out infinite}
+.dst.bad .dst-dot{background:#e5534b}
+.dst.bad{background:#3a1a1c}
+@keyframes dstp{50%{opacity:.35}}
+.dst-text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:0 1 auto}
+.dst-bar{flex:0 0 160px;height:6px;border-radius:3px;background:#2a2f38;overflow:hidden}
+.dst-bar span{display:block;height:100%;width:0;background:#5aa7ff;transition:width .4s}
+.dst-link{color:#8fc1ff;text-decoration:none;flex:none}
+.dst-cancel{flex:none;font:inherit;color:#ffb4ae;background:none;border:1px solid #5a3a3a;border-radius:6px;padding:2px 8px;cursor:pointer}
+.dst-right{margin-left:auto;color:#8b96a3;white-space:nowrap;flex:none}
+@media print{.dst{display:none}body{padding-bottom:0}}
+</style>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const box = $('deskStatus'), text = $('dstText'), bar = $('dstBar'), barWrap = $('dstBarWrap'), link = $('dstLink'), right = $('dstRight');
+  const cancel = $('dstCancel');
+  let fails = 0, busy = false, current = null;
+  cancel.onclick = async () => {
+    if (!current || !confirm('Отменить проверку «' + current.title + '»?')) return;
+    cancel.disabled = true;
+    try { await fetch('/api/desktop/cancel/' + current.run_id, {method: 'POST', headers: {'X-Kostik': '1'}}); } finally { cancel.disabled = false; }
+  };
+  const secs = s => s == null ? '' : s < 60 ? `~${Math.max(1, Math.round(s))} с` : `~${Math.round(s / 60)} мин`;
+  function show(cls, msg, pct, href, extra) {
+    box.className = 'dst' + (cls ? ' ' + cls : '');
+    text.textContent = msg;
+    barWrap.hidden = pct == null; if (pct != null) bar.style.width = Math.min(100, Math.max(2, pct)) + '%';
+    link.hidden = !href || location.pathname === href; if (href) link.href = href;
+    right.textContent = extra || '';
+  }
+  async function tick() {
+    const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 3000);
+    try {
+      const r = await fetch('/api/desktop/status', {signal: ctl.signal, cache: 'no-store'});
+      const s = await r.json(); fails = 0;
+      if (s.navigate) { location.href = s.navigate; return; }
+      const run = s.runs[0]; current = run || null; cancel.hidden = !run;
+      const queued = s.runs.filter(x => x.state === 'queued').length;
+      const extra = [queued && run && run.state === 'running' ? `в очереди ещё ${queued}` : '',
+                     s.downloads.length ? `загрузка моделей: ${s.downloads.length}` : '', s.learning ? 'дообучение' : ''].filter(Boolean).join(' · ');
+      if (run && run.state === 'running') {
+        const n = run.total ? `${run.done} из ${run.total}` : '';
+        show('busy', `${run.title}: ${run.stage || 'обработка'}${n ? ' · ' + n : ''}${run.eta ? ' · осталось ' + secs(run.eta) : ''}`,
+             run.total ? 100 * run.done / run.total : null, `/check/${run.run_id}`, extra);
+      } else if (run) {
+        show('busy', `${run.title}: в очереди${queued > 1 ? ` (всего ${queued})` : ''}`, null, `/check/${run.run_id}`, extra);
+      } else if (s.downloads.length) {
+        const d = s.downloads[0];
+        show('busy', `Скачивается модель ${d.title}`, d.total ? 100 * d.done / d.total : null, '/models', extra);
+      } else if (s.learning) {
+        show('busy', `Дообучение: ${s.learning}`, null, null, '');
+      } else {
+        show('', 'Kostik готов к работе · снимки обрабатываются на этом компьютере', null, null, '');
+      }
+      busy = !!(run || s.downloads.length || s.learning);
+    } catch (e) {
+      fails++;
+      cancel.hidden = true;
+      if (fails >= 2) show('bad', 'Движок анализа не отвечает — перезапускаю… окно можно не закрывать', null, null, '');
+    } finally { clearTimeout(t); setTimeout(tick, busy ? 700 : 1500); }
+  }
+  tick();
+})();
+</script>

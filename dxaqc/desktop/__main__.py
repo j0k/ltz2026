@@ -9,6 +9,12 @@
 
 Окно — pywebview (WebView2 в Windows, WebKitGTK в Linux); если его нет — Edge или Chrome в режиме приложения,
 в крайнем случае обычный браузер. Сервер слушает только 127.0.0.1.
+
+Три процесса, чтобы окно никогда не подвисало:
+  окно      — этот процесс: лёгкий, без numpy и FastAPI; открывается сразу, с заставкой и ходом запуска;
+  движок    — `kostik --engine`: сервер FastAPI со страницами и API; упал — окно перезапускает его само;
+  проверка  — `python -m dxaqc.desktop.worker`: каждая проверка отдельно и с пониженным приоритетом.
+Внизу окна всегда строка состояния: что идёт, сколько осталось, отвечает ли движок.
 """
 from __future__ import annotations
 
@@ -133,9 +139,8 @@ class Api:
         return {"saved": dest[0]}
 
     def open_run_folder(self, run_id: str):
-        from dxaqc.web.desktop import open_path
         folder = os.path.join(self.runs_dir, os.path.basename(run_id), "out")
-        open_path(folder if os.path.isdir(folder) else self.runs_dir)
+        paths.open_path(folder if os.path.isdir(folder) else self.runs_dir)
         return True
 
 
@@ -156,21 +161,158 @@ def _browser_app(url: str) -> subprocess.Popen | None:
     return subprocess.Popen([exe, f"--app={url}", f"--user-data-dir={profile}", "--no-first-run", "--window-size=1320,900"])
 
 
-def open_window(url: str, api: Api, prefer_browser: bool = False) -> str:
+SPLASH = """<!doctype html><html lang="ru"><head><meta charset="utf-8"><style>
+html,body{margin:0;height:100%;background:#12151a;color:#e8edf3;font:15px/1.5 Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+.w{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+h1{margin:0;font-size:42px;font-weight:800;color:#5aa7ff;letter-spacing:-.02em}
+.sub{color:#8b96a3}.bar{width:320px;height:6px;border-radius:3px;background:#262b33;overflow:hidden}
+.bar i{display:block;height:100%;width:30%;background:#5aa7ff;border-radius:3px;animation:m 1.1s ease-in-out infinite alternate}
+@keyframes m{from{margin-left:0}to{margin-left:70%}}
+.st{position:fixed;left:0;right:0;bottom:0;height:30px;display:flex;align-items:center;gap:10px;padding:0 14px;background:#16191f;
+ border-top:1px solid #2a2f38;font-size:13px}.d{width:9px;height:9px;border-radius:50%;background:#5aa7ff}
+.bad .d{background:#e5534b}.bad .bar i{background:#e5534b;animation:none;width:100%}
+pre{max-width:80%;max-height:30vh;overflow:auto;color:#c9a0a0;font-size:12px;white-space:pre-wrap}
+button{font:inherit;padding:8px 18px;border-radius:10px;border:0;background:#5aa7ff;color:#fff;cursor:pointer}
+</style></head><body><div class="w" id="w"><h1>Kostik</h1><div class="sub">контроль качества денситометрии</div>
+<div class="bar"><i></i></div><pre id="log" hidden></pre><button id="rb" hidden onclick="pywebview.api.restart_engine()">Перезапустить движок</button></div>
+<div class="st"><span class="d"></span><span id="msg">Запускаю движок анализа…</span></div>
+<script>function kostikStatus(t,bad,log){document.getElementById('msg').textContent=t;document.body.className=bad?'bad':'';
+const l=document.getElementById('log');l.hidden=!log;l.textContent=log||'';document.getElementById('rb').hidden=!bad}</script>
+</body></html>"""
+
+
+class Engine:
+    """Процесс движка: запуск, ожидание готовности, перезапуск после падения."""
+
+    def __init__(self, port: int):
+        self.port, self.proc, self.restarts = port, None, 0
+        self.base = f"http://127.0.0.1:{port}"
+
+    def start(self):
+        kw = {}
+        if sys.platform.startswith("win"):
+            kw["creationflags"] = 0x08000000                     # CREATE_NO_WINDOW
+        env = dict(os.environ, DXAQC_LOG_TO_FILE="1", PYTHONIOENCODING="utf-8")
+        self.proc = subprocess.Popen([sys.executable, "-X", "utf8", "-m", "dxaqc.desktop", "--engine", "--port", str(self.port),
+                                      "--parent", str(os.getpid())], env=env, stdin=subprocess.DEVNULL, **kw)
+        return self.proc
+
+    def alive(self) -> bool:
+        return self.proc is not None and self.proc.poll() is None
+
+    def wait_ready(self, timeout: float = 90.0, on_wait=None) -> bool:
+        t0 = time.time()
+        while time.time() - t0 < timeout:
+            if not self.alive():
+                return False
+            if _get(self.base + "/api/health", 1.0):
+                return True
+            if on_wait:
+                on_wait(time.time() - t0)
+            time.sleep(0.15)
+        return False
+
+    def stop(self):
+        if self.alive():
+            self.proc.terminate()
+            try:
+                self.proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                self.proc.kill()
+
+
+def _log_tail(n: int = 12) -> str:
+    try:
+        with open(paths.log_path(), encoding="utf-8", errors="replace") as f:
+            return "".join(f.readlines()[-n:]).strip()
+    except OSError:
+        return ""
+
+
+class Ui(Api):
+    """Окно: заставка сразу, страница — когда движок готов; следит за движком и перезапускает его."""
+
+    def __init__(self, engine: Engine, start_path: str, files: list[str]):
+        super().__init__(paths.runs_dir())
+        self.engine, self.start_path, self.files, self.closing = engine, start_path, files, False
+
+    def _status(self, text: str, bad: bool = False, log: str = ""):
+        if self.window is not None:
+            try:
+                self.window.evaluate_js(f"window.kostikStatus && kostikStatus({json.dumps(text)}, {json.dumps(bad)}, {json.dumps(log)})")
+            except Exception:  # noqa: BLE001 — окно ещё не готово или уже закрыто
+                pass
+
+    def _boot(self):
+        if not self.engine.alive():
+            self.engine.start()
+        hints = ((0, "Запускаю движок анализа…"), (3, "Загружаю модели анализа…"), (10, "Готовлю интерфейс… первый запуск дольше"))
+        ok = self.engine.wait_ready(on_wait=lambda t: self._status(next(h for s, h in reversed(hints) if t >= s)))
+        if not ok:
+            self._status("Движок анализа не запустился", True, _log_tail())
+            return False
+        url = self.engine.base + self.start_path
+        if self.files:
+            r = _post(self.engine.base + "/desktop/run-local", {"paths": self.files})
+            self.files = []
+            if r and r.get("url"):
+                url = self.engine.base + r["url"]
+        self._status("Открываю…")
+        self.window.load_url(url)
+        return True
+
+    def restart_engine(self):
+        self.engine.stop()
+        threading.Thread(target=self._boot, daemon=True).start()
+        return True
+
+    def watch(self):
+        """Поток окна: первый запуск движка, дальше — перезапуск, если он упал (до 3 раз подряд)."""
+        self._boot()
+        while not self.closing:
+            time.sleep(1.0)
+            if self.closing or self.engine.alive():
+                continue
+            if self.engine.restarts >= 3:
+                self.window.load_html(SPLASH)
+                time.sleep(0.5)
+                self._status("Движок анализа падает при запуске — подробности в журнале", True, _log_tail())
+                return
+            self.engine.restarts += 1
+            print(f"[ui] движок завершился (код {self.engine.proc.returncode}), перезапуск {self.engine.restarts}", flush=True)
+            self.start_path = "/"
+            self._boot()
+
+
+def open_window(engine: Engine, start_path: str, files: list[str], prefer_browser: bool = False) -> str:
     """Открыть окно и дождаться, пока его закроют. → какой способ сработал."""
     if not prefer_browser and not os.environ.get("DXAQC_NO_WEBVIEW"):
         try:
             import webview
-            win = webview.create_window(APP_NAME, url, width=1320, height=900, min_size=(900, 640), js_api=api,
-                                        text_select=True)
-            api.window = win
-            from dxaqc.web import desktop as webdesk
-            webdesk.ctx["navigate"] = win.load_url
-            print(f"[window] открываю встроенное окно pywebview: {url}", flush=True)
-            webview.start(private_mode=False, storage_path=os.path.join(paths.data_dir(), "webview"))
+            ui = Ui(engine, start_path, files)
+            win = webview.create_window(APP_NAME, html=SPLASH, width=1320, height=900, min_size=(900, 640), js_api=ui,
+                                        text_select=True, background_color="#12151a")
+            ui.window = win
+            try:
+                win.events.closing += lambda: setattr(ui, "closing", True)
+            except AttributeError:                       # старый pywebview без событий
+                pass
+            print("[window] окно pywebview, движок в отдельном процессе", flush=True)
+            webview.start(ui.watch, private_mode=False, storage_path=os.path.join(paths.data_dir(), "webview"))
+            ui.closing = True
             return "pywebview"
         except Exception as exc:  # noqa: BLE001 — нет WebView2 / WebKitGTK: браузер в режиме приложения
             print(f"[window] встроенное окно недоступно: {type(exc).__name__}: {exc}", flush=True)
+    if not engine.alive():
+        engine.start()
+    if not engine.wait_ready():
+        print("[server] движок не запустился", flush=True)
+        return "failed"
+    url = engine.base + start_path
+    if files:
+        r = _post(engine.base + "/desktop/run-local", {"paths": files})
+        if r and r.get("url"):
+            url = engine.base + r["url"]
     proc = _browser_app(url)
     if proc:
         print(f"[window] окно браузера в режиме приложения: {url}", flush=True)
@@ -178,21 +320,56 @@ def open_window(url: str, api: Api, prefer_browser: bool = False) -> str:
         return "browser-app"
     import webbrowser
     webbrowser.open(url)
-    _wait_heartbeat()
+    _wait_heartbeat(engine)
     return "browser"
 
 
-def _wait_heartbeat():
-    """Обычный браузер: работаем, пока открытая страница присылает сигналы; тишина 90 с после первого — выход."""
-    from dxaqc.web import desktop as webdesk
+def _wait_heartbeat(engine: Engine):
+    """Обычный браузер: работаем, пока открытая страница опрашивает строку состояния; тишина 90 с — выход."""
     t0 = time.time()
-    while True:
+    while engine.alive():
         time.sleep(5)
-        last = webdesk.ctx.get("last_ping")
-        if last is None and time.time() - t0 > 600:
+        s = _get(engine.base + "/desktop/ping-age", 2.0) or {}
+        age = s.get("age")
+        if age is None and time.time() - t0 > 600:
             return
-        if last is not None and time.time() - last > 90:
+        if age is not None and age > 90:
             return
+
+
+def _parent_watch(pid: int, server):
+    """Движок: окно закрылось или упало — завершаемся, не оставляя процесс-сироту."""
+    while True:
+        time.sleep(2)
+        try:
+            if sys.platform.startswith("win"):
+                import ctypes
+                h = ctypes.windll.kernel32.OpenProcess(0x1000, False, pid)       # PROCESS_QUERY_LIMITED_INFORMATION
+                code = ctypes.c_ulong()
+                alive = bool(h) and ctypes.windll.kernel32.GetExitCodeProcess(h, ctypes.byref(code)) and code.value == 259
+                if h:
+                    ctypes.windll.kernel32.CloseHandle(h)
+            else:
+                os.kill(pid, 0)
+                alive = os.getppid() == pid
+        except OSError:
+            alive = False
+        if not alive:
+            print("[engine] окно закрыто — завершаюсь", flush=True)
+            server.should_exit = True
+            return
+
+
+def serve(port: int, parent: int | None = None):
+    """Движок: сервер FastAPI в этом процессе."""
+    import uvicorn
+    from dxaqc.web import app as webapp
+    server = uvicorn.Server(uvicorn.Config(webapp.app, host="127.0.0.1", port=port, log_level="warning", access_log=False))
+    if parent:
+        threading.Thread(target=_parent_watch, args=(parent, server), daemon=True, name="parent-watch").start()
+    print(f"[engine] http://127.0.0.1:{port}/", flush=True)
+    server.run()
+    return 0
 
 
 def main(argv=None):
@@ -202,6 +379,8 @@ def main(argv=None):
     ap.add_argument("--mcp-stdio", action="store_true", help="MCP-сервер по stdio для ИИ-ассистентов")
     ap.add_argument("--browser", action="store_true", help="открыть в браузере вместо встроенного окна")
     ap.add_argument("--no-window", action="store_true", help="только сервер, без окна (для отладки)")
+    ap.add_argument("--engine", action="store_true", help=argparse.SUPPRESS)       # процесс движка, запускает окно
+    ap.add_argument("--parent", type=int, default=0, help=argparse.SUPPRESS)
     ap.add_argument("--port", type=int, default=0)
     ap.add_argument("--version", action="store_true")
     a = ap.parse_args(argv)
@@ -220,6 +399,8 @@ def main(argv=None):
 
     configure_env(a.port or None)
     _log_to_file()
+    if a.engine:
+        return serve(a.port, a.parent or None)
     files = [os.path.abspath(f) for f in a.files]
     other = running_instance()
     if other:                                            # вторая копия: передать файлы первой и выйти
@@ -228,41 +409,31 @@ def main(argv=None):
         return 0
     port = _free_port(a.port or DEFAULT_PORT)
     configure_env(port)
-    import uvicorn
-    from dxaqc.web import app as webapp
-    server = uvicorn.Server(uvicorn.Config(webapp.app, host="127.0.0.1", port=port, log_level="warning", access_log=False))
-    th = threading.Thread(target=server.run, daemon=True, name="server")
-    th.start()
-    base = f"http://127.0.0.1:{port}"
-    for _ in range(300):
-        if _get(base + "/api/health", 1.0):
-            break
-        time.sleep(0.1)
-    else:
-        print("[server] не запустился за 30 секунд", flush=True)
-        return 2
+    if a.no_window:
+        with open(_instance_file(), "w", encoding="utf-8") as f:
+            json.dump({"port": port, "pid": os.getpid()}, f)
+        try:
+            return serve(port)
+        finally:
+            _remove_instance()
+    engine = Engine(port)
+    engine.start()                                       # движок стартует параллельно с окном
     with open(_instance_file(), "w", encoding="utf-8") as f:
         json.dump({"port": port, "pid": os.getpid()}, f)
-    url = base + "/"
-    if files:
-        r = _post(base + "/desktop/run-local", {"paths": files})
-        if r and r.get("url"):
-            url = base + r["url"]
     try:
-        if a.no_window:
-            print(f"[server] {url}", flush=True)
-            th.join()
-        else:
-            how = open_window(url, Api(webapp.RUNS), prefer_browser=a.browser)
-            print(f"[window] закрыто ({how})", flush=True)
+        how = open_window(engine, "/", files, prefer_browser=a.browser)
+        print(f"[window] закрыто ({how})", flush=True)
     finally:
-        server.should_exit = True
-        try:
-            os.remove(_instance_file())
-        except OSError:
-            pass
-        th.join(timeout=5)
+        engine.stop()
+        _remove_instance()
     return 0
+
+
+def _remove_instance():
+    try:
+        os.remove(_instance_file())
+    except OSError:
+        pass
 
 
 if __name__ == "__main__":

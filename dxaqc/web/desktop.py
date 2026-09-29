@@ -22,6 +22,7 @@ from dxaqc import __version__
 from dxaqc import desktop as D
 from dxaqc.desktop import models as M
 from dxaqc.desktop import paths, synth
+from dxaqc.web.progress import STAGE_LABELS
 
 router = APIRouter(include_in_schema=False)
 ctx: dict = {}
@@ -307,8 +308,8 @@ async def run_local(request: Request):
     ctx["write_status"](run_id, has_archives=ctx["has_archives"](run_id))
     ctx["submit"](run_id)
     url = f"/check/{run_id}"
-    if body.get("navigate") and ctx.get("navigate"):
-        ctx["navigate"](base_url() + url)
+    if body.get("navigate"):                 # вторая копия приложения: окно откроет проверку через строку состояния
+        ctx["pending_nav"] = url
     return dict(run_id=run_id, url=url)
 
 
@@ -358,14 +359,70 @@ def ping():
     return dict(ok=True)
 
 
-def open_path(path: str):
-    """Открыть папку в проводнике или файловом менеджере."""
-    if sys.platform.startswith("win"):
-        os.startfile(path)  # type: ignore[attr-defined]
-    elif sys.platform == "darwin":
-        subprocess.Popen(["open", path])
-    else:
-        subprocess.Popen(["xdg-open", path])
+@router.post("/api/desktop/cancel/{run_id}")
+def cancel_run(run_id: str, request: Request):
+    """Отменить проверку из строки состояния. Свой заголовок: чужой сайт не может отправить его без разрешения CORS."""
+    if request.headers.get("x-kostik") != "1" or not re.fullmatch(r"[A-Za-z0-9-]{1,64}", run_id):
+        raise HTTPException(403)
+    st = ctx["read"](run_id, "status.json") or {}
+    if st.get("state") not in ("queued", "running"):
+        return dict(ok=False, state=st.get("state"))
+    if not ctx["cancel"](run_id):
+        ctx["write_status"](run_id, state="cancelled", finished=time.time())
+    return dict(ok=True)
+
+
+@router.get("/desktop/ping-age")
+def ping_age():
+    """Окно в обычном браузере: сколько секунд страница молчит — процесс окна по этому решает, пора ли выходить."""
+    last = ctx.get("last_ping")
+    return dict(age=None if last is None else round(time.time() - last, 1))
+
+
+open_path = paths.open_path
+
+
+# ------------------------------------------------------------------ строка состояния (#138)
+
+def _active_runs() -> list[dict]:
+    out = []
+    try:
+        ids = sorted(os.listdir(ctx["runs_dir"]), reverse=True)[:200]
+    except OSError:
+        return out
+    for rid in ids:
+        try:
+            with open(os.path.join(ctx["runs_dir"], rid, "status.json"), encoding="utf-8") as f:
+                st = json.load(f)
+        except (OSError, ValueError):
+            continue
+        if st.get("state") not in ("queued", "running"):
+            continue
+        step, pr = st.get("step") or {}, st.get("progress") or {}
+        out.append(dict(run_id=rid, title=st.get("title") or rid, state=st["state"], created=st.get("created") or 0,
+                        stage=STAGE_LABELS.get(st.get("stage") or "", ""), done=pr.get("done", step.get("done", 0)),
+                        total=pr.get("total", step.get("total", 0)), eta=st.get("eta"), detail=(st.get("detail") or "")[:80]))
+    return sorted(out, key=lambda r: (r["state"] != "running", r["created"]))
+
+
+@router.get("/api/desktop/status")
+def app_status():
+    """Что сейчас делает приложение — для строки состояния внизу окна: проверки, загрузки моделей, дообучение."""
+    ctx["last_ping"] = time.time()
+    runs = _active_runs()
+    downloads = [dict(key=k, title=k, done=v.get("done", 0), total=v.get("total", 0))
+                 for k, v in list(M._state.items()) if v.get("status") == "downloading"]
+    learning = None
+    try:
+        from dxaqc.web import control
+        job = dict(control._learn)             # без L.status(): он читает правки с диска, а строка опрашивается часто
+        if job.get("state") == "running":
+            learning = job.get("message") or "дообучение моделей"
+    except Exception:  # noqa: BLE001
+        pass
+    nav = ctx.pop("pending_nav", None)
+    return JSONResponse(dict(ok=True, runs=runs, downloads=downloads, learning=learning, navigate=nav, pid=os.getpid()),
+                        headers={"Cache-Control": "no-store"})
 
 
 # ------------------------------------------------------------------ MCP в приложении

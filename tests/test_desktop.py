@@ -114,3 +114,55 @@ def test_app_version_is_beta_and_orders_before_release():
     from dxaqc.web import desktop as W
     assert APP_VERSION == "1.0-Beta" and WIN_VERSION == "1.0.0" and DEB_VERSION == "1.0~beta"
     assert W._ver("0.5.4") < W._ver("1.0-Beta") < W._ver("1.0") < W._ver("1.0.1")
+
+
+def test_engine_process_status_bar_and_cancel(tmp_path):
+    """#138, 29.09 Юрий: окно отдельно от движка, проверка в своём процессе, строка состояния всегда отвечает."""
+    import time
+    import urllib.request
+    from dxaqc.desktop import synth
+    code = f"""
+import json, os, sys, time, urllib.request
+from dxaqc.desktop import __main__ as M
+M.configure_env(0)
+port = M._free_port(0); M.configure_env(port)
+e = M.Engine(port); e.start(); assert e.wait_ready(120), "движок не запустился"
+for i in range(8): __import__("dxaqc.desktop.synth", fromlist=["x"]).study(r"{tmp_path}/in/s%d" % i, "ok")
+html = urllib.request.urlopen(e.base + "/").read().decode()
+r = M._post(e.base + "/desktop/run-local", {{"paths": [r"{tmp_path}/in"]}})
+lat, running = [], False
+t0 = time.time()
+while time.time() - t0 < 120:
+    a = time.time(); s = M._get(e.base + "/api/desktop/status", 3); lat.append(time.time() - a)
+    running = running or any(x["state"] == "running" for x in s["runs"])
+    if running and not s["runs"]: break
+    time.sleep(0.1)
+st = json.load(open(os.path.join(os.environ["DXAQC_DATA"], "runs", r["run_id"], "status.json")))
+r2 = M._post(e.base + "/desktop/run-local", {{"paths": [r"{tmp_path}/in"]}})
+time.sleep(1.5)
+bad = urllib.request.Request(e.base + "/api/desktop/cancel/" + r2["run_id"], method="POST")
+try: urllib.request.urlopen(bad); forbidden = False
+except Exception: forbidden = True
+ok = urllib.request.Request(e.base + "/api/desktop/cancel/" + r2["run_id"], method="POST", headers={{"X-Kostik": "1"}})
+urllib.request.urlopen(ok)
+for _ in range(100):
+    s2 = json.load(open(os.path.join(os.environ["DXAQC_DATA"], "runs", r2["run_id"], "status.json")))
+    if s2["state"] not in ("queued", "running"): break
+    time.sleep(0.2)
+print(json.dumps(dict(bar="deskStatus" in html, state=st["state"], running=running, max_ms=round(max(lat) * 1000),
+                      forbidden=forbidden, cancelled=s2["state"], engine=e.proc.pid)))
+sys.stdout.flush(); os._exit(0)          # окно «упало»: движок должен завершиться сам
+"""
+    r = subprocess.run([sys.executable, "-W", "ignore", "-c", code], env=_env(tmp_path), capture_output=True, text=True, timeout=300)
+    res = json.loads(r.stdout.strip().splitlines()[-1])
+    assert res["bar"] and res["state"] == "done" and res["running"], res
+    assert res["max_ms"] < 1500, f"строка состояния тормозит во время анализа: {res['max_ms']} мс"
+    assert res["forbidden"] and res["cancelled"] == "cancelled", res
+    for _ in range(30):
+        try:
+            os.kill(res["engine"], 0)
+        except OSError:
+            break
+        time.sleep(0.5)
+    else:
+        pytest.fail("движок остался жить после закрытия окна")

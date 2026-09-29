@@ -79,5 +79,6 @@ footer{max-width:1180px;margin:0 auto;padding:0 20px 30px;color:var(--ink3);font
 <main>{% block content %}{% endblock %}</main>
 {% block footer %}{% if desktop %}<footer>Kostik {{ app_version }} · анализ {{ version }} · работает на этом компьютере, снимки не покидают его · <a href="/about">О программе</a> · <a href="/help">Справка</a></footer>{% else %}<footer>ЛЦТ 2026 · задача Департамента здравоохранения · команда «Квантовый Скачок»: Юрий Коноплёв, Алексей Чуркин · версия {{ version }} · только обезличенные данные организатора · <a href="/cookies">cookie</a></footer>{% endif %}{% endblock %}
 {% block cookie %}{% if not desktop %}{% include "_cookie_notice.html" %}{% endif %}{% endblock %}
+{% if desktop %}{% include "_desk_status.html" %}{% endif %}
 </body>
 </html>

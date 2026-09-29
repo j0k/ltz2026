@@ -17,7 +17,8 @@ from markdown_it import MarkdownIt
 import os
 ROOT = Path(os.environ.get("DOCS_ROOT") or Path(__file__).resolve().parents[1])   # DOCS_ROOT — вариант документации для PDF
 GH = "https://github.com/j0k/ltz2026/blob/main/"
-DOCS = [("readme", "README.md", "Обзор решения"), ("user", "doc/USER_GUIDE.md", "Руководство пользователя"),
+DOCS = [("readme", "README.md", "Обзор решения"), ("clean", "docs/CLEAN_MACHINE.md", "Запуск на чистой машине"),
+        ("user", "doc/USER_GUIDE.md", "Руководство пользователя"),
         ("deploy", "doc/DEPLOY.md", "Руководство по развёртыванию"), ("training", "doc/TRAINING.md", "Обучение моделей"),
         ("learning", "doc/LEARNING.md", "Дообучение на правках врачей и плагины"), ("examples", "doc/EXAMPLES.md", "Примеры снимков"),
         ("demo", "doc/DEMO.md", "Демонстрационный сценарий")]
@@ -41,10 +42,10 @@ def link(m):
     href = m.group(1)
     if href.startswith(("http://", "https://", "mailto:", "#")):
         return f'href="{href}"'
-    base = href.split("#")[0]
+    base = re.sub(r"^(\.\./)+", "", href.split("#")[0])       # ссылки из docs/ на ../README.md и ../doc/*.md
     if base in FILE2ID:
         return f'href="#doc-{FILE2ID[base]}"'
-    return f'href="{GH}{href}"'
+    return f'href="{GH}{re.sub(r"^(\.\./)+", "", href)}"'
 
 
 md = MarkdownIt("commonmark", {"html": False}).enable("table")

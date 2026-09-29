@@ -14,7 +14,8 @@ from pathlib import Path
 
 from markdown_it import MarkdownIt
 
-ROOT = Path(__file__).resolve().parents[1]
+import os
+ROOT = Path(os.environ.get("DOCS_ROOT") or Path(__file__).resolve().parents[1])   # DOCS_ROOT — вариант документации для PDF
 GH = "https://github.com/j0k/ltz2026/blob/main/"
 DOCS = [("readme", "README.md", "Обзор решения"), ("user", "doc/USER_GUIDE.md", "Руководство пользователя"),
         ("deploy", "doc/DEPLOY.md", "Руководство по развёртыванию"), ("training", "doc/TRAINING.md", "Обучение моделей"),

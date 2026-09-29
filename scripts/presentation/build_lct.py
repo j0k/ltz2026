@@ -344,6 +344,21 @@ for i, (h, t) in enumerate(pts):
     badge(s, i + 1, 8.5, y, PINK)
     text(s, 9.1, y - 0.02, 3.9, 1.0, [[(h, {'bold': True, 'size': 16, 'color': WHITE})], [(t, {'size': 13, 'color': PINK_L})]])
 
+# 14b. Примеры: норма и брак на снимках обучающего набора
+s = new_slide(title='ПРИМЕРЫ СНИМКОВ')
+text(s, 0.56, 1.3, 12.2, 0.6, 'Норма и брак — вердикт сервиса совпал с экспертами', size=24, bold=True, color=DEEP)
+cards = [('examples/real_good_spine.png', 0.45, 1.95), ('examples/real_bad_artifact.png', 6.75, 1.95),
+         ('examples/real_bad_axis.png', 0.45, 4.45), ('examples/real_bad_hip_positioning.png', 6.75, 4.45)]
+for f, x, y in cards:
+    from PIL import Image as _I
+    iw, ih = _I.open(A(f)).size
+    h = 2.35; w = h * iw / ih
+    if w > 6.1:
+        w = 6.1; h = w * ih / iw
+    pic(s, f, x + (6.1 - w) / 2, y, w=w)
+text(s, 0.56, 6.95, 12.2, 0.3, 'Снимки из обучающего набора организатора (обезличенные); слева исходный снимок, справа атлас сервиса.', size=10, color=GREY)
+notes(s, 'Настоящие снимки обучающего набора: норма поясницы, посторонний предмет, наклон оси, укладка бедра. Во всех случаях вердикт сервиса совпал с экспертами.')
+
 # 15. Архитектура
 s = new_slide(title='АРХИТЕКТУРА')
 text(s, 0.56, 1.3, 12.2, 0.6, 'Один конвейер для стенда, API, контейнера и приложения', size=24, bold=True, color=DEEP)

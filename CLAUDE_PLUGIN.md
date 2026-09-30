@@ -22,7 +22,7 @@
 
 | что | где взять |
 |---|---|
-| Kostik 1.0-Beta сборки `20260930` или новее | https://ltz2026.ru/download или раздел Releases репозитория |
+| Kostik 1.0-Beta сборки `20260930` или новее | [Releases](https://github.com/j0k/ltz2026/releases) или https://ltz2026.ru/download |
 | Claude Code | https://claude.com/claude-code |
 | снимки DXA в формате DICOM | свои или учебный набор организатора |
 
@@ -380,6 +380,7 @@ Kostik проверяет качество снимков и не ставит �
 
 | что видно | что делать |
 |---|---|
+| `/plugin marketplace add` — `fatal: fetch-pack: invalid index-pack output` | слишком длинный путь к папке настроек Claude Code; в папке по умолчанию такого нет |
 | `/kostik:check` — неизвестная команда | плагин не установлен или Claude Code не перезапущен |
 | в `/mcp` сервер `kostik` с ошибкой | программа не установлена или стоит в другой папке — задайте `KOSTIK_CLI` |
 | инструментов 7, а не 8 | старая сборка программы — поставьте новую |

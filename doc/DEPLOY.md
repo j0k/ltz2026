@@ -88,10 +88,14 @@ curl -s http://localhost:8000/api/health            # {"status":"ok","version":"
 и запускают контейнер из готового образа:
 
 ```bash
-./serve.sh                                   # сам подключает наборы, если они разложены
+# забрать наборы с сервера-источника (медицинские данные — отдельно от git):
+SRC_HOST=jk@194.87.26.51 scripts/fetch_org_data.sh
 # или через compose:
 DXAQC_DATASETS_DIR=/srv/ltz2026/datasets sudo docker compose -f infra/app/docker-compose.stand.yml up -d
 ```
+
+`scripts/fetch_org_data.sh --downloads <папка> --keys <папка>` дополнительно забирает установщики
+(`/data/downloads`) и приватный ключ подписи релизов.
 
 Состав папки: `train/` (100 исследований), `test/`, `labels_clean.csv`, `«Для теста.zip»` (сид-пример),
 `tz/` (документы ТЗ для `/tz/`). Без набора `train/` на главной не будет блока «готовые примеры» и

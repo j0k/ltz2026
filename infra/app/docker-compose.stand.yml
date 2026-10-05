@@ -1,0 +1,36 @@
+# Стенд Kostik на своём сервере: контейнер из готового образа плюс наборы организатора.
+#
+# Медицинские данные и материалы организатора в git не хранятся (см. .gitignore) — их готовят
+# отдельно в DXAQC_DATASETS_DIR, по умолчанию /srv/ltz2026/datasets:
+#   train/            100 исследований (DICOM)
+#   test/             фрагмент «Для теста»
+#   labels_clean.csv  экспертная разметка обучающего набора -> train_labels.csv
+#   «Для теста.zip»   сид-пример: при старте прогоняется как прогон example
+#   tz/               документы ТЗ для /tz/
+#
+#   DXAQC_DATASETS_DIR=/srv/ltz2026/datasets sudo docker compose -f infra/app/docker-compose.stand.yml up -d
+#
+# Том dxaqc_data (прогоны, галерея, /downloads) при пересоздании контейнера сохраняется.
+version: "3.8"
+
+services:
+  app:
+    image: ${DXAQC_IMAGE:-dxaqc:latest}
+    container_name: ${DXAQC_NAME:-dxaqc_web}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${PORT:-8000}:8000"
+    environment:
+      DXAQC_DATASETS: /datasets
+      DXAQC_SEED: "/seed/Для теста.zip"
+    volumes:
+      - dxaqc_data:/data
+      - ${DXAQC_DATASETS_DIR:-/srv/ltz2026/datasets}/train:/datasets/train:ro
+      - ${DXAQC_DATASETS_DIR:-/srv/ltz2026/datasets}/test:/datasets/test:ro
+      - ${DXAQC_DATASETS_DIR:-/srv/ltz2026/datasets}/labels_clean.csv:/datasets/train_labels.csv:ro
+      - ${DXAQC_DATASETS_DIR:-/srv/ltz2026/datasets}/Для теста.zip:/seed/Для теста.zip:ro
+      - ${DXAQC_DATASETS_DIR:-/srv/ltz2026/datasets}/tz:/tz:ro
+
+volumes:
+  dxaqc_data:
+    external: true
